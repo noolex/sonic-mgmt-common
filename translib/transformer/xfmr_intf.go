@@ -1044,19 +1044,17 @@ func rpc_vlan_tbl_update(d *db.DB, op_map (map[string][]string),op string) error
             if _, ok := updated_map[vlanName]; !ok{
                 vlanEntry,_ := d.GetEntry(&db.TableSpec{Name:VLAN_TN}, db.Key{Comp: []string{vlanName}})
 	        membersList := vlanEntry.GetList("members")
-		if op == "CREATE"{
-                    membersList = append(membersList,ifName)
-                    updated_map[vlanName] = membersList
-		}
-		if op == "DELETE"{
-                    membersList = utils.RemoveElement(membersList,ifName)
-                    updated_map[vlanName] = membersList
-		}
-            }else{
-                ifList := updated_map[vlanName]
+		updated_map[vlanName] = membersList
+	    }
+	    ifList := updated_map[vlanName]
+	    if op == "CREATE"{
                 ifList = append(ifList,ifName)
                 updated_map[vlanName] = ifList
-            }
+	    }
+	    if op == "DELETE"{
+                ifList = utils.RemoveElement(ifList,ifName)
+                updated_map[vlanName] = ifList
+	    }
         }
     }
 
@@ -2864,7 +2862,6 @@ func validateIpOverlap(d *db.DB, intf string, ipPref string, tblName string, isI
 			intfName := key.Get(0)
 			intfNameUi := *utils.GetUINameFromNativeName(&intfName)
                         errStr := "IP " + ipPref + " overlaps with IP or IP Anycast " + key.Get(1) + " of Interface " + intfNameUi
-                        log.Error(errStr)
                         return "", errors.New(errStr)
                     }
                 } else if isIntfIp {
@@ -3075,14 +3072,14 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
         log.Info("YangToDb_intf_subintf_ip_xfmr : " + errStr)
         return subIntfmap, errors.New(errStr)
     }
-
     /* Validate whether the Interface is configured as member-port associated with any vlan */
-    if intfType == IntfTypeEthernet || intfType == IntfTypePortChannel {
+    if (intfType == IntfTypeEthernet || intfType == IntfTypePortChannel) && (inParams.oper != DELETE) {
         err = validateIntfAssociatedWithVlan(inParams.d, &ifName)
-        if err != nil {
+        if err != nil { //Interface associated with VLAN
             return subIntfmap, err
         }
     }
+
     /* Validate whether the Interface is configured as member-port associated with any portchannel */
     if intfType == IntfTypeEthernet {
         err = validateIntfAssociatedWithPortChannel(inParams.d, &ifName)

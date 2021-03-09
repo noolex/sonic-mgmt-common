@@ -717,12 +717,6 @@ func deleteLagIntfAndMembers(inParams *XfmrParams, lagName *string) error {
         return nil
     }
 
-    /* Restrict deletion if iface configured as member-port of any Vlan */
-    err = validateIntfAssociatedWithVlan(inParams.d, lagName)
-    if err != nil {
-        return err
-    }
-
     /* Validate L3 Configuration only operation is not Delete */
     if inParams.oper != DELETE {
         err = validateL3ConfigExists(inParams.d, lagName)

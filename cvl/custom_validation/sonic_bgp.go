@@ -32,6 +32,10 @@ func (t *CustomValidation) ValidateL3vniConfiguration(vc *CustValidationCtxt) CV
          return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
 
+    if len(vc.CurCfg.Data) != 0 {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
     keys := "VRF|" + vc.YNodeVal
     vrfData, err := vc.RClient.HGetAll(keys).Result()
 
