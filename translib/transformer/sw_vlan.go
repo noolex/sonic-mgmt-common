@@ -396,8 +396,41 @@ func validateVlanExists(d *db.DB, vlanName *string) error {
     return nil
 }
 
-/* Validates whether physical interface or port-channel interface configured as member of any VLAN */
+/* Validates whether physical interface or port-channel interface configured as member of any existing or non-existing VLAN */
 func validateIntfAssociatedWithVlan(d *db.DB, ifName *string) error {
+    var err error
+    ifUIName := utils.GetUINameFromNativeName(ifName)
+
+    if len(*ifName) == 0 {
+        return errors.New("Interface name is empty!")
+    }
+    intfType, _, _ := getIntfTypeByName(*ifName)
+    intTbl := IntfTypeTblMap[intfType]
+    tblName, _ := getPortTableNameByDBId(intTbl, 4)
+
+    var errStr strings.Builder
+    portEntry, err := d.GetEntry(&db.TableSpec{Name:tblName}, db.Key{Comp: []string{*ifName}})
+    if err == nil {
+        cfgdTaggedVlanVal, taggedOk := portEntry.Field["tagged_vlans@"]
+        cfgdAccessVlanVal, accessOk := portEntry.Field["access_vlan"]
+
+        if taggedOk && len(cfgdTaggedVlanVal) !=0 {
+            errStr.WriteString("Tagged VLANs:" + cfgdTaggedVlanVal +" ")
+        }
+        if accessOk && len(cfgdAccessVlanVal) !=0 {
+            errStr.WriteString("Access VLANs:" + cfgdAccessVlanVal +" ")
+        }
+        if errStr.Len() != 0 {
+            errStr.WriteString("configuration exists on interface: " + *ifUIName)
+            log.Error(errStr.String())
+            return tlerr.InvalidArgsError{Format:errStr.String()}
+        }
+    }
+    return err
+}
+
+/* Validates whether physical interface or port-channel interface configured as member of any existing VLAN */
+func validateIntfAssociatedWithExistingVlan(d *db.DB, ifName *string) error {
     var err error
     ifUIName := utils.GetUINameFromNativeName(ifName)
 
