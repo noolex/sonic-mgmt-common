@@ -28,6 +28,11 @@ import (
 	"strconv"
 )
 
+const (
+  //Default MTU of interface
+  DEFAULT_MTU = "9100"
+)
+
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
 func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErrorInfo {
 
@@ -144,11 +149,18 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
                                         }
                                 }
 
-				poMtu, hasPoMtu := poData["mtu"]
+				poMtu := poData["mtu"]
+
+				// If PO MTU is not configured, choose default MTU.
+				if len(poMtu) == 0 {
+                                        poMtu = DEFAULT_MTU
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Setting default MTU for PO MTU=%v", poMtu)
+                                }
+
 				intfMtu := intfData["mtu"]
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateMtuForPOMemberCount: PO MTU=%v and Intf MTU=%v", poMtu, intfMtu)
 
-				if hasPoMtu && poMtu != intfMtu {
+                                if poMtu != intfMtu {
 					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member MTU not same as portchannel MTU")
 					return CVLErrorInfo{
 						ErrCode:          CVL_SEMANTIC_ERROR,
@@ -188,6 +200,22 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 								ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
 								ErrAppTag:        "speed-invalid",
 						}
+					}
+
+				}
+
+				// Check for VLAN configuration on interface being added as PO member.
+				isAccessVlanCfg := intfData["access_vlan"]
+				isTrunkVlanCfg := intfData["tagged_vlans@"]
+
+				// Prevent interfaces with VLAN configuration from being added to PO.
+				if (len(isAccessVlanCfg) > 0 || len(isTrunkVlanCfg) > 0) {
+					return CVLErrorInfo{
+							ErrCode:          CVL_SEMANTIC_ERROR,
+							TableName:        "PORT",
+							Keys:             strings.Split(vc.CurCfg.Key, "|"),
+							ConstraintErrMsg: fmt.Sprintf("Configuration not allowed as Vlan configuration exists on %s.", intfName),
+							ErrAppTag:        "member-invalid",
 					}
 				}
 			}
