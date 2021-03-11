@@ -14,6 +14,7 @@ module openconfig-pim-ext {
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-types { prefix "oc-types"; }
+    import openconfig-bfd { prefix "oc-bfd"; }
 
     organization
         "SONiC";
@@ -126,6 +127,12 @@ module openconfig-pim-ext {
             }
             description
                 "Designated router priority value.";
+        }
+
+        leaf bfd-session-status {
+          type oc-bfd:bfd-session-state;
+          description
+            "BFD session status of PIM neighbor.";
         }
     }
 

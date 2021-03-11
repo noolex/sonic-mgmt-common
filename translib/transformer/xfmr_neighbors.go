@@ -200,13 +200,23 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
     log.Info("delete_neigh_interface_config_all::: neighTbl keys ", keys)
 
-    subOpMap := inParams.subOpDataMap[inParams.oper]
-
 /*
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
 */
+
+    if inParams.subOpDataMap[inParams.oper] == nil {
+        _subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        inParams.subOpDataMap[inParams.oper] = &_subOpMap
+    }
+
+    subOpMap := inParams.subOpDataMap[inParams.oper]
+
+    if (*subOpMap)[db.ConfigDB] == nil {
+        (*subOpMap)[db.ConfigDB] = make(map[string]map[string]db.Value)
+    }
+
     log.Info("subOpMap ", *subOpMap)
     (*subOpMap)[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
@@ -528,6 +538,11 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
@@ -571,6 +586,11 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: key " + cfgKey)
@@ -613,6 +633,11 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
@@ -653,6 +678,11 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
     appKey := intfNameRcvd + ":" + ipAddrRcvd
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
+
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
 
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
