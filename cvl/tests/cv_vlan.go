@@ -98,6 +98,7 @@ func main() {
 						"vlanid":  fmt.Sprintf("%d", vlanNum),
 						"members@": "Ethernet0,Ethernet4,Ethernet8,Ethernet12,Ethernet16,Ethernet20,Ethernet24,Ethernet28",
 					},
+					false,
 				},
 			}
 
@@ -118,6 +119,7 @@ func main() {
 					map[string]string {
 						"tagging_mode" : "tagged",
 					},
+					false,
 				})
 
 				_, ret1 := cvSess.ValidateEditConfig(cfgDataVlan)
@@ -156,6 +158,7 @@ func main() {
 					fmt.Sprintf("VLAN_MEMBER|Vlan%d|Ethernet%d", vlanNum, i * 4),
 					map[string]string {
 					},
+					false,
 				})
 
 				_, ret := cvSess.ValidateEditConfig(cfgDataVlan)
@@ -173,6 +176,7 @@ func main() {
 				fmt.Sprintf("VLAN|Vlan%d", vlanNum),
 				map[string]string {
 				},
+				false,
 			})
 
 			_, ret := cvSess.ValidateEditConfig(cfgDataVlan)
@@ -207,6 +211,7 @@ func main() {
 					"admin_status": "up",
 					"mtu": "9100",
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -216,6 +221,7 @@ func main() {
 					"admin_status": "up",
 					"mtu": "9100",
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -223,6 +229,7 @@ func main() {
 				"PORTCHANNEL_MEMBER|ch1|Ethernet4",
 				map[string]string {
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -230,6 +237,7 @@ func main() {
 				"PORTCHANNEL_MEMBER|ch1|Ethernet8",
 				map[string]string {
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -237,6 +245,7 @@ func main() {
 				"PORTCHANNEL_MEMBER|ch2|Ethernet12",
 				map[string]string {
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -244,6 +253,7 @@ func main() {
 				"PORTCHANNEL_MEMBER|ch2|Ethernet16",
 				map[string]string {
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_NONE,
@@ -251,6 +261,7 @@ func main() {
 				"PORTCHANNEL_MEMBER|ch2|Ethernet20",
 				map[string]string {
 				},
+				false,
 			},
 			cvl.CVLEditConfigData {
 				cvl.VALIDATE_ALL,
@@ -260,6 +271,7 @@ func main() {
 					"vlanid": "1001",
 					"members@": "Ethernet24,ch1,Ethernet8",
 				},
+				false,
 			},
 		}
 
@@ -284,6 +296,7 @@ func main() {
 				map[string]string {
 					"type": "L3",
 				},
+				false,
 			},
 		}
 

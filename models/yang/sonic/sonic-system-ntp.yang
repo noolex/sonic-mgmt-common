@@ -23,6 +23,10 @@ module sonic-system-ntp {
         prefix lo;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     import sonic-vrf {
         prefix svrf;
     }
@@ -43,6 +47,15 @@ module sonic-system-ntp {
 
     description
         "SONIC NTP";
+
+    revision 2021-01-08 {
+        description "Added support for routed vlan-sub-interface.";
+    }
+
+    revision 2020-12-07 {
+        description
+            "Add per NTP server minpoll and maxpoll.";
+    }
 
     revision 2020-11-24 {
         description
@@ -105,6 +118,9 @@ module sonic-system-ntp {
                         }
                         type leafref {
                             path "/smt:sonic-mgmt-port/smt:MGMT_PORT/smt:MGMT_PORT_LIST/smt:ifname";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                 }
@@ -202,6 +218,36 @@ module sonic-system-ntp {
                         "Integer identifier used by the client and server to
                          designate a secret key.  The client and server must use
                          the same key id.";
+                }
+
+                leaf minpoll {
+                    default 6;
+                    type uint8 {
+                        range "3..17";
+                    }
+                    must "((current()/../maxpoll) and (current()/../maxpoll > current()))" {
+                        error-message "minpoll and maxpoll must be both configured, and maxpoll has to be larger than minpoll";
+                    }
+                    description
+                        "The minimum poll interval used in this association.";
+                    reference
+                        "RFC 5905: Network Time Protocol Version 4: Protocol and
+                        Algorithms Specification";
+                    }
+
+                leaf maxpoll {
+                    default 10;
+                    type uint8 {
+                        range "3..17";
+                    }
+                    must "((current()/../minpoll) and (current()/../minpoll < current()))" {
+                        error-message "minpoll and maxpoll must be both configured, and maxpoll has to be larger than minpoll.";
+                    }
+                    description
+                        "The maximum poll interval used in this association.";
+                    reference
+                        "RFC 5905: Network Time Protocol Version 4: Protocol and
+                        Algorithms Specification";
                 }
             }
         }

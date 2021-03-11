@@ -26,6 +26,7 @@ import (
 	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"strings"
+	"sort"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -76,7 +77,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-                log.Warning("Error parameters not adapted") 
+                log.Warning("Error parameters not adapted")
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -96,7 +97,7 @@ func TraverseDb(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]map[str
 
 	err := traverseDbHelper(dbs, spec, &dataMap, parentKey, dbTblKeyGetCache)
 	if err != nil {
-		log.Warning("Couldn't get data from traverseDbHelper")
+		xfmrLogInfoAll("Didn't get all data from traverseDbHelper")
 		return err
 	}
 	/* db data processing */
@@ -137,7 +138,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 			}
 			dbTblKeyGetCache[spec.DbNum] = queriedDbInfo
 			if err != nil {
-				log.Warningf("Couldn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
+				log.Warningf("Didn't get data for tbl(%v), key(%v) in traverseDbHelper", spec.Ts.Name, spec.Key)
 				return err
 			}
 
@@ -157,7 +158,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 		if spec.Ts.Name != XFMR_NONE_STRING { //Do not traverse for NONE table
 			keys, err := dbs[spec.DbNum].GetKeys(&spec.Ts)
 			if err != nil {
-				log.Warningf("Couldn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
+				log.Warningf("Didn't get keys for tbl(%v) in traverseDbHelper", spec.Ts.Name)
 				return err
 			}
 			xfmrLogInfoAll("keys for table %v in Db %v are %v", spec.Ts.Name, spec.DbNum, keys)
@@ -171,7 +172,7 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 				spec.Key = keys[i]
                                 err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
                                 if err != nil {
-                                        log.Warningf("Traversal didn't fetch for : %v", err)
+                                        xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
                                 }
 			}
 		} else if len(spec.Child) > 0 {
@@ -390,7 +391,7 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	for _, spec := range *keySpec {
 		err := TraverseDb(dbs, spec, &dbresult, nil, inParamsForGet.dbTblKeyGetCache)
 		if err != nil {
-			log.Warning("TraverseDb() didn't fetch data.")
+			xfmrLogInfoAll("TraverseDb() didn't fetch data.")
 		}
 	}
 
@@ -569,7 +570,7 @@ func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
                 for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ordTblList = sonicMdlTblInfo.OrdTbl
+                                        ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
                                         processedTbl = true
                                         break
                                 }
@@ -616,7 +617,7 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
                         for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
                                 if xfmrTbl == ordTblNm {
                                         xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl]
+                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
                                         for _, depTblNm := range(ldepTblList) {
                                                 depTblMap[depTblNm] = true
                                         }
@@ -682,7 +683,7 @@ func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (Xfm
     var retVal XfmrSubscOutParams
     retVal.dbDataMap = nil
     retVal.needCache = false
-    retVal.onChange = false
+    retVal.onChange = OnchangeDisable
     retVal.nOpts = nil
     retVal.isVirtualTbl = false
 
@@ -736,12 +737,12 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
            }
 
            if (xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) &&(len(strings.TrimSpace(*xpathData.subscribePref)) == 0))) {
-               subscribe_result.PType = Sample
+               subscribe_result.PType = OnChange
            } else {
                if *xpathData.subscribePref == "onchange" {
                    subscribe_result.PType = OnChange
                } else {
-                           subscribe_result.PType = Sample
+		   subscribe_result.PType = Sample
                }
            }
            subscribe_result.MinInterval = xpathData.subscribeMinIntvl
@@ -789,7 +790,9 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                    err = st_err
                    break
                }
-	       subscribe_result.OnChange = st_result.onChange
+               if st_result.onChange == OnchangeEnable {
+		       subscribe_result.OnChange = true
+	       }
 	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
 	       if subscribe_result.OnChange {
 		       if st_result.dbDataMap != nil {
@@ -809,7 +812,7 @@ func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interfac
                }
            } else {
 		   subscribe_result.OnChange = true
-		   inValXfmrMap := RedisDbMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
+		   inValXfmrMap := RedisDbSubscribeMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
 		   subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
 	   }
            if done {
@@ -838,19 +841,79 @@ func IsTerminalNode(uri string) (bool, error) {
 
 func IsLeafNode(uri string) bool {
 	result := false
-	xpath, _, err := XfmrRemoveXPATHPredicates(uri)
-	if err != nil {
-		log.Warningf("For uri - %v, couldn't convert to xpath - %v", uri, err)
-		return result
-	}
-	xfmrLogInfoAll("received xpath - %v", xpath)
-	if xpathData, ok := xYangSpecMap[xpath]; ok {
-		if yangTypeGet(xpathData.yangEntry) == YANG_LEAF {
-			result = true
-		}
-	} else {
-		errStr := "xYangSpecMap data not found for xpath - " + xpath
-		log.Warning(errStr)
+	yngNdType, err := getYangNodeTypeFromUri(uri)
+	if (err == nil) && (yngNdType == YANG_LEAF) {
+		result = true
 	}
 	return result
+}
+
+func IsLeafListNode(uri string) bool {
+        result := false
+        yngNdType, err := getYangNodeTypeFromUri(uri)
+        if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
+                result = true
+        }
+        return result
+}
+
+
+func  tableKeysToBeSorted(tblNm string) bool {
+	/* function to decide whether to sort table keys.
+	Required when a sonic table has more than 1 lists
+	with keys having leaf-refs to each other, i.e table has primary and secondary keys
+	*/
+	areTblKeysToBeSorted := false
+	TBL_LST_CNT_NO_SEC_KEY := 1 //Tables having primary and secondary keys have more than one lists defined in sonic yang
+	if dbSpecInfo, ok := xDbSpecMap[tblNm]; ok {
+		if len(dbSpecInfo.listName) > TBL_LST_CNT_NO_SEC_KEY {
+			areTblKeysToBeSorted = true
+		}
+	} else {
+		log.Warning("xDbSpecMap data not found for " + tblNm)
+	}
+	xfmrLogInfo("Table %v keys should be sorted - %v", tblNm, areTblKeysToBeSorted)
+	return areTblKeysToBeSorted
+}
+
+func SortSncTableDbKeys (tableName string, dbKeyMap map[string]db.Value) []string {
+	var ordDbKey []string
+
+	if tableKeysToBeSorted(tableName ) {
+
+		m := make(map[string]int)
+		for tblKey := range dbKeyMap {
+			keyList := strings.Split(tblKey, "|")
+			m[tblKey] = len(keyList)
+		}
+
+		type kv struct {
+			Key   string
+			Value int
+		}
+
+		var ss []kv
+		for k, v := range m {
+			ss = append(ss, kv{k, v})
+		}
+
+		sort.Slice(ss, func(i, j int) bool {
+			return ss[i].Value > ss[j].Value
+		})
+
+		for _, kv := range ss {
+			ordDbKey = append(ordDbKey, kv.Key)
+		}
+
+	} else {
+
+		// Restore the order as in the original map in case of single list in table case and error case
+		if len(ordDbKey) == 0 {
+			for tblKey := range dbKeyMap {
+				ordDbKey = append(ordDbKey, tblKey)
+			}
+		}
+	}
+
+	return ordDbKey
 }

@@ -6,7 +6,6 @@ import (
     log "github.com/golang/glog"
     "github.com/shirou/gopsutil/host"
     "encoding/json"
-    "time"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "io/ioutil"
@@ -25,18 +24,32 @@ func init () {
     XlateFuncBind("rpc_infra_sys_log_count_cb",  rpc_infra_sys_log_count_cb)
     XlateFuncBind("rpc_infra_set_loglevel_severity_cb",  rpc_infra_set_loglevel_severity_cb)
     XlateFuncBind("rpc_infra_get_loglevel_severity_cb",  rpc_infra_get_loglevel_severity_cb)
+    XlateFuncBind("rpc_infra_show_sys_in_memory_log_cb",  rpc_infra_show_sys_in_memory_log_cb)
+    XlateFuncBind("rpc_infra_sys_in_memory_log_count_cb",  rpc_infra_sys_in_memory_log_count_cb)
+    XlateFuncBind("rpc_infra_logger_cb",  rpc_infra_logger_cb)
 }
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         log.Info("DbToYang_sys_infra_state_clock_xfmr uri: ", inParams.uri)
+        var output string
 
         rmap := make(map[string]interface{})
 
-        entry_key := inParams.key
-        log.Info("DbToYang_sys_infra_time_test_xfmr: ", entry_key)
+        cmd := "show clock"
 
-        crtime := time.Now().Format(time.RFC1123)
-        rmap["clock"]=&crtime
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_clear_sys_log: host Query failed: err=%v", host_output.Err)
+              rmap["clock"]="[FAILED] host query"
+              return rmap, nil 
+        }
+
+        s, _ := host_output.Body[1].(string)
+        output = strings.TrimSpace(s)
+
+        rmap["clock"]=&output
+        log.Info("DbToYang_sys_infra_state_clock_xfmr clock: ", output)
+        log.Info("DbToYang_sys_infra_state_clock_xfmr ramp: ", rmap)
 
         return rmap, nil 
 }
@@ -135,6 +148,13 @@ var rpc_infra_reboot_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (
                 } `json:"openconfig-system-ext:output"`
         }
 
+        //allow only reboot, warm-reboot, or fast-reboot
+        if(!strings.Contains(operand.Input.Param, "warm-reboot") && 
+           !strings.Contains(operand.Input.Param, "reboot") && 
+           !strings.Contains(operand.Input.Param, "fast-reboot")) {
+            return nil,tlerr.InvalidArgs("Invalid command")
+        }
+
         //Don't allow warm-reboot when spanning-tree is enabled
         if(strings.Contains(operand.Input.Param, "warm-reboot")){
             configDbPtr := dbs[db.ConfigDB]
@@ -216,9 +236,9 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         log.Info("rpc_infra_show_sys_log body:", string(body))
 
         var err error
-        var MGM_DIR="/host/cli-ca/"
-        var MGM_SYSLOG="/host/cli-ca/syslog"
-        var MGM_SYSLOG1="/host/cli-ca/syslog.1"
+        var HOST_MGM_DIR="/tmp/"
+        var MGM_SYSLOG="/mnt/tmp/syslog"
+        var MGM_SYSLOG1="/mnt/tmp/syslog.1"
         var HOST_SYSLOG="/var/log/syslog"
         var HOST_SYSLOG1="/var/log/syslog.1"
         var out_list []string
@@ -254,11 +274,11 @@ var rpc_infra_show_sys_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db
         }
 
         if _, err := os.Stat(MGM_SYSLOG1); err == nil {
-            os.Remove(MGM_SYSLOG1)
             os.Remove(MGM_SYSLOG)
+            os.Remove(MGM_SYSLOG1)
         }
 
-        cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + MGM_DIR
+        cmd := "cp -f " + HOST_SYSLOG + " " + HOST_SYSLOG1 +" " + HOST_MGM_DIR
 
         host_output := HostQuery("infra_host.exec_cmd", cmd)
         if host_output.Err != nil {
@@ -458,3 +478,137 @@ func loglevel_severity_operation(ops_cmd string, exec_cmd string) ([]byte, error
         result, err := json.Marshal(&exec)
         return result, err
 }
+var rpc_infra_show_sys_in_memory_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_show_sys_in_memory_log body:", string(body))
+
+        var err error
+        var out_list []string
+        var output string
+
+        var operand struct {
+                Input struct {
+                        Param int `json:"num-lines"`
+                } `json:"openconfig-system-ext:input"`
+        }
+
+        var exec struct {
+                Output struct {
+                        Result []string `json:"status-detail"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+              out_list = append(out_list, "[FAILED] to umarshal input data")
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+        MAX_NUM_LINES := 65535
+        num_lines := operand.Input.Param
+        if num_lines < 0 || num_lines > MAX_NUM_LINES {
+              msg := fmt.Sprintf("[FAILED] invalid number [1-%d]", MAX_NUM_LINES)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        cmd := "show in-memory-logging"
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              log.Errorf("rpc_infra_show_sys_log: %s", msg)
+              out_list = append(out_list, msg)
+              exec.Output.Result = out_list
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        output, _ = host_output.Body[1].(string)
+        out_list = strings.Split(output,"\n")
+        total := len(out_list)
+        if num_lines > 0 && num_lines < total {
+              exec.Output.Result = out_list[total-num_lines:]
+        } else {
+              exec.Output.Result = out_list
+        }
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+var rpc_infra_sys_in_memory_log_count_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_show_sys_in_memory_log_count_cb body:", string(body))
+        var err error
+        var output string
+        var out_list []string
+
+        var _exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+    	cmd := "show in-memory-logging"
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              msg := fmt.Sprintf("[FAILED] host Query failed: err=%v", host_output.Err) 
+              _exec.Output.Result = msg 
+              result, err := json.Marshal(&_exec)
+              return result, err
+        }
+
+        output, _ = host_output.Body[1].(string)
+        s := strings.TrimSpace(output)
+        out_list = strings.Split(s,"\n")
+        msg := fmt.Sprintf("%d", len(out_list)) 
+        _exec.Output.Result =  msg 
+        result, err := json.Marshal(&_exec)
+        return result, err
+}
+
+var rpc_infra_logger_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+        log.Info("rpc_infra_logger_cb body:", string(body))
+        var err error
+        var operand struct {
+                Input struct {
+                        Messages string `json:"messages"`
+                } `json:"openconfig-system-ext:input"`
+        }
+
+        err = json.Unmarshal(body, &operand)
+        if err != nil {
+                log.Errorf("rpc_infra_reboot_cb: Failed to parse rpc input; err=%v", err)
+                return nil,tlerr.InvalidArgs("Invalid rpc input")
+        }
+
+        var exec struct {
+                Output struct {
+                        Result string `json:"result"`
+                } `json:"openconfig-system-ext:output"`
+        }
+
+       cmd := "logger " + operand.Input.Messages 
+
+        host_output := HostQuery("infra_host.exec_cmd", cmd)
+        if host_output.Err != nil {
+              log.Errorf("rpc_infra_logger_cb: host Query failed: err=%v", host_output.Err)
+              exec.Output.Result = "[FAILED] host query"
+              result, err := json.Marshal(&exec)
+              return result, err
+        }
+
+        var output string
+        output, _ = host_output.Body[1].(string)
+        if len(output) > 0 {
+           exec.Output.Result = output
+        } else {
+           exec.Output.Result = "SUCCESS" 
+        }
+        result, err := json.Marshal(&exec)
+        return result, err
+}
+
+
+

@@ -1,0 +1,78 @@
+diff --git a/openconfig_pyang/plugins/openconfig.py b/openconfig_pyang/plugins/openconfig.py
+index ebf84f4..dd90262 100644
+--- a/openconfig_pyang/plugins/openconfig.py
++++ b/openconfig_pyang/plugins/openconfig.py
+@@ -22,6 +22,7 @@ modules according the YANG usage guidelines in RFC 6087.
+ from __future__ import print_function, unicode_literals
+ 
+ import re
++import sys
+ from enum import IntEnum
+ import optparse
+ import os.path
+@@ -114,6 +115,44 @@ class OpenConfigPlugin(lint.LintPlugin):
+     lint.LintPlugin.__init__(self)
+     self.modulename_prefixes = ["openconfig"]
+ 
++  def post_validate_ctx(self, ctx, modules):
++    error_seen = False
++    fd = sys.stdout
++    normalized_errors_dir = []
++    if ctx.opts.outfile is not None:
++        fd = open(ctx.opts.outfile, "w")
++
++    for error_dir in ctx.opts.errors_dir:
++        normalized_errors_dir.append(os.path.normpath(error_dir))
++
++    for (epos, etag, eargs) in ctx.errors:
++        elevel = error.err_level(etag)
++
++        if len(normalized_errors_dir) == 0:
++            show_error = True
++        else:
++            show_error = False
++
++        for error_dir in normalized_errors_dir:
++            if error_dir in str(epos):
++                show_error = True
++
++        if not show_error:
++            continue
++
++        if error.is_warning(elevel):
++            kind = "warning"
++        else:
++            kind = "error"
++            error_seen = True
++        fd.write(str(epos) + ': %s: ' % kind + \
++            error.err_to_str(etag, eargs) + '\n')
++
++    if error_seen:
++        sys.exit(1)
++    else:
++        sys.exit(0)
++
+   def add_opts(self, optparser):
+     optlist = [
+         optparse.make_option("--openconfig",
+@@ -126,6 +165,11 @@ class OpenConfigPlugin(lint.LintPlugin):
+                              action="store_true",
+                              help="""Do not include standard lint (RFC 6087)
+                              checking"""),
++        optparse.make_option("", "--report-errors-only-in",
++                             dest="errors_dir",
++                             default=[],
++                             action="append",
++                             help="Report issues only in specified directories"),
+         ]
+     g = optparser.add_option_group(optparse.OptionGroup(optparser, "OpenConfig specific options"))
+     g.add_options(optlist)
+@@ -839,6 +883,8 @@ class OCLintFunctions(object):
+                 stmt.arg)
+ 
+       keypath = keytype.search_one("path")
++      if keypath is None:
++          return
+       keypathelem = yangpath.split_paths(keypath.arg)
+       for i in range(0,len(keypathelem)):
+         if keypathelem[i] in ["config", "state"]:

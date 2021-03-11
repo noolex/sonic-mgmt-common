@@ -47,7 +47,11 @@ YANGDIR_EXTENSIONS=$YANGDIR/extensions
 YANG_MOD_FILES=`find $YANGDIR -maxdepth 1 -name '*.yang' | sort`
 YANG_MOD_EXTENSION_FILES=`find $YANGDIR_EXTENSIONS -maxdepth 1 -name '*.yang' | sort`
 YANG_IETF_MOD_EXT_FILES=`find $YANGDIR_EXTENSIONS -maxdepth 1 -name 'ietf-*.yang' | sort`
+OPENCONFIG_YANG_MOD_FILES=`find $YANGDIR -maxdepth 1 -name 'openconfig*.yang' | sort`
+OPENCONFIG_YANG_COMMON_FILES=`find $YANGDIR_COMMON -maxdepth 1 -name 'openconfig*.yang' | sort`
+OPENCONFIG_YANG_MOD_EXTENSION_FILES=`find $YANGDIR_EXTENSIONS -maxdepth 1 -name 'openconfig*.yang' | sort`
 PYANG_PLUGIN_DIR=$REPO/tools/pyang/pyang_plugins
+PYANG_COMMUNITY_PLUGIN_DIR=$REPO/build/oc-community-linter/openconfig_pyang/plugins
 exit_code=0
 
 # Execute tools
@@ -71,6 +75,18 @@ if [[ $? != 0 ]]; then
 	exit_code=1
 fi
 echo "++++++ OpenConfig style check completed ++++++"
+
+# check for openconfig issues using OC Community Linter
+echo "Starting OpenConfig YANG validation using OC Community Linter ...."
+$PYANG --openconfig --report-errors-only-in $YANGDIR_EXTENSIONS \
+	--plugindir $PYANG_COMMUNITY_PLUGIN_DIR \
+	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $OPENCONFIG_YANG_MOD_FILES \
+	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES |& tee $REPO/models/yang/oc_lint_issues.log
+# Commenting below lines as we dont intent to error out build for now
+#if [[ $? != 0 ]]; then
+#	exit_code=1
+#fi
+echo "++++++ OpenConfig style validation using Community linter completed ++++++"
 
 # check for lint-strict issues
 echo "Starting YANG lint-strict check ...."

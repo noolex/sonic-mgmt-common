@@ -23,6 +23,10 @@ module sonic-pim {
         prefix svlan;
     }
 
+    import sonic-interface {
+        prefix sintf;
+    }
+
     organization
         "SONiC";
 
@@ -31,6 +35,10 @@ module sonic-pim {
 
     description
         "SONIC PIM YANG";
+
+    revision 2021-01-08 {
+        description "Added support for routed vlan-sub-interface.";
+    }
 
     revision 2020-05-13 {
         description
@@ -131,6 +139,9 @@ module sonic-pim {
                         }
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                        }
+                        type leafref {
+                            path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
                         }
                     }
                 }

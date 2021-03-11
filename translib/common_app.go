@@ -46,6 +46,7 @@ type CommonApp struct {
 	cmnAppYangDefValMap map[string]map[string]db.Value
 	cmnAppYangAuxMap map[string]map[string]db.Value
 	appOptions
+	cmnAppOpcode   int //NBI request opcode
 }
 
 var cmnAppInfo = appInfo{appType: reflect.TypeOf(CommonApp{}),
@@ -129,59 +130,119 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-    var err error
-    var subscDt transformer.XfmrTranslateSubscribeInfo
-    var notifInfo notificationInfo
-    var notifOpts notificationOpts
-    txCache := new(sync.Map)
-    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	txCache := new(sync.Map)
 
-    log.Info("tranlateSubscribe:path", path)
-    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
-    if subscDt.PType == transformer.OnChange {
-        notifOpts.pType = OnChange
-    } else {
-        notifOpts.pType = Sample
-    }
-    notifOpts.mInterval = subscDt.MinInterval
-    notifOpts.isOnChangeSupported = subscDt.OnChange
-    if err != nil {
-        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
-    }
-    if subscDt.DbDataMap == nil {
-        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
-    } else {
-        for dbNo, dbDt := range(subscDt.DbDataMap) {
-            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
-                continue
-            }
-            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
-            notifInfo.dbno = dbNo
-            // in future there will be, multi-table in a DB, support from translib, for now its just single table
-            for tblNm, tblDt := range(dbDt) {
-                notifInfo.table = db.TableSpec{Name:tblNm}
-                if (len(tblDt) == 1) {
-                    for tblKy := range(tblDt) {
-                        notifInfo.key = asKey(tblKy)
-                        notifInfo.needCache = subscDt.NeedCache
-                    }
-                } else {
-                    if (len(tblDt) >  1) {
-                        log.Warningf("More than one DB key found for subscription path - %v", path)
-                    } else {
-                        log.Warningf("No DB key found for subscription path - %v", path)
-                    }
-                    return &notifOpts, nil, err
-                }
+	log.Info("tranlateSubscribe:path", req.path)
+	isOnchange := true //TODO: default to true for now, the value need to be passed from the subscribe infra
+	if subReqXlator, err := transformer.GetSubscribeReqXlator (req.ctxID, req.path, isOnchange, req.dbs, txCache); err != nil {
+		log.Info("tranlateSubscribe:Error in initializing the SubscribeReqXlator for the subscribe path request: ", req.path)
+		return nil, err
+	} else {
+		if err = subReqXlator.Translate(); err != nil {
+			log.Info("translateSubscribe: Error in processing the subscribe path request: ", req.path)
+			return nil, err
+		} else {
+			subsReqXlateInfo := subReqXlator.GetSubscribeReqXlateInfo()
 
-            }
-        }
-    }
-    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
-    return &notifOpts, &notifInfo, nil
+			if uriPath, err := ygot.PathToString(subsReqXlateInfo.TrgtPathInfo.Path); err == nil {
+				log.Info("translateSubscribe: subsReqXlateInfo.TrgtPathInfo.path: ", uriPath)
+			} else { log.Error("translateSubscribe: subsReqXlateInfo.TrgtPathInfo.path: Error in converting the gnmi path: ", *subsReqXlateInfo.TrgtPathInfo.Path) }
+
+			log.Info("translateSubscribe: subsReqXlateInfo.TrgtPathInfo: ", subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo)
+			ntfSubsAppInfo := new (translateSubResponse)
+
+			for _, dbKeyInfo := range subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo {
+				log.Info("translateSubscribe: Target node: DbNum: ", dbKeyInfo.DbNum)
+				if dbKeyInfo.Table != nil { log.Info("Target node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+				if dbKeyInfo.Key != nil { log.Info("Target  node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+
+				ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum,
+					path: subsReqXlateInfo.TrgtPathInfo.Path, isPartial: dbKeyInfo.IsPartial}
+
+				if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
+					ntfAppInfo.isOnChangeSupported = true
+				}
+
+				if !ntfAppInfo.isOnChangeSupported {
+					ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+					ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
+				} else {
+					ntfAppInfo.pType = OnChange
+				}
+
+				for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
+					log.Info("translateSubscribe: Target node: RelPath: ", dbFldMapInfo.RltvPath)
+					log.Info("translateSubscribe: Target node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
+					dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
+					ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
+				}
+
+				log.Info("translateSubscribe: target node: ntfAppInfo.path: ", ntfAppInfo.path)
+				log.Info("translateSubscribe: target node: ntfAppInfo.isOnChangeSupported: ", ntfAppInfo.isOnChangeSupported)
+				log.Info("translateSubscribe: target node: ntfAppInfo.table: ", ntfAppInfo.table)
+				log.Info("translateSubscribe: target node: ntfAppInfo.key: ", ntfAppInfo.key)
+				for _, pathInfoList := range ntfAppInfo.dbFldYgPathInfoList {
+					log.Info("translateSubscribe: target node: ntfAppInfo.dbFldYgPathInfoList entry: ", pathInfoList)
+				}
+				log.Info("translateSubscribe: target node: ntfAppInfo.dbno: ", ntfAppInfo.dbno)
+				log.Info("translateSubscribe: target node: ntfAppInfo.mInterval: ", ntfAppInfo.mInterval)
+				log.Info("translateSubscribe: target node: ntfAppInfo.pType: ", ntfAppInfo.pType)
+				log.Info("translateSubscribe: target node: ntfAppInfo.opaque: ", ntfAppInfo.opaque)
+				ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, &ntfAppInfo)
+				log.Info("translateSubscribe: target node =================================================================")
+			}
+
+			for _, pathXlateInfo := range subsReqXlateInfo.ChldPathsInfo {
+				if uriPath, err := ygot.PathToString(pathXlateInfo.Path); err == nil {
+					log.Info("translateSubscribe: ChldPathsInfo: path: ", uriPath)
+				} else { log.Error("translateSubscribe: ChldPathsInfo: Error in converting the gnmi path: ", *pathXlateInfo.Path) }
+				log.Info("translateSubscribe: ChldPathsInfo.pathXlateInfo.DbKeyXlateInfo: ", pathXlateInfo.DbKeyXlateInfo)
+				for _, dbKeyInfo := range pathXlateInfo.DbKeyXlateInfo {
+					log.Info("translateSubscribe: child node: DbNum: ", dbKeyInfo.DbNum)
+					if dbKeyInfo.Table != nil { log.Info("child node: pathXlateInfo.Table: ", *dbKeyInfo.Table) }
+					if dbKeyInfo.Key != nil { log.Info("child node: pathXlateInfo.Key: ", *dbKeyInfo.Key) }
+
+					ntfAppInfo := notificationAppInfo{table: dbKeyInfo.Table, key: dbKeyInfo.Key, dbno: dbKeyInfo.DbNum, path: pathXlateInfo.Path, isPartial: dbKeyInfo.IsPartial}
+					if subsReqXlateInfo.TrgtPathInfo.OnChange == transformer.OnchangeEnable {
+						ntfAppInfo.isOnChangeSupported = true
+					}
+					if !ntfAppInfo.isOnChangeSupported {
+						ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+						ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
+					} else {
+						ntfAppInfo.pType = OnChange
+					}
+					for _, dbFldMapInfo := range dbKeyInfo.DbFldYgMapList {
+						log.Info("translateSubscribe: child node: RelPath: ", dbFldMapInfo.RltvPath)
+						log.Info("translateSubscribe: child node: db field yang map: ", dbFldMapInfo.DbFldYgPathMap)
+						dbFldInfo := dbFldYgPathInfo{dbFldMapInfo.RltvPath, dbFldMapInfo.DbFldYgPathMap}
+						ntfAppInfo.dbFldYgPathInfoList = append(ntfAppInfo.dbFldYgPathInfoList, &dbFldInfo)
+					}
+					log.Info("translateSubscribe: child node: ntfAppInfo.path: ", ntfAppInfo.path)
+					log.Info("translateSubscribe: child node: ntfAppInfo.isOnChangeSupported: ", ntfAppInfo.isOnChangeSupported)
+					log.Info("translateSubscribe: child node: ntfAppInfo.table: ", ntfAppInfo.table)
+					log.Info("translateSubscribe: child node: ntfAppInfo.key: ", ntfAppInfo.key)
+					for _, pathInfoList := range ntfAppInfo.dbFldYgPathInfoList {
+						log.Info("translateSubscribe: child node: ntfAppInfo.dbFldYgPathInfoList entry: ", pathInfoList)
+					}
+					log.Info("translateSubscribe: child node: ntfAppInfo.dbno: ", ntfAppInfo.dbno)
+					log.Info("translateSubscribe: child node: ntfAppInfo.mInterval: ", ntfAppInfo.mInterval)
+					log.Info("translateSubscribe: child node: ntfAppInfo.pType: ", ntfAppInfo.pType)
+					log.Info("translateSubscribe: child node: ntfAppInfo.opaque: ", ntfAppInfo.opaque)
+					if len(subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo) == 0 && pathXlateInfo.TrgtNodeChld {
+						log.Info("translateSubscribe: Added the child node notification app info into targt app info for the path: ", pathXlateInfo.Path)
+						ntfSubsAppInfo.ntfAppInfoTrgt = append(ntfSubsAppInfo.ntfAppInfoTrgt, &ntfAppInfo)
+					} else {
+						ntfSubsAppInfo.ntfAppInfoTrgtChlds = append(ntfSubsAppInfo.ntfAppInfoTrgtChlds, &ntfAppInfo)
+					}
+					log.Info("translateSubscribe: child node =================================================================")
+				}
+			}
+			log.Info("translateSubscribe: ntfSubsAppInfo: ", ntfSubsAppInfo)
+			return ntfSubsAppInfo, nil
+		}
+	}
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -242,10 +303,11 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
     var err error
     var payload []byte
     var resPayload []byte
+    var valueTree *ygot.ValidatedGoStruct
     log.Info("processGet:path =", app.pathInfo.Path)
     txCache := new(sync.Map)
 
@@ -324,7 +386,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 			    }
 		    }
 		    if resYgot != nil {
-			    resPayload, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget)
+			    resPayload, valueTree, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fmtType)
 			    if err != nil {
 				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
 				    resPayload = payload
@@ -341,7 +403,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    }
     }
 
-    return GetResponse{Payload: resPayload}, err
+
+    return GetResponse{Payload: resPayload, ValueTree: valueTree}, err
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
@@ -352,6 +415,25 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 	log.Info("transformer.CallRpcMethod() returned")
 
 	return resp, err
+}
+
+func (app *CommonApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
+
+	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.ctxID, param.path, param.dbno, param.table, param.key, param.dbs, param.opaque); err != nil {
+		log.Error("processSubscribe: Error in getting the GetSubscribeNotfRespXlator; error: ", err)
+		return resp, err
+	} else {
+		log.Info("processSubscribe: subNotfRespXlator: ", *subNotfRespXlator)
+		if resp.path, err = subNotfRespXlator.Translate(); err != nil {
+			log.Error("processSubscribe: Error in translating the subscribe notification; error: ", err)
+			return resp, err
+		}
+
+		resp.keyGroupComps = subNotfRespXlator.KeyGroupComps
+	}
+
+	return resp, nil
 }
 
 func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys, error) {
@@ -370,6 +452,7 @@ func (app *CommonApp) translateCRUDCommon(d *db.DB, opcode int) ([]db.WatchKeys,
 		log.Warning(err)
 		return keys, err
 	}
+	app.cmnAppOpcode = opcode  //NBI request opcode
 	app.cmnAppTableMap = result
 	app.cmnAppYangDefValMap = defValMap
 	app.cmnAppYangAuxMap = auxMap //used for Replace case
@@ -566,6 +649,7 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 						}
 					}
 				case REPLACE:
+					origTblRw := tblRw
 					if tblRwDefaults, defaultOk := app.cmnAppYangDefValMap[tblNm][tblKey]; defaultOk {
 						log.Info("For entry ", tblKey, ", being replaced, fill defaults - ", tblRwDefaults)
 						for fld, val := range tblRwDefaults.Field {
@@ -575,6 +659,26 @@ func (app *CommonApp) cmnAppCRUCommonDbOpn(d *db.DB, opcode int, dbMap map[strin
 					log.Info("Processing Table row ", tblRw)
 					if existingEntry.IsPopulated() {
 						log.Info("Entry already exists.")
+						if len(origTblRw.Field) == 1 {
+							isLeafListFld := false
+							fldNm := ""
+							fldVal := ""
+							for fldNm, fldVal = range origTblRw.Field {
+								if strings.HasSuffix(fldNm, "@") {
+									isLeafListFld = true
+								}
+							}
+							// if its a leaf-list replace NBI request, swap the contents of leaf-list
+							if isLeafListFld && (app.cmnAppOpcode == REPLACE) && (transformer.IsLeafListNode(app.pathInfo.Path)) {
+								log.Info("For entry ", tblKey, ", field ", fldNm, " will have value ", fldVal)
+								err = d.ModEntry(cmnAppTs, db.Key{Comp: []string{tblKey}}, origTblRw)
+								if err != nil {
+									log.Warning("REPLACE case - d.ModEntry() failure")
+									return err
+								}
+								continue // process next table instance - for tblKey, tblRw := range tblVal
+							}
+						}
 						auxRwOk := false
 						auxRw := db.Value{Field: map[string]string{}}
 						auxRw, auxRwOk = app.cmnAppYangAuxMap[tblNm][tblKey]
@@ -696,8 +800,12 @@ func (app *CommonApp) cmnAppDelDbOpn(d *db.DB, opcode int, dbMap map[string]map[
 				continue
 
 			}
+			// Sort keys to make a list in order multiple keys first, single key last
+			ordDbKeyLst := transformer.SortSncTableDbKeys(tblNm, tblVal)
+			log.Infof("DELETE case - ordered list of DB keys for tbl %v = %v", tblNm, ordDbKeyLst)
 
-			for tblKey, tblRw := range tblVal {
+			for _, tblKey := range ordDbKeyLst {
+				tblRw := tblVal[tblKey]
 				if len(tblRw.Field) == 0 {
 					log.Info("DELETE case - no fields/cols to delete hence delete the entire row.")
 					log.Info("First, delete child table instances that correspond to parent table instance to be deleted = ", tblKey)

@@ -41,6 +41,7 @@ type SKey struct {
 	Ts  *TableSpec
 	Key *Key
 	SEMap map[SEvent]bool	// nil map indicates subscribe to all
+	Opaque interface{}      // opaque data set by the caller
 }
 
 type SEvent int
@@ -123,6 +124,8 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 		e = tlerr.TranslibDBSubscribeFail { }
 		goto SubscribeDBExit
 	}
+
+	d.sOnCCacheDB = d.Opts.SDB
 
 	// Wait for confirmation, of channel creation
 	_, e = d.sPubSub.Receive()

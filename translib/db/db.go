@@ -142,7 +142,6 @@ const (
 	StateDB                    // 6
 	SnmpDB                     // 7
 	ErrorDB                    // 8
-	UserDB                     // 9
 	// All DBs added above this line, please ----
 	MaxDB //  The Number of DBs
 )
@@ -157,15 +156,23 @@ type Options struct {
 	InitIndicator      string
 	TableNameSeparator string //Overriden by the DB config file's separator.
 	KeySeparator       string //Overriden by the DB config file's separator.
-	IsWriteDisabled    bool //Indicated if write is allowed
+	IsWriteDisabled    bool //Is write/set mode disabled ?
+	IsCacheEnabled     bool //Is cache (Per Connection) allowed?
+
+	// OnChange caching for the DBs passed from Translib's Subscribe Infra
+	// to the Apps. SDB is the SubscribeDB() returned handle on which
+	// notifications of change are received.
+	IsEnableOnChange   bool //SubscribeDB *SDB notifs update OnChange cache
+	SDB                *DB  //The subscribeDB handle (Future Use)
 
 	DisableCVLCheck bool
 }
 
 func (o Options) String() string {
 	return fmt.Sprintf(
-		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v , DisableCVLCheck: %v }",
+		"{ DBNo: %v, InitIndicator: %v, TableNameSeparator: %v, KeySeparator: %v, IsWriteDisabled: %v, IsCacheEnabled: %v, IsEnableOnChange: %v, SDB: %v, DisableCVLCheck: %v }",
 		o.DBNo, o.InitIndicator, o.TableNameSeparator, o.KeySeparator,
+		o.IsWriteDisabled, o.IsCacheEnabled, o.IsEnableOnChange, o.SDB,
 		o.DisableCVLCheck)
 }
 
@@ -218,16 +225,6 @@ type TableSpec struct {
 	NoDelete bool
 }
 
-// Key gives the key components.
-// (Eg: { Comp : [] string { "acl1", "rule1" } } ).
-type Key struct {
-	Comp []string
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("{ Comp: %v }", k.Comp)
-}
-
 func (v Value) String() string {
 	var str string
 	for k, v1 := range v.Field {
@@ -271,12 +268,18 @@ type DB struct {
 
 	sPubSub *redis.PubSub // PubSub. non-Nil implies SubscribeDB
 	sCIP    bool          // Close in Progress
+	sOnCCacheDB *DB       // Update this DB for PubSub notifications
 
 	dbStatsConfig DBStatsConfig
 	dbCacheConfig DBCacheConfig
 
+	// DBStats is used by both PerConnection cache, and OnChange cache
+	// On a DB handle, the two are mutually exclusive.
 	stats   DBStats
 	cache	DBCache
+
+	onCReg	dbOnChangeReg
+
 }
 
 func (d DB) String() string {
@@ -304,8 +307,6 @@ func getDBInstName (dbNo DBNum) string {
 		return "SNMP_OVERLAY_DB"
 	case ErrorDB:
 		return "ERROR_DB"
-	case UserDB:
-		return "USER_DB"
 	}
 	return ""
 }
@@ -326,11 +327,13 @@ func NewDB(opt Options) (*DB, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(opt.DBNo)
+	dbPassword :=""
 	if dbInstName := getDBInstName(opt.DBNo); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
-	        dbSepStr := getDbSeparator(dbInstName)
+			dbSepStr := getDbSeparator(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
 					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
@@ -347,12 +350,18 @@ func NewDB(opt Options) (*DB, error) {
 	} else {
 		glog.Error(fmt.Errorf("Invalid database number %d", dbId))
 	}
-	
+
+	if opt.IsCacheEnabled && opt.IsEnableOnChange {
+		glog.Error("Per Connection caching cannot be enabled with OnChange cache")
+		glog.Error("Disabling Per Connectiontion caching")
+		opt.IsCacheEnabled = false
+	}
+
 	d := DB{client: redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
 		//Addr:     DefaultRedisRemoteTCPEP,
-		Password: "", /* TBD */
+		Password: dbPassword, /* TBD */
 		// DB:       int(4), /* CONFIG_DB DB No. */
 		DB:          dbId,
 		DialTimeout: 0,
@@ -375,6 +384,17 @@ func NewDB(opt Options) (*DB, error) {
 			glog.Info("NewDB: IsWriteDisabled false. Disable Cache")
 		}
 		d.dbCacheConfig.PerConnection = false
+	}
+
+	if !d.Opts.IsCacheEnabled {
+		if glog.V(1) {
+			glog.Info("NewDB: IsCacheEnabled false. Disable Cache")
+		}
+		d.dbCacheConfig.PerConnection = false
+	}
+
+	if opt.IsEnableOnChange {
+		d.onCReg = dbOnChangeReg{CacheTables:make(map[string]bool, InitialTablesCount)}
 	}
 
 	if d.client == nil {
@@ -478,6 +498,9 @@ func (d *DB) ts2redisUpdated(ts *TableSpec) string {
 
 // GetEntry retrieves an entry(row) from the table.
 func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
+	return d.getEntry(ts,key,false)
+}
+func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 	if glog.V(3) {
 		glog.Info("GetEntry: Begin: ", "ts: ", ts, " key: ", key)
@@ -499,7 +522,10 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 	var v map[string]string
 
 	// If cache GetFromCache (CacheHit?)
-	if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
+	if (d.dbCacheConfig.PerConnection &&
+			d.dbCacheConfig.isCacheTable(ts.Name)) ||
+		(d.Opts.IsEnableOnChange && d.onCReg.isCacheTable(ts.Name) &&
+			!forceReadDB) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
 			if value, ok = table.entry[d.key2redis(ts, key)]; ok {
@@ -516,7 +542,10 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 			value = Value{Field: v}
 
 			// If cache SetCache (i.e. a cache miss)
-			if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
+			if (d.dbCacheConfig.PerConnection &&
+					d.dbCacheConfig.isCacheTable(ts.Name)) ||
+				(d.Opts.IsEnableOnChange &&
+					d.onCReg.isCacheTable(ts.Name)) {
 				if _, ok := d.cache.Tables[ts.Name] ; !ok {
 					d.cache.Tables[ts.Name] = Table {
 						ts:       ts,
@@ -606,7 +635,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
-			if keys, ok = table.patterns[pat.Comp[0]]; ok {
+			if keys, ok = table.patterns[d.key2redis(ts,pat)]; ok {
 				cacheHit = true;
 			}
 		}
@@ -634,7 +663,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 					db:       d,
 				}
 			}
-			d.cache.Tables[ts.Name].patterns[pat.Comp[0]] = keys
+			d.cache.Tables[ts.Name].patterns[d.key2redis(ts,pat)] = keys
 		}
 	}
 
@@ -650,7 +679,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	if cacheHit {
 		stats.GetKeysPatternCacheHits++
 	}
-	if pat.Comp[0] == "*" {
+	if (len(pat.Comp) == 1) && (pat.Comp[0] == "*") {
 		stats.GetKeysHits++
 		if cacheHit {
 			stats.GetKeysCacheHits++
@@ -670,7 +699,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 		}
 		stats.GetKeysPatternTime += dur
 
-		if pat.Comp[0] == "*" {
+		if (len(pat.Comp) == 1) && (pat.Comp[0] == "*") {
 
 			if dur > stats.GetKeysPeak {
 				stats.GetKeysPeak = dur
@@ -727,7 +756,7 @@ func (d *DB) DeleteKeys(ts *TableSpec, key Key) error {
 	return e
 }
 
-func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value) error {
+func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Value, isReplaceOp bool) error {
 	var e error = nil
 
 	var cvlRetCode cvl.CVLRetCode
@@ -755,6 +784,7 @@ func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Val
 			VType: cvl.VALIDATE_ALL,
 			VOp:   cvlOps[i],
 			Key:   d.key2redis(ts, key),
+			ReplaceOp: isReplaceOp,
 		}
 
 		switch cvlOps[i] {
@@ -965,16 +995,18 @@ func (d *DB) setEntry(ts *TableSpec, key Key, value Value, isCreate bool) error 
 		}
 		if len(valueComplement.Field) == 0 {
 			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE},
-				key, []Value{value})
+				key, []Value{value}, false)
 		} else {
+			// For Replace(SET) op, both UPDATE and DELETE operations to be sent to CVL
+			// For CVL to identify Replace Op, setting the flag as true
 			e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE, cvl.OP_DELETE},
-				key, []Value{value, valueComplement})
+				key, []Value{value, valueComplement}, true)
 		}
 	} else {
 		if glog.V(3) {
 			glog.Info("setEntry: DoCVL for CREATE")
 		}
-		e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_CREATE}, key, []Value{value})
+		e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_CREATE}, key, []Value{value}, false)
 	}
 
 	if e != nil {
@@ -1025,7 +1057,7 @@ func (d *DB) DeleteEntry(ts *TableSpec, key Key) error {
 	if glog.V(3) {
 		glog.Info("DeleteEntry: DoCVL for DELETE")
 	}
-	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{Value{}})
+	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{Value{}}, false)
 
 	if e == nil {
 		e = d.doWrite(ts, txOpDel, key, nil)
@@ -1050,14 +1082,14 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 		} else {
 			glog.Info("ModEntry: Mapping to DeleteEntry()")
 			e = d.DeleteEntry(ts, key)
-		}		
+		}
 		goto ModEntryExit
 	}
 
 	if glog.V(3) {
 		glog.Info("ModEntry: DoCVL for UPDATE")
 	}
-	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE}, key, []Value{value})
+	e = d.doCVL(ts, []cvl.CVLOperation{cvl.OP_UPDATE}, key, []Value{value}, false)
 
 	if e == nil {
 		e = d.doWrite(ts, txOpHMSet, key, value)
@@ -1084,7 +1116,7 @@ func (d *DB) DeleteEntryFields(ts *TableSpec, key Key, value Value) error {
 		glog.Info("DeleteEntryFields: DoCVL for HDEL")
 	}
 
-	e := d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{value})
+	e := d.doCVL(ts, []cvl.CVLOperation{cvl.OP_DELETE}, key, []Value{value}, false)
 
 	if e == nil {
 		d.doWrite(ts, txOpHDel, key, value)
@@ -1122,18 +1154,6 @@ DeleteTableExit:
 		glog.Info("DeleteTable: End: ")
 	}
 	return e
-}
-
-//===== Functions for db.Key =====
-
-// Len returns number of components in the Key
-func (k *Key) Len() int {
-	return len(k.Comp)
-}
-
-// Get returns the key component at given index
-func (k *Key) Get(index int) string {
-	return k.Comp[index]
 }
 
 //===== Functions for db.Value =====
@@ -1557,3 +1577,4 @@ AbortTxExit:
 	}
 	return e
 }
+

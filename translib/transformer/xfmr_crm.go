@@ -1347,11 +1347,11 @@ var Subscribe_crm_config_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInP
        strings.Contains(inParams.uri, "crm/threshold") ||
        strings.Contains(inParams.uri, "crm/state") {
 
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{"CRM":{"Config":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"CRM":{"Config":{}}}}
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1363,11 +1363,11 @@ var Subscribe_crm_stats_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInPa
 
     if strings.Contains(inParams.uri, "crm/statistics") {
 
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"STATS":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"STATS":{}}}}
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1378,29 +1378,29 @@ var Subscribe_crm_acl_stats_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubsc
     var result XfmrSubscOutParams
 
     if strings.Contains(inParams.uri, "crm/acl-statistics/egress/rif") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:RIF":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:RIF":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/egress/vlan") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:VLAN":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:VLAN":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/egress/lag") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:LAG":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:LAG":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/egress/port") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:PORT":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:PORT":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/switch") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:SWITCH":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:EGRESS:SWITCH":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/rif") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:RIF":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:RIF":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/vlan") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:VLAN":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:VLAN":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/lag") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:LAG":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:LAG":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/port") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:PORT":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:PORT":{}}}}
     } else if strings.Contains(inParams.uri, "crm/acl-statistics/ingress/switch") {
-        result.dbDataMap = RedisDbMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:SWITCH":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.CountersDB:{"CRM":{"ACL_STATS:INGRESS:SWITCH":{}}}}
     }
     result.isVirtualTbl = false
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

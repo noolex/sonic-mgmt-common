@@ -26,6 +26,7 @@ import (
     "sync"
     "strings"
     "fmt"
+    "net"
     "strconv"
     log "github.com/golang/glog"
 )
@@ -48,6 +49,62 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
+/* VLAN to tagged & untagged member sets map */
+var vlanMemberCache *sync.Map
+
+type vlan_member_list struct {
+    tagged Set
+    untagged Set //set of ethernet or portchannel interfaces 
+}
+
+// Set a sets representation of ports list. 
+type Set struct {
+    items map[string]struct{}
+}
+// SetAddItem adds port to the Set. 
+func (s *Set) SetAddItem(port string) error {
+    if s.items == nil {
+        s.items = make(map[string]struct{})
+    }
+    if _, ok := s.items[port]; !ok {
+        s.items[port] = struct{}{}
+    }
+    return nil
+}
+// SetDelItem removes the item from the Set. 
+func (s *Set) SetDelItem(key string) bool {
+    _, ok := s.items[key]
+    if ok {
+        delete(s.items, key)
+    }
+    return ok
+}
+// SetContains return true if Set contains the item.
+func (s *Set) SetContains(item string) bool {
+    _, ok := s.items[item]
+    return ok
+}
+// SetSize returns the size of the set 
+func (s *Set) SetSize() int {
+    return len(s.items)
+}
+// SetItems returns the stored ports list 
+func (s *Set) SetItems() []string {
+    PortsSlice := []string{}
+    for i := range s.items {
+        PortsSlice = append(PortsSlice, i)
+    }
+    return PortsSlice
+}
+
+func NewSet(list []string) Set {
+    var s Set
+    for _, item := range list {
+        s.SetAddItem(item)
+    }
+    return s
+}
+
 /* Cached map of the default FEC modes */
 var default_fec_modes_cache fec_info_t
 /* Cached map of the supported FEC modes */
@@ -63,8 +120,55 @@ var aliasIfNameMap *sync.Map
 
 func init() {
     portNotifSubscribe();
-    populateAliasDS()
+    portchannelNotifSubscribe();
+    populatePortDS()
     devMetaNotifSubscribe();
+}
+
+// GenerateMemberPortsSliceFromString Convert string to slice
+func GenerateMemberPortsSliceFromString(memberPortsStr *string) []string {
+    if len(*memberPortsStr) == 0 {
+        return nil
+    }
+    memberPorts := strings.Split(*memberPortsStr, ",")
+    return memberPorts
+}
+
+// ExtractVlanIdsFromRange expands given range into list of individual VLANs
+// Param: A Range e.g. 1-3 or 1..3
+// Return: Expanded list e.g. [Vlan1, Vlan2, Vlan3] */
+func ExtractVlanIdsFromRange(rngStr string, vlanLst *[]string) error {
+    var err error
+    var res []string
+    if strings.Contains(rngStr, "..") {
+        res = strings.Split(rngStr, "..")
+    }
+    if strings.Contains(rngStr, "-") {
+        res = strings.Split(rngStr, "-")
+    }
+    if len(res) != 0 {
+        low, _ := strconv.Atoi(res[0])
+        high, _ := strconv.Atoi(res[1])
+        for id := low; id <= high; id++ {
+            *vlanLst = append(*vlanLst, "Vlan"+strconv.Itoa(id))
+        }
+    }
+    return err
+}
+
+// VlanDifference returns difference between existing list of Vlans and new list of Vlans. 
+func VlanDifference(vlanList1, vlanList2 []string) []string {
+    mb := make(map[string]struct{}, len(vlanList2))
+    for _, ifName := range vlanList2 {
+        mb[ifName] = struct{}{}
+    }
+    var diff []string
+    for _, ifName := range vlanList1 {
+        if _, found := mb[ifName]; !found {
+            diff = append(diff, ifName)
+        }
+    }
+    return diff
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
@@ -73,7 +177,7 @@ func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
     switch dbNo {
     case db.ApplDB, db.CountersDB, db.AsicDB:
         opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-    case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
+    case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB:
         opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
     }
 
@@ -119,6 +223,127 @@ func updateCacheForPort(portKey *db.Key, d *db.DB) {
     }
     aliasIfNameMap.Store(aliasName, portName)
     log.V(3).Infof("alias cache updated %s <==> %s", portName, aliasName)
+
+    updateVlanCache(portEntry, portName)
+}
+
+func updateCacheForPortchannel(portKey *db.Key, d *db.DB) {
+    portName := portKey.Get(0)
+    portEntry, err := d.GetEntry(&db.TableSpec{Name:"PORTCHANNEL"}, *portKey)
+    if err != nil {
+        log.Errorf("Retrieval of entry for portchannel: %s failed from portchannel table", portName)
+        return
+    }
+    if !portEntry.IsPopulated() {
+        log.Errorf("Portchannel Entry populated for port: %s failed", portName)
+        return
+    }
+    updateVlanCache(portEntry, portName)
+}
+
+func deleteFromCacheForPortchannel(portKey *db.Key) {
+    portName := portKey.Get(0)
+    vlanCacheKeys := getVlanCachekeys()
+    //Remove portchannel from all the VLAN's tagged/untagged list
+    for _, vlan := range vlanCacheKeys {
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).untagged.SetContains(portName) {
+            member_list.(*vlan_member_list).untagged.SetDelItem(portName)
+        }
+        if ok && member_list.(*vlan_member_list).tagged.SetContains(portName) {
+            member_list.(*vlan_member_list).tagged.SetDelItem(portName)
+        }
+    }
+}
+
+func getVlanCachekeys() []string {
+    var vlanCacheKeys []string
+    vlanMemberCache.Range(func(k interface{}, v interface{}) bool {
+        vlanCacheKeys = append(vlanCacheKeys, k.(string))
+        return true
+    })
+    return vlanCacheKeys
+}
+
+func updateVlanCache(portEntry db.Value, portName string) {
+    var taggedVlanSlice []string
+    taggedVlanVal, ok := portEntry.Field["tagged_vlans@"]
+    if ok {
+        vlanRngSlice := GenerateMemberPortsSliceFromString(&taggedVlanVal)
+        for _, vlanId := range vlanRngSlice {
+            if strings.Contains(vlanId, "-") { //vlanId e.g. 1-100(Vlan ID range) or 200(single Vlan ID)
+                _ = ExtractVlanIdsFromRange(vlanId, &taggedVlanSlice)
+            } else {
+                taggedVlanSlice = append(taggedVlanSlice, "Vlan"+vlanId)
+            }
+        }
+        //Add tagged port to tagged ports list of all VLANs in taggedVlanSlice
+        vlanCacheAddTagdPort(taggedVlanSlice, portName)
+    }
+
+    vlanCacheKeys := getVlanCachekeys()
+
+    //Code to remove tagged ports from vlan member cache
+    vlanCacheRemTagdPort(taggedVlanSlice, portName, vlanCacheKeys)
+
+    //Handle field "access_vlan" DB event
+    accessVlanVal, ok := portEntry.Field["access_vlan"]
+    accessVlanVal = "Vlan"+accessVlanVal
+    if ok {
+        //Add untagged port to untagged ports list of access VLAN
+        vlanCacheAddAccessPort(accessVlanVal, portName)
+    }
+    //Handle port removal from untagged list
+    vlanCacheRemAccessPort(accessVlanVal, portName, vlanCacheKeys)
+}
+func vlanCacheRemAccessPort(accessVlanVal string, portName string, vlanCacheKeys []string) {
+    for _, vlan := range vlanCacheKeys {
+        if vlan == accessVlanVal {//accessVlanVal is the configured access vlan
+            continue
+        }
+        //Remove port from all the VLANs untagged list except accessVlanVal
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).untagged.SetContains(portName) {
+            member_list.(*vlan_member_list).untagged.SetDelItem(portName)
+        }
+    }
+}
+func vlanCacheAddAccessPort(accessVlanVal string, portName string) {
+    member_list, ok := vlanMemberCache.Load(accessVlanVal)
+    if !ok {
+        member_list = &vlan_member_list{}
+    }
+    //Check if portName already in untagged list
+    if !member_list.(*vlan_member_list).untagged.SetContains(portName) {
+        //Add portName to untagged list
+        member_list.(*vlan_member_list).untagged.SetAddItem(portName)
+        vlanMemberCache.Store(accessVlanVal, member_list)
+    }
+}
+func vlanCacheAddTagdPort(taggedVlanSlice []string, portName string) {
+    //Code to add port to list of tagged_vlans
+    for _, vlan := range taggedVlanSlice {
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if !ok {
+            member_list = &vlan_member_list{}
+        }
+        //Check if portName already in tagged list
+        if !member_list.(*vlan_member_list).tagged.SetContains(portName) {
+            //Add portName to Vlan's tagged list
+            member_list.(*vlan_member_list).tagged.SetAddItem(portName)
+            vlanMemberCache.Store(vlan, member_list)
+        }
+    }
+}
+func vlanCacheRemTagdPort(taggedVlanSlice []string, portName string, vlanCacheKeys []string) {
+    //Code to remove tagged ports from vlan member cache
+    delPortFromVlanList := VlanDifference(vlanCacheKeys,taggedVlanSlice)//list of vlans present in vlanCacheKeys but not in taggedVlanSlice
+    for _, vlan := range delPortFromVlanList {
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).tagged.SetContains(portName) {
+            member_list.(*vlan_member_list).tagged.SetDelItem(portName)
+        }
+    }
 }
 
 func deleteFromCacheForPort(portKey *db.Key) {
@@ -138,8 +363,8 @@ func deleteFromCacheForPort(portKey *db.Key) {
     }
     aliasIfNameMap.Delete(aliasName)
     log.V(3).Infof("Deleted %s <==> %s from alias cache", portName, aliasName)
-}
 
+}
 
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
     log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
@@ -149,6 +374,18 @@ func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) err
         updateCacheForPort(key, d)
     case db.SEventDel:
         deleteFromCacheForPort(key)
+    }
+    return nil
+}
+
+func portchannelNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
+    log.V(3).Info("***handler: d: ", d, " skey: ", *skey, " key: ", *key,
+           " event: ", event)
+    switch event {
+    case db.SEventHSet, db.SEventHDel:
+        updateCacheForPortchannel(key, d)
+    case db.SEventDel:
+        deleteFromCacheForPortchannel(key)
     }
     return nil
 }
@@ -190,6 +427,22 @@ func portNotifSubscribe() {
     }
 
     log.Info("PORT table subscribe done....");
+}
+
+func portchannelNotifSubscribe() {
+    var akey db.Key
+    tsa := db.TableSpec { Name: "PORTCHANNEL" }
+
+    ca := make([]string, 1)
+    ca[0] = "*"
+    akey = db.Key { Comp: ca}
+
+    e := dbNotifSubscribe(tsa, akey, portchannelNotifHandler)
+    if e != nil {
+        log.Info("dbNotifSubscribe() returns error : ", e)
+    }
+
+    log.Info("PORTCHANNEL table subscribe done....");
 }
 
 func devMetaNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
@@ -237,11 +490,12 @@ func devMetaNotifSubscribe() {
     log.Info("DEVICE_METADATA table subscribe done....");
 }
 
-func populateAliasDS() error {
+func populatePortDS() error {
     var err error
 
     ifNameAliasMap = new(sync.Map)
     aliasIfNameMap = new(sync.Map)
+    vlanMemberCache = new(sync.Map)
 
     d, err := db.NewDB(getDBOptions(db.ConfigDB, false))
     if err != nil {
@@ -261,10 +515,23 @@ func populateAliasDS() error {
     for _, portKey := range portKeys {
         updateCacheForPort(&portKey, d)
     }
+    populatePortchannel(d)
 
     updateAliasFromDB(&db.Key{Comp: []string{"localhost"}}, d)
 
     return err
+}
+
+func populatePortchannel(d *db.DB) {
+    poTbl, err := d.GetTable(&db.TableSpec{Name: "PORTCHANNEL"})
+    if err == nil {
+        poKeys, err := poTbl.GetKeys()
+        if err == nil {
+            for _, poKey := range poKeys {
+                updateCacheForPortchannel(&poKey, d)
+            }
+        }
+    }
 }
 
 func IsAliasModeEnabled() bool {
@@ -281,51 +548,86 @@ func SetAliasMode(enableMode bool) {
 
 // GetNativeNameFromUIName returns physical interface name for alias-name
 func GetNativeNameFromUIName(uiName *string) *string {
-	if !IsAliasModeEnabled() {
-		return uiName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*uiName, ".") {
+            return uiName
+        }
+    }
 
-	parts := strings.Split(*uiName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		ifName, ok := aliasIfNameMap.Load(*uiName)
-		if ok {
-			converted[idx] = ifName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *uiName, ret)
+    parts := strings.Split(*uiName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
+        subIntfParts := strings.SplitN(part, ".", 2)
+        converted[idx] = subIntfParts[0]
+        if IsAliasModeEnabled() {
+            ifName, ok := aliasIfNameMap.Load(converted[idx]) ; if ok {
+                converted[idx] = ifName.(string)
+            }
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = *getSubInterfaceShortName(&converted[idx]) + "." + subIntfParts[1]
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *uiName, ret)
 
-	return &ret
+    return &ret
+
 }
 
 // GetUINameFromNativeName returns alias-name for physical interface Name
 func GetUINameFromNativeName(ifName *string) *string {
-	if !IsAliasModeEnabled() {
-		return ifName
-	}
+    if !IsAliasModeEnabled() {
+        if !strings.Contains(*ifName, ".") {
+            return ifName
+        }
+    }
 
-	parts := strings.Split(*ifName, ",")
-	converted := make([]string, len(parts))
-	for idx, part := range parts {
-		aliasName, ok := ifNameAliasMap.Load(part)
-		if ok {
-			converted[idx] = aliasName.(string)
-		} else {
-			converted[idx] = part
-		}
-	}
-	ret := strings.Join(converted, ",")
-	log.V(3).Infof("%s => %s", *ifName, ret)
+    parts := strings.Split(*ifName, ",")
+    converted := make([]string, len(parts))
+    for idx, part := range parts {
+        if net.ParseIP(part) != nil {
+            /* Skipping IP's from conversion logic. Adding to return list immediately */
+            converted[idx] = part
+            continue
+        }
+        subIntfParts := strings.SplitN(part, ".", 2)
+        converted[idx] = subIntfParts[0]
+        if (len(subIntfParts) == 2) {
+            converted[idx] = *getSubInterfaceLongName(&subIntfParts[0])
+        }
+        if IsAliasModeEnabled() {
+            aliasName, ok := ifNameAliasMap.Load(converted[idx])
+            if ok {
+                converted[idx] = aliasName.(string)
+            }
+        }
+        if (len(subIntfParts) == 2) {
+            converted[idx] = converted[idx] + "." + subIntfParts[1]
+        }
+    }
+    ret := strings.Join(converted, ",")
+    log.V(3).Infof("%s => %s", *ifName, ret)
 
-	return &ret
+    return &ret
 }
 
 func IsValidAliasName(ifName *string) bool {
     _, ok := aliasIfNameMap.Load(*ifName)
     return ok
+}
+
+// GetFromCacheVlanMemberList Get tagged/untagged Set for given vlan
+func GetFromCacheVlanMemberList(vlanName string) (Set, Set) {
+    if memberlist, ok := vlanMemberCache.Load(vlanName); ok {
+        return memberlist.(*vlan_member_list).tagged, memberlist.(*vlan_member_list).untagged
+    }
+    return Set{},Set{}
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations
@@ -471,4 +773,59 @@ func Is_fec_mode_valid(ifname string, lane_count int, speed string, fec string) 
         }
     }
     return false
+}
+
+
+
+func getSubInterfaceShortName(longName *string) *string {
+    var shortName string
+
+    if strings.Contains(*longName, "Ethernet") {
+        shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        shortName = strings.Replace(*longName, "PortChannel", "Po", -1)
+    } else {
+        shortName = *longName
+    }
+
+    log.V(3).Infof("getSubInterfaceShortName %s => %s", *longName, shortName)
+
+    return &shortName
+}
+
+func IsIntfSubInterface(ifName *string) bool {
+    isSubIntf := false
+    if strings.HasPrefix(*ifName, "Eth") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    } else if strings.HasPrefix(*ifName, "Po") {
+        if strings.Contains(*ifName, ".") {
+            isSubIntf = true
+        }
+    }
+    return isSubIntf
+}
+
+func getSubInterfaceLongName(shortName *string) *string {
+    var longName string
+
+    if strings.Contains(*shortName, "Eth") {
+        longName = strings.Replace(*shortName, "Eth", "Ethernet", -1)
+    } else if strings.Contains(*shortName, "Po") {
+        longName = strings.Replace(*shortName, "Po", "PortChannel", -1)
+    } else {
+        longName = *shortName
+    }
+
+    log.V(3).Infof("getSubInterfaceLongName %s => %s", *shortName, longName)
+
+    return &longName
+}
+
+func GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID (parentIf *string, subId *string) *string {
+    uiName := *parentIf + "." + *subId
+    key := *GetNativeNameFromUIName(&uiName)
+    log.V(3).Infof("GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID %s + %s => %s", *parentIf, *subId, key)
+    return &key
 }

@@ -22,6 +22,7 @@ import (
     "bufio"
     "encoding/binary"
     "errors"
+    "fmt"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -66,6 +67,7 @@ const (
    TRANSCEIVER_DOM  = "TRANSCEIVER_DOM_SENSOR"
    PORT_TBL         = "PORT_TABLE"
    BREAKOUT_TBL     = "BREAKOUT_CFG"
+   FIRMWARE_TBL     = "FIRMWARE_INFO"
 
    PORT_IF_NAME_PREFIX   = "Ethernet"
    ALIAS_IN_NAME_PREFIX  = "Eth"
@@ -81,9 +83,17 @@ const (
    HWSKU            = "hwsku"
    PLATFORM_TYPE    = "platform"
 
+   /** Upper-level URIs **/
+   COMPS                      = "/openconfig-platform:components"
+   COMP                       = "/openconfig-platform:components/component"
+
+   /** Config container name **/
+   COMP_CONFIG_NAME           = "/openconfig-platform:components/component/config/name"
+
    /** Supported oc-platform component state URIs **/
    COMP_STATE_DESCR           = "/openconfig-platform:components/component/state/description"
    COMP_STATE_EMPTY           = "/openconfig-platform:components/component/state/empty"
+   COMP_STATE_FIRM_VER        = "/openconfig-platform:components/component/state/firmware-version"
    COMP_STATE_HW_VER          = "/openconfig-platform:components/component/state/hardware-version"
    COMP_STATE_ID              = "/openconfig-platform:components/component/state/id"
    COMP_STATE_LOCATION        = "/openconfig-platform:components/component/state/location"
@@ -95,8 +105,8 @@ const (
    COMP_STATE_REMOVABLE       = "/openconfig-platform:components/component/state/removable"
    COMP_STATE_SERIAL_NO       = "/openconfig-platform:components/component/state/serial-no"
    COMP_STATE_SW_VER          = "/openconfig-platform:components/component/state/software-version"
-   COMP_LED_STATUS             = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
-   COMP_FANS                   = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
+   COMP_LED_STATUS            = "/openconfig-platform:components/component/state/openconfig-platform-ext:status-led"
+   COMP_FANS                  = "/openconfig-platform:components/component/state/openconfig-platform-ext:fans"
 
    /** Supported Software component URIs **/
    SW_ASIC_VER                = "/openconfig-platform:components/component/openconfig-platform-ext:software/asic-version"
@@ -132,7 +142,8 @@ const (
    PSU_OUTPUT_CURRENT         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-current"
    PSU_OUTPUT_POWER           = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-power"
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
-   PSU_VOLT_TYPE             = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
+   PSU_TEMPERATURE            = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:temperature"
+   PSU_VOLT_TYPE              = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
 
    /** Supported Fan URIs **/
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
@@ -156,79 +167,12 @@ const (
 
    XCVR_VENDOR_OUI              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:vendor-oui"
 
+   XCVR_REVISION_COMPLIANCE              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:revision-compliance"
+
    XCVR_LPMODE                  = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lpmode"
    XCVR_MODULE_LANE_COUNT       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:module-lane-count"
    XCVR_PRESENCE                = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:present"
    XCVR_QSA_ADAPTER_TYPE        = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:qsa-adapter-type"
-
-   XCVR_TEMPERATURE              = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:temperature"
-   XCVR_VOLTAGE                  = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:voltage"
-
-   XCVR_LB_MEDIA_SIDE_OUTPUT_SUP     = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-media-side-output-support"
-   XCVR_LB_MEDIA_SIDE_INPUT_SUP      = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-media-side-input-support"
-   XCVR_LB_HOST_SIDE_OUTPUT_SUP      = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-host-side-output-support"
-   XCVR_LB_HOST_SIDE_INPUT_SUP       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-host-side-input-support"
-   XCVR_LB_PER_LANE_HOST_SIDE_SUP    = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-per-lane-host-side-support"
-   XCVR_LB_PER_LANE_MEDIA_SIDE_SUP   = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-per-lane-media-side-support"
-   XCVR_LB_SIMUL_HOST_MEDIA_SIDE_SUP = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-simul-host-media-side-support"
-
-   XCVR_LB_MEDIA_SIDE_OUTPUT_STATE     = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-media-side-output-enable"
-   XCVR_LB_MEDIA_SIDE_INPUT_STATE      = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-media-side-input-enable"
-   XCVR_LB_HOST_SIDE_OUTPUT_STATE      = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-host-side-output-enable"
-   XCVR_LB_HOST_SIDE_INPUT_STATE       = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-host-side-input-enable"
-   XCVR_LB_PER_LANE_HOST_SIDE_STATE    = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-per-lane-host-side-enable"
-   XCVR_LB_PER_LANE_MEDIA_SIDE_STATE   = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-per-lane-media-side-enable"
-   XCVR_LB_SIMUL_HOST_MEDIA_SIDE_STATE = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lb-simul-host-media-side-enable"
-
-   XCVR_LB_HOST_SIDE_INPUT_EN   = "/openconfig-platform:components/component/transceiver/config/openconfig-platform-ext:lb-host-side-input-enable"
-   XCVR_LB_HOST_SIDE_OUTPUT_EN  = "/openconfig-platform:components/component/transceiver/config/openconfig-platform-ext:lb-host-side-output-enable"
-   XCVR_LB_MEDIA_SIDE_INPUT_EN  = "/openconfig-platform:components/component/transceiver/config/openconfig-platform-ext:lb-media-side-input-enable"
-   XCVR_LB_MEDIA_SIDE_OUTPUT_EN = "/openconfig-platform:components/component/transceiver/config/openconfig-platform-ext:lb-media-side-output-enable"
-
-   XCVR_LOL_LANE_1 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-1"
-   XCVR_LOL_LANE_2 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-2"
-   XCVR_LOL_LANE_3 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-3"
-   XCVR_LOL_LANE_4 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-4"
-   XCVR_LOL_LANE_5 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-5"
-   XCVR_LOL_LANE_6 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-6"
-   XCVR_LOL_LANE_7 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-7"
-   XCVR_LOL_LANE_8 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:lol-lane-8"
-
-   XCVR_LOS_LANE_1 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-1"
-   XCVR_LOS_LANE_2 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-2"
-   XCVR_LOS_LANE_3 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-3"
-   XCVR_LOS_LANE_4 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-4"
-   XCVR_LOS_LANE_5 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-5"
-   XCVR_LOS_LANE_6 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-6"
-   XCVR_LOS_LANE_7 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-7"
-   XCVR_LOS_LANE_8 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:los-lane-8"
-
-   XCVR_RXPOWER_LANE_1 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-1"
-   XCVR_RXPOWER_LANE_2 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-2"
-   XCVR_RXPOWER_LANE_3 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-3"
-   XCVR_RXPOWER_LANE_4 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-4"
-   XCVR_RXPOWER_LANE_5 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-5"
-   XCVR_RXPOWER_LANE_6 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-6"
-   XCVR_RXPOWER_LANE_7 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-7"
-   XCVR_RXPOWER_LANE_8 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:rx-power-lane-8"
-
-   XCVR_TXPOWER_LANE_1 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-1"
-   XCVR_TXPOWER_LANE_2 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-2"
-   XCVR_TXPOWER_LANE_3 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-3"
-   XCVR_TXPOWER_LANE_4 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-4"
-   XCVR_TXPOWER_LANE_5 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-5"
-   XCVR_TXPOWER_LANE_6 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-6"
-   XCVR_TXPOWER_LANE_7 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-7"
-   XCVR_TXPOWER_LANE_8 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-power-lane-8"
-
-   XCVR_TXBIAS_LANE_1 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-1"
-   XCVR_TXBIAS_LANE_2 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-2"
-   XCVR_TXBIAS_LANE_3 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-3"
-   XCVR_TXBIAS_LANE_4 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-4"
-   XCVR_TXBIAS_LANE_5 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-5"
-   XCVR_TXBIAS_LANE_6 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-6"
-   XCVR_TXBIAS_LANE_7 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-7"
-   XCVR_TXBIAS_LANE_8 = "/openconfig-platform:components/component/transceiver/state/openconfig-platform-ext:tx-bias-lane-8"
 
    /** Support Temperature Sensor URIs **/
    TEMP_COMP                  = "/openconfig-platform:components/component/state/temperature"
@@ -239,6 +183,12 @@ const (
    TEMP_LOW_THRES             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:low-threshold"
    TEMP_TIMESTAMP             = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:timestamp"
    TEMP_WARNING_STATUS        = "/openconfig-platform:components/component/state/temperature/openconfig-platform-ext:warning-status"
+
+   /** Supported Firmware URIs **/
+   FIRMWARE_CHASSIS              = "/openconfig-platform:components/component/chassis"
+   FIRMWARE_CHASSIS_STATE        = "/openconfig-platform:components/component/chassis/state"
+   FIRMWARE_CHASSIS_STATE_MODULE = "/openconfig-platform:components/component/chassis/state/openconfig-platform-ext:module"
+   FIRMWARE_CHASSIS_STATE_NAME   = "/openconfig-platform:components/component/chassis/state/openconfig-platform-ext:name"
 )
 
 /**
@@ -285,6 +235,7 @@ type PSU struct {
     Status              bool
     Status_Led          string
     Volt_Type           string
+    Temperature         string
 }
 
 type Fan struct {
@@ -323,20 +274,7 @@ type Xcvr struct {
     Vendor_Revision         string
     Vendor_Date_Code        string
     Vendor_OUI              string
-    HostSideInputSup         string
-    HostSideOutputSup        string
-    MediaSideInputSup        string
-    MediaSideOutputSup       string
-    PerLaneHostSideSup       string
-    PerLaneMediaSideSup      string
-    SimulHostMediaSideSup    string
-    HostSideInputEnable      string
-    HostSideOutputEnable     string
-    MediaSideInputEnable     string
-    MediaSideOutputEnable    string
-    PerLaneHostSideEnable    string
-    PerLaneMediaSideEnable   string
-    SimulHostMediaSideEnable string
+    Revision_Compliance     string
     LolLane_1                string
     LolLane_2                string
     LolLane_3                string
@@ -397,13 +335,23 @@ type DeviceMetadata struct {
     PLATFORM string
 }
 
+type Firmware struct {
+    Chassis             string
+    Description         string
+    Module              string
+    Name                string
+    Version             string
+}
+
 func init () {
     XlateFuncBind("DbToYang_pfm_components_xfmr", DbToYang_pfm_components_xfmr)
     XlateFuncBind("Subscribe_pfm_components_xfmr", Subscribe_pfm_components_xfmr)
     XlateFuncBind("DbToYang_pfm_components_psu_xfmr", DbToYang_pfm_components_psu_xfmr)
     XlateFuncBind("DbToYang_pfm_components_fan_xfmr", DbToYang_pfm_components_fan_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_chassis_xfmr", DbToYang_pfm_components_chassis_xfmr)
     XlateFuncBind("DbToYang_pfm_components_transceiver_xfmr", DbToYang_pfm_components_transceiver_xfmr)
-    XlateFuncBind("YangToDb_pfm_components_transceiver_xfmr",  YangToDb_pfm_components_transceiver_xfmr)
+    XlateFuncBind("YangToDb_pfm_components_transceiver_diag_xfmr", YangToDb_pfm_components_transceiver_diag_xfmr)
+    XlateFuncBind("DbToYang_pfm_components_transceiver_diag_xfmr", DbToYang_pfm_components_transceiver_diag_xfmr)
 }
 
 func getPfmRootObject (s *ygot.GoStruct) (*ocbinds.OpenconfigPlatform_Components) {
@@ -426,6 +374,223 @@ var DbToYang_pfm_components_transceiver_xfmr SubTreeXfmrDbToYang = func (inParam
     }
 
     return errors.New("Component not supported")
+}
+
+// Returns 'defs' if the field does not exists.
+func getString(v db.Value, name string, defs string) (string) {
+    data, ok := v.Field[name]
+    if !ok || (data == "") {
+        return defs
+    }
+    return data
+}
+
+var DbToYang_pfm_components_transceiver_diag_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+
+    var capLoopback string
+    var capPattern string
+    var capPatternChkHost string
+    var capPatternChkMedia string
+    var capPatternGenHost string
+    var capPatternGenMedia string
+    var capReport string
+
+    var cfgLbHostInputEnabled bool
+    var cfgLbHostOutputEnabled bool
+    var cfgLbMediaInputEnabled bool
+    var cfgLbMediaOutputEnabled bool
+    var cfgPatternGenHostEnabled bool
+    var cfgPatternChkHostEnabled bool
+    var cfgPatternGenMediaEnabled bool
+    var cfgPatternChkMediaEnabled bool
+
+    var staLbHostInputEnabled bool
+    var staLbHostOutputEnabled bool
+    var staLbMediaInputEnabled bool
+    var staLbMediaOutputEnabled bool
+    var staPatternGenHostEnabled bool
+    var staPatternChkHostEnabled bool
+    var staPatternGenMediaEnabled bool
+    var staPatternChkMediaEnabled bool
+
+    var berHost [8]string
+    var berMedia [8]string
+    var snrHost [8]string
+    var snrMedia [8]string
+
+    pathInfo := NewPathInfo(inParams.uri)
+    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+    log.Infof("targetUriPath: %v", targetUriPath)
+
+    if !strings.HasPrefix(targetUriPath, "/openconfig-platform:components/component/openconfig-platform-transceiver:transceiver/openconfig-platform-transceiver-ext:diagnostics") {
+        return nil
+    }
+
+    name := pathInfo.Var("name")
+    if utils.IsAliasModeEnabled(){
+        name = *(utils.GetNativeNameFromUIName(&name))
+    }
+
+    log.Infof("xcvrId: %v", name)
+
+    pf_cpts := getPfmRootObject(inParams.ygRoot)
+    xcvrCom := pf_cpts.Component[name]
+    if xcvrCom == nil {
+        log.Info("Invalid Component Name")
+        return errors.New("Invalid component name")
+    }
+
+    tbl := db.TableSpec { Name: "TRANSCEIVER_DIAG" }
+    key := db.Key { Comp : [] string { name } }
+    d := inParams.dbs[db.ConfigDB]
+    d.Opts.KeySeparator = "|"
+    d.Opts.TableNameSeparator = "|"
+    val, err := d.GetEntry(&tbl, key)
+    if err == nil {
+        cfgLbHostInputEnabled, _ = strconv.ParseBool(val.Get("lb_host_input_enabled"))
+        cfgLbHostOutputEnabled, _ = strconv.ParseBool(val.Get("lb_host_output_enabled"))
+        cfgLbMediaInputEnabled, _ = strconv.ParseBool(val.Get("lb_media_input_enabled"))
+        cfgLbMediaOutputEnabled, _ = strconv.ParseBool(val.Get("lb_media_output_enabled"))
+        cfgPatternChkHostEnabled, _ = strconv.ParseBool(val.Get("prbs_chk_host_enabled"))
+        cfgPatternChkMediaEnabled, _ = strconv.ParseBool(val.Get("prbs_chk_media_enabled"))
+        cfgPatternGenHostEnabled, _ = strconv.ParseBool(val.Get("prbs_gen_host_enabled"))
+        cfgPatternGenMediaEnabled, _ = strconv.ParseBool(val.Get("prbs_gen_media_enabled"))
+    }
+
+    tbl = db.TableSpec { Name: "TRANSCEIVER_INFO" }
+    key = db.Key { Comp : [] string { name } }
+    d = inParams.dbs[db.StateDB]
+    d.Opts.KeySeparator = "|"
+    d.Opts.TableNameSeparator = "|"
+    val, err = d.GetEntry(&tbl, key)
+    if err == nil {
+        capLoopback        = getString(val, "diag_caps_loopback",  "[]")
+        capPattern         = getString(val, "diag_caps_pattern",  "[]")
+        capPatternChkHost  = getString(val, "diag_caps_pattern_chk_host",  "[]")
+        capPatternChkMedia = getString(val, "diag_caps_pattern_chk_media", "[]")
+        capPatternGenHost  = getString(val, "diag_caps_pattern_gen_host",  "[]")
+        capPatternGenMedia = getString(val, "diag_caps_pattern_gen_media", "[]")
+        capReport          = getString(val, "diag_caps_report",  "[]")
+    } else {
+        capLoopback = "[]"
+        capPattern = "[]"
+        capPatternChkHost = "[]"
+        capPatternChkMedia = "[]"
+        capPatternGenHost = "[]"
+        capPatternGenMedia = "[]"
+        capReport = "[]"
+    }
+
+    tbl = db.TableSpec { Name: "TRANSCEIVER_DIAG" }
+    key = db.Key { Comp : [] string { name } }
+    d = inParams.dbs[db.StateDB]
+    d.Opts.KeySeparator = "|"
+    d.Opts.TableNameSeparator = "|"
+    val, err = d.GetEntry(&tbl, key)
+    if err == nil {
+        staLbHostInputEnabled, _ = strconv.ParseBool(val.Get("lb_host_input_enabled"))
+        staLbHostOutputEnabled, _ = strconv.ParseBool(val.Get("lb_host_output_enabled"))
+        staLbMediaInputEnabled, _ = strconv.ParseBool(val.Get("lb_media_input_enabled"))
+        staLbMediaOutputEnabled, _ = strconv.ParseBool(val.Get("lb_media_output_enabled"))
+        staPatternChkHostEnabled, _ = strconv.ParseBool(val.Get("prbs_chk_host_enabled"))
+        staPatternChkMediaEnabled, _ = strconv.ParseBool(val.Get("prbs_chk_media_enabled"))
+        staPatternGenHostEnabled, _ = strconv.ParseBool(val.Get("prbs_gen_host_enabled"))
+        staPatternGenMediaEnabled, _ = strconv.ParseBool(val.Get("prbs_gen_media_enabled"))
+
+        for lane := 1; lane <= 8; lane++ {
+            berHost[lane - 1]  = getString(val, fmt.Sprintf("diag_host_ber%d", lane),  "0")
+            berMedia[lane - 1] = getString(val, fmt.Sprintf("diag_media_ber%d", lane), "0")
+            snrHost[lane - 1]  = getString(val, fmt.Sprintf("diag_host_snr%d", lane),  "0")
+            snrMedia[lane - 1] = getString(val, fmt.Sprintf("diag_media_snr%d", lane), "0")
+        }
+    } else {
+        for lane := 1; lane <= 8; lane++ {
+            berHost[lane - 1]  = "0"
+            berMedia[lane - 1] = "0"
+            snrHost[lane - 1]  = "0"
+            snrMedia[lane - 1] = "0"
+        }
+    }
+
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Capabilities)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Capabilities.State)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Loopbacks)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Loopbacks.Config)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Loopbacks.State)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Patterns)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Patterns.State)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Reports)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Reports.Host)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Reports.Host.State)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Reports.Media)
+    ygot.BuildEmptyTree(xcvrCom.Transceiver.Diagnostics.Reports.Media.State)
+
+    xcvrDiag := xcvrCom.Transceiver.Diagnostics
+
+    xcvrDiag.Capabilities.State.Loopback = &capLoopback
+    xcvrDiag.Capabilities.State.Pattern = &capPattern
+    xcvrDiag.Capabilities.State.PatternChkHost = &capPatternChkHost
+    xcvrDiag.Capabilities.State.PatternChkMedia = &capPatternChkMedia
+    xcvrDiag.Capabilities.State.PatternGenHost = &capPatternGenHost
+    xcvrDiag.Capabilities.State.PatternGenMedia = &capPatternGenMedia
+    xcvrDiag.Capabilities.State.Report = &capReport
+
+    xcvrDiag.Loopbacks.Config.LbHostInputEnabled = &cfgLbHostInputEnabled
+    xcvrDiag.Loopbacks.Config.LbHostOutputEnabled = &cfgLbHostOutputEnabled
+    xcvrDiag.Loopbacks.Config.LbMediaInputEnabled = &cfgLbMediaInputEnabled
+    xcvrDiag.Loopbacks.Config.LbMediaOutputEnabled = &cfgLbMediaOutputEnabled
+
+    xcvrDiag.Loopbacks.State.LbHostInputEnabled = &staLbHostInputEnabled
+    xcvrDiag.Loopbacks.State.LbHostOutputEnabled = &staLbHostOutputEnabled
+    xcvrDiag.Loopbacks.State.LbMediaInputEnabled = &staLbMediaInputEnabled
+    xcvrDiag.Loopbacks.State.LbMediaOutputEnabled = &staLbMediaOutputEnabled
+
+    xcvrDiag.Patterns.Config.PatternChkHostEnabled = &cfgPatternChkHostEnabled
+    xcvrDiag.Patterns.Config.PatternGenHostEnabled = &cfgPatternGenHostEnabled
+    xcvrDiag.Patterns.Config.PatternChkMediaEnabled = &cfgPatternChkMediaEnabled
+    xcvrDiag.Patterns.Config.PatternGenMediaEnabled = &cfgPatternGenMediaEnabled
+
+    xcvrDiag.Patterns.State.PatternChkHostEnabled = &staPatternChkHostEnabled
+    xcvrDiag.Patterns.State.PatternGenHostEnabled = &staPatternGenHostEnabled
+    xcvrDiag.Patterns.State.PatternChkMediaEnabled = &staPatternChkMediaEnabled
+    xcvrDiag.Patterns.State.PatternGenMediaEnabled = &staPatternGenMediaEnabled
+
+    xcvrDiag.Reports.Host.State.Ber1 = &berHost[0]
+    xcvrDiag.Reports.Host.State.Ber2 = &berHost[1]
+    xcvrDiag.Reports.Host.State.Ber3 = &berHost[2]
+    xcvrDiag.Reports.Host.State.Ber4 = &berHost[3]
+    xcvrDiag.Reports.Host.State.Ber5 = &berHost[4]
+    xcvrDiag.Reports.Host.State.Ber6 = &berHost[5]
+    xcvrDiag.Reports.Host.State.Ber7 = &berHost[6]
+    xcvrDiag.Reports.Host.State.Ber8 = &berHost[7]
+    xcvrDiag.Reports.Media.State.Ber1 = &berMedia[0]
+    xcvrDiag.Reports.Media.State.Ber2 = &berMedia[1]
+    xcvrDiag.Reports.Media.State.Ber3 = &berMedia[2]
+    xcvrDiag.Reports.Media.State.Ber4 = &berMedia[3]
+    xcvrDiag.Reports.Media.State.Ber5 = &berMedia[4]
+    xcvrDiag.Reports.Media.State.Ber6 = &berMedia[5]
+    xcvrDiag.Reports.Media.State.Ber7 = &berMedia[6]
+    xcvrDiag.Reports.Media.State.Ber8 = &berMedia[7]
+    xcvrDiag.Reports.Host.State.Snr1 = &snrHost[0]
+    xcvrDiag.Reports.Host.State.Snr2 = &snrHost[1]
+    xcvrDiag.Reports.Host.State.Snr3 = &snrHost[2]
+    xcvrDiag.Reports.Host.State.Snr4 = &snrHost[3]
+    xcvrDiag.Reports.Host.State.Snr5 = &snrHost[4]
+    xcvrDiag.Reports.Host.State.Snr6 = &snrHost[5]
+    xcvrDiag.Reports.Host.State.Snr7 = &snrHost[6]
+    xcvrDiag.Reports.Host.State.Snr8 = &snrHost[7]
+    xcvrDiag.Reports.Media.State.Snr1 = &snrMedia[0]
+    xcvrDiag.Reports.Media.State.Snr2 = &snrMedia[1]
+    xcvrDiag.Reports.Media.State.Snr3 = &snrMedia[2]
+    xcvrDiag.Reports.Media.State.Snr4 = &snrMedia[3]
+    xcvrDiag.Reports.Media.State.Snr5 = &snrMedia[4]
+    xcvrDiag.Reports.Media.State.Snr6 = &snrMedia[5]
+    xcvrDiag.Reports.Media.State.Snr7 = &snrMedia[6]
+    xcvrDiag.Reports.Media.State.Snr8 = &snrMedia[7]
+
+    return nil
 }
 
 var DbToYang_pfm_components_psu_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
@@ -462,6 +627,23 @@ var DbToYang_pfm_components_fan_xfmr SubTreeXfmrDbToYang = func (inParams XfmrPa
     return errors.New("Component not supported")
 }
 
+var DbToYang_pfm_components_chassis_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
+    pathInfo.Template, pathInfo.Path, pathInfo.Vars)
+
+    if strings.Contains(inParams.requestUri, "/openconfig-platform:components") ||
+        strings.Contains(inParams.requestUri, "/openconfig-platform:components/component/chassis") {
+
+        log.Info("inParams.Uri:",inParams.requestUri)
+        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+        err := getSysFirmware(getPfmRootObject(inParams.ygRoot), targetUriPath, inParams.uri, inParams.dbs[db.StateDB])
+        return err
+    }
+
+    return errors.New("Component not supported")
+}
+
 var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
@@ -471,34 +653,36 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
     log.Infof("+++ Subscribe_pfm_components_xfmr (%v) +++", inParams.uri)
 
     if key == "" || mstr == "sensor" {
-        /* no need to verify dB data if we are requesting ALL
+        /* no need to verify DB data if we are requesting ALL
            components or if request is for sensor */
         result.isVirtualTbl = true
         return result, err
     }
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     if mstr == "system eeprom" {
-        result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if mstr == "software" {
         /* software component reads from XML file but also
-         * gets EEPROM information from dB */
-        result.dbDataMap = RedisDbMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
+         * gets EEPROM information from DB */
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {EEPROM_TBL:{"*":{}}}}
     } else if validPsuName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {PSU_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {PSU_TBL:{key:{}}}}
     } else if validFanName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {FAN_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {FAN_TBL:{key:{}}}}
     } else if validTempName(&key) {
-        result.dbDataMap = RedisDbMap{db.StateDB: {TEMP_TBL:{key:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {TEMP_TBL:{key:{}}}}
+    } else if validFirmwareName(&key) {
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {FIRMWARE_TBL:{key:{}}}}
     } else if validXcvrName(&key) {
         ifName := key
         if utils.IsAliasModeEnabled() {
             ifName = *(utils.GetNativeNameFromUIName(&key))
         }
-        result.dbDataMap = RedisDbMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
     } else {
         ifName := getIfName(key);
         if len(ifName) > 1 {
-            result.dbDataMap = RedisDbMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
+            result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{BREAKOUT_TBL:{ifName:{}}}}
         } else {
             log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")
@@ -521,19 +705,19 @@ var DbToYang_pfm_components_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams
     return errors.New("Component not supported")
 }
 
-var YangToDb_pfm_components_transceiver_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
+var YangToDb_pfm_components_transceiver_diag_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value,error) {
 
     value := db.Value {make(map[string]string)}
     cfgMap := make(map[string]map[string]db.Value)
 
-    log.Infof("+++ YangToDb_pfm_components_transceiver_xfmr (requestUri=%v) +++", inParams.requestUri)
+    log.Infof("+++ YangToDb_pfm_components_transceiver_diag_xfmr (requestUri=%v) +++", inParams.requestUri)
 
     name := NewPathInfo(inParams.uri).Var("name")
     if len(name) == 0 {
         return cfgMap, nil
     }
 
-    tblName := "XCVR"
+    tblName := "TRANSCEIVER_DIAG"
     keyName := name
     if utils.IsAliasModeEnabled() {
         keyName = *(utils.GetNativeNameFromUIName(&keyName))
@@ -542,22 +726,64 @@ var YangToDb_pfm_components_transceiver_xfmr SubTreeXfmrYangToDb = func(inParams
     inParams.key = keyName
 
     if inParams.oper == DELETE {
-        if strings.Contains(inParams.requestUri, "lb-host-side-input-enable") {
-            value.Field["host_side_input_loopback_enable"] = ""
-        } else if strings.Contains(inParams.requestUri, "lb-media-side-input-enable") {
-            value.Field["media_side_input_loopback_enable"] = ""
-        } else {
-            value.Field["host_side_input_loopback_enable"] = ""
-            value.Field["media_side_input_loopback_enable"] = ""
+        if strings.Contains(inParams.requestUri, "lb-host-input-enabled") {
+            value.Field["lb_host_input_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "lb-host-output-enabled") {
+            value.Field["lb_host_output_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "lb-media-input-enabled") {
+            value.Field["lb_media_input_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "lb-media-output-enabled") {
+            value.Field["lb_media_output_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "pattern-gen-host-enabled") {
+            value.Field["prbs_gen_host_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "pattern-chk-host-enabled") {
+            value.Field["prbs_chk_host_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "pattern-gen-media-enabled") {
+            value.Field["prbs_gen_media_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "pattern-chk-media-enabled") {
+            value.Field["prbs_chk_media_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "loopbacks") {
+            value.Field["lb_host_input_enabled"] = ""
+            value.Field["lb_host_output_enabled"] = ""
+            value.Field["lb_media_input_enabled"] = ""
+            value.Field["lb_media_output_enabled"] = ""
+        } else if strings.Contains(inParams.requestUri, "patterns") {
+            value.Field["prbs_gen_host_enabled"] = ""
+            value.Field["prbs_chk_host_enabled"] = ""
+            value.Field["prbs_gen_media_enabled"] = ""
+            value.Field["prbs_chk_media_enabled"] = ""
         }
     } else {
-        cfg, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Config)
+        if strings.Contains(inParams.requestUri, "loopbacks") {
+            cfg, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Diagnostics_Loopbacks_Config)
 
-        if cfg.LbHostSideInputEnable != nil {
-            value.Field["host_side_input_loopback_enable"] = *cfg.LbHostSideInputEnable
-        }
-        if cfg.LbMediaSideInputEnable != nil {
-            value.Field["media_side_input_loopback_enable"] = *cfg.LbMediaSideInputEnable
+            if cfg.LbHostInputEnabled != nil {
+                value.Field["lb_host_input_enabled"] = strconv.FormatBool(*cfg.LbHostInputEnabled)
+            }
+            if cfg.LbHostOutputEnabled != nil {
+                value.Field["lb_host_output_enabled"] = strconv.FormatBool(*cfg.LbHostOutputEnabled)
+            }
+            if cfg.LbMediaInputEnabled != nil {
+                value.Field["lb_media_input_enabled"] = strconv.FormatBool(*cfg.LbMediaInputEnabled)
+            }
+            if cfg.LbMediaOutputEnabled != nil {
+                value.Field["lb_media_output_enabled"] = strconv.FormatBool(*cfg.LbMediaOutputEnabled)
+            }
+        } else if strings.Contains(inParams.requestUri, "patterns") {
+            cfg, _ := inParams.param.(*ocbinds.OpenconfigPlatform_Components_Component_Transceiver_Diagnostics_Patterns_Config)
+
+            if cfg.PatternChkHostEnabled != nil {
+                value.Field["prbs_chk_host_enabled"] = strconv.FormatBool(*cfg.PatternChkHostEnabled)
+            }
+            if cfg.PatternChkMediaEnabled != nil {
+                value.Field["prbs_chk_media_enabled"] = strconv.FormatBool(*cfg.PatternChkMediaEnabled)
+            }
+            if cfg.PatternGenHostEnabled != nil {
+                value.Field["prbs_gen_host_enabled"] = strconv.FormatBool(*cfg.PatternGenHostEnabled)
+            }
+            if cfg.PatternGenMediaEnabled != nil {
+                value.Field["prbs_gen_media_enabled"] = strconv.FormatBool(*cfg.PatternGenMediaEnabled)
+            }
         }
     }
 
@@ -589,8 +815,10 @@ func getSoftwareVersion() string {
     return versionString
 }
 
-func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_Component_Software, targetUriPath string, allAttr bool, d *db.DB) (error) {
+func getSoftwareVersionComponent (pfComp *ocbinds.OpenconfigPlatform_Components_Component, targetUriPath string, allAttr bool, d *db.DB) (error) {
 
+    swCompName := "Software"
+    swComp := pfComp.Software
     brandingScanner := bufio.NewScanner(strings.NewReader(""))
     versionScanner := bufio.NewScanner(strings.NewReader(""))
     scanner := bufio.NewScanner(strings.NewReader(""))
@@ -599,6 +827,14 @@ func getSoftwareVersionComponent (swComp *ocbinds.OpenconfigPlatform_Components_
     var eepromInfo Eeprom
     var deviceMetadata DeviceMetadata
     var err error
+
+    if allAttr || targetUriPath == COMP_CONFIG_NAME {
+        pfComp.Config.Name = &swCompName
+    }
+
+    if allAttr || targetUriPath == COMP_STATE_NAME {
+        pfComp.State.Name = &swCompName
+    }
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DIST_VER || targetUriPath == SW_KERN_VER ||
        targetUriPath == SW_BUILD_COMMIT || targetUriPath == SW_ASIC_VER || targetUriPath == SW_BUILD_DATE ||
@@ -961,7 +1197,7 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
 
     for _, key := range keys {
         typeCode = key.Get(0)
-        eepromEntry, err := eepromTbl.GetEntry(db.Key{Comp: []string{typeCode}})
+        eepromEntry, err := eepromTbl.GetEntry(key)
         if err != nil {
             log.Info("Can't get entry with key: ", typeCode)
             return eepromInfo, err
@@ -1023,7 +1259,7 @@ func getSysEepromFromDb (d *db.DB) (Eeprom, error) {
     return eepromInfo, err
 }
 
-func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_State,
+func fillSysEepromInfo (eepromComp *ocbinds.OpenconfigPlatform_Components_Component,
                                  all bool, targetUriPath string, d *db.DB) (error) {
 
     log.Infof("fillSysEepromInfo Enter")
@@ -1036,6 +1272,7 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
     removable := false
     name := "System Eeprom"
     location  :=  "Slot 1"
+    eeprom := eepromComp.State
 
     if all {
         eeprom.Empty = &empty
@@ -1043,6 +1280,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
         eeprom.Name = &name
         eeprom.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_ACTIVE
         eeprom.Location = &location
+        eepromComp.Config.Name = &name
+        eeprom.Name = &name
 
         if eepromInfo.Product_Name != "" {
             eeprom.Id = &eepromInfo.Product_Name
@@ -1102,6 +1341,8 @@ func fillSysEepromInfo (eeprom *ocbinds.OpenconfigPlatform_Components_Component_
         }
     } else {
         switch targetUriPath {
+        case COMP_CONFIG_NAME:
+            eepromComp.Config.Name = &name
         case COMP_STATE_NAME:
             eeprom.Name = &name
         case COMP_STATE_LOCATION:
@@ -1267,13 +1508,16 @@ func getPlatformEnvironment (pf_comp *ocbinds.OpenconfigPlatform_Components_Comp
             scanner.Scan()
         }
     }
+    comp_name := "Sensor"
+    pf_comp.State.Name = &comp_name
+    pf_comp.Config.Name = &comp_name
 
     return  err
 }
 
 func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Infof("Preparing dB for system components");
+    log.Infof("Preparing DB for system components");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -1307,14 +1551,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
 
             pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
             ygot.BuildEmptyTree(pf_comp)
-            err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+            err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
             if err != nil {
                 return err
             }
 
             swversion_comp,_ := pf_cpts.NewComponent("Software")
             ygot.BuildEmptyTree(swversion_comp)
-            err = getSoftwareVersionComponent(swversion_comp.Software, targetUriPath, true, d)
+            err = getSoftwareVersionComponent(swversion_comp, targetUriPath, true, d)
             if err != nil {
                 return err
             }
@@ -1363,10 +1607,31 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
 
             comp_cnt = 0
             for i := 1; true; i++ {
+                firmware := "FIRMWARE " + strconv.Itoa(i)
+                pf_comp, _ = pf_cpts.NewComponent(firmware)
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysFirmwareInfo(pf_comp, firmware, true, true, targetUriPath, d)
+                if err != nil {
+                    if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
+                        delete(pf_cpts.Component, firmware)
+                        err = nil
+                        break
+                    }
+                    return err
+                }
+                err = fillSysFirmwareInfo(pf_comp, firmware, true, false, targetUriPath, d)
+                if err != nil {
+                    return err
+                }
+                comp_cnt++
+            }
+
+            comp_cnt = 0
+            for i := 1; true; i++ {
                 temp := "TEMP " + strconv.Itoa(i)
                 pf_comp, _ = pf_cpts.NewComponent(temp)
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysTempInfo(pf_comp.State, temp, true, targetUriPath, d)
+                err = fillSysTempInfo(pf_comp, temp, true, targetUriPath, d)
                 if err != nil {
                     if comp_cnt > 0 && strings.Contains(err.Error(), "Entry does not exist") {
                         delete(pf_cpts.Component, temp)
@@ -1391,7 +1656,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+                    err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -1413,7 +1678,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, true, d)
+                    err = getSoftwareVersionComponent(pf_comp, targetUriPath, true, d)
                     if err != nil {
                         return err
                     }
@@ -1451,7 +1716,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+                err = fillSysTempInfo(pf_comp, compName, true, targetUriPath, d)
             } else if len(getIfName(compName)) > 1 {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1459,6 +1724,14 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                     return errors.New("Invalid component name")
                 }
                 ygot.BuildEmptyTree(pf_comp)
+            } else if validFirmwareName(&compName) {
+                pf_comp := pf_cpts.Component[compName]
+                if pf_comp  == nil {
+                    log.Info("Invalid Component Name")
+                    return errors.New("Invalid component name")
+                }
+                ygot.BuildEmptyTree(pf_comp)
+                err = fillSysFirmwareInfo(pf_comp, compName, true, false, targetUriPath, d)
             } else {
                 log.Info("Invalid Component Name: ", compName)
                 err = errors.New("Invalid component name")
@@ -1476,7 +1749,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
-                err = fillSysEepromInfo(pf_comp.State, true, targetUriPath, d)
+                err = fillSysEepromInfo(pf_comp, true, targetUriPath, d)
                 if err != nil {
                     return err
                 }
@@ -1525,9 +1798,18 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 return errors.New("Invalid component name")
             }
             ygot.BuildEmptyTree(pf_comp)
+            ygot.BuildEmptyTree(pf_comp.Config)
             ygot.BuildEmptyTree(pf_comp.State)
             ygot.BuildEmptyTree(pf_comp.State.Temperature)
-            err = fillSysTempInfo(pf_comp.State, compName, true, targetUriPath, d)
+            err = fillSysTempInfo(pf_comp, compName, true, targetUriPath, d)
+        } else if validFirmwareName(&compName) {
+            pf_comp := pf_cpts.Component[compName]
+            if pf_comp  == nil {
+                log.Info("Invalid Component Name")
+                return errors.New("Invalid component name")
+            }
+            ygot.BuildEmptyTree(pf_comp)
+            err = fillSysFirmwareInfo(pf_comp, compName, true, false, targetUriPath, d)
         } else {
             log.Info("Invalid Component Name: ", compName)
             err = errors.New("Invalid component name ")
@@ -1546,7 +1828,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = fillSysEepromInfo(pf_comp.State, false, targetUriPath, d)
+                    err = fillSysEepromInfo(pf_comp, false, targetUriPath, d)
                     if err != nil {
                         return err
                     }
@@ -1557,7 +1839,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
-                    err = getSoftwareVersionComponent(pf_comp.Software, targetUriPath, false, d)
+                    err = getSoftwareVersionComponent(pf_comp, targetUriPath, false, d)
                     if err != nil {
                         return err
                     }
@@ -1596,7 +1878,7 @@ func getSysComponents(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriP
                   return errors.New("Invalid component name")
               }
               ygot.BuildEmptyTree(pf_comp)
-              err = fillSysTempInfo(pf_comp.State, compName, false, targetUriPath, d)
+              err = fillSysTempInfo(pf_comp, compName, false, targetUriPath, d)
             } else if len(getIfName(compName)) > 1 {
                 pf_comp := pf_cpts.Component[compName]
                 if pf_comp  == nil {
@@ -1643,7 +1925,7 @@ func convertUTF8EndcodedString (s string) (string) {
 	    }
 	    v = append(v, r)
        }
-       return string(v) 
+       return string(v)
      }
      return s
 }
@@ -1681,7 +1963,8 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Manufacturer = convertUTF8EndcodedString(psuEntry.Get("mfr_id"))
     psuInfo.Serial_Number = convertUTF8EndcodedString(psuEntry.Get("serial"))
     psuInfo.Fans = psuEntry.Get("num_fans")
-    psuInfo.Status_Led = psuEntry.Get("status_led")
+    psuInfo.Status_Led = psuEntry.Get("led_status")
+    psuInfo.Temperature = psuEntry.Get("temperature")
     return psuInfo, err
 }
 
@@ -1690,7 +1973,7 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     var err error
     psuInfo, err := getSysPsuFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting PSU info from dB")
+        log.Info("Error Getting PSU info from DB")
         return err
     }
 
@@ -1708,6 +1991,9 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             if psuInfo.Output_Power != "" {
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
             }
+            if psuInfo.Temperature!= "" {
+                psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
+            }
 
             if psuInfo.Volt_Type == "AC" {
                 psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_VOLT_AC
@@ -1721,6 +2007,8 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             return err
         }
+        psuCom.Config.Name = &name
+        psuEepromState.Name = &name
         psuEepromState.Empty = &empty
         psuEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
         if psuInfo.Presence {
@@ -1765,6 +2053,10 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
         }
+    case PSU_TEMPERATURE:
+        if psuInfo.Temperature != "" {
+            psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
+        }
     case PSU_VOLT_TYPE:
         psuState.PowerType = ocbinds.OpenconfigPlatform_Components_Component_PowerSupply_State_PowerType_UNSET
         if psuInfo.Volt_Type == "AC" {
@@ -1801,6 +2093,10 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
         if psuInfo.Manufacturer != "" {
             psuEepromState.MfgName = &psuInfo.Manufacturer
         }
+    case COMP_STATE_NAME:
+        psuEepromState.Name = &name
+    case COMP_CONFIG_NAME:
+        psuCom.Config.Name = &name
     }
 
     return err
@@ -1816,7 +2112,7 @@ func validPsuName(name *string) bool {
 
 func getSysPsu(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Info("Preparing dB for PSU info");
+    log.Info("Preparing DB for PSU info");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -1882,7 +2178,7 @@ func getSysFanFromDb(name string, d *db.DB) (Fan, error) {
 
     fanInfo.Model_Name = fanEntry.Get("model")
     fanInfo.Serial_Number = fanEntry.Get("serial")
-    fanInfo.Status_Led = fanEntry.Get("status_led")
+    fanInfo.Status_Led = fanEntry.Get("led_status")
 
     return fanInfo, err
 }
@@ -1894,7 +2190,7 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
 
     fanInfo, err := getSysFanFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting fan info from dB")
+        log.Info("Error Getting fan info from DB")
         return err
     }
 
@@ -1925,6 +2221,8 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             return err
         }
 
+        fanCom.Config.Name = &name
+        fanEepromState.Name = &name
         fanEepromState.OperStatus = ocbinds.OpenconfigPlatformTypes_COMPONENT_OPER_STATUS_DISABLED
         if fanInfo.Presence {
             if fanInfo.Status {
@@ -1987,9 +2285,12 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
             fanEepromState.Description = &fanInfo.Model_Name
         }
     case COMP_STATE_NAME:
+        fanEepromState.Name = &name
         if fanInfo.Name != "" {
             fanEepromState.Name = &fanInfo.Name
         }
+    case COMP_CONFIG_NAME:
+        fanCom.Config.Name = &name
     }
 
     return err
@@ -1997,7 +2298,7 @@ func fillSysFanInfo (fanCom *ocbinds.OpenconfigPlatform_Components_Component,
 
 func getSysFans(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    log.Info("Preparing dB for Fan info");
+    log.Info("Preparing DB for Fan info");
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -2094,6 +2395,7 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
     xcvrInfo.Vendor_Revision = xcvrEntry.Get("vendor_revision")
     xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date_code")
     xcvrInfo.Vendor_OUI = xcvrEntry.Get("vendor_oui")
+    xcvrInfo.Revision_Compliance = xcvrEntry.Get("revision_compliance")
 
     xcvrDOMEntry, err := d.GetEntry(&db.TableSpec{Name: TRANSCEIVER_DOM}, db.Key{Comp: []string{name}})
     if err != nil {
@@ -2101,22 +2403,6 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
         xcvrInfo.Presence = false
         return xcvrInfo, err
     }
-
-    xcvrInfo.HostSideInputSup = xcvrDOMEntry.Get("host_side_input_loopback_supported")
-    xcvrInfo.HostSideOutputSup = xcvrDOMEntry.Get("host_side_output_loopback_supported")
-    xcvrInfo.MediaSideInputSup = xcvrDOMEntry.Get("media_side_input_loopback_supported")
-    xcvrInfo.MediaSideOutputSup = xcvrDOMEntry.Get("media_side_output_loopback_supported")
-    xcvrInfo.PerLaneHostSideSup = xcvrDOMEntry.Get("per_lane_host_side_loopback_supported")
-    xcvrInfo.PerLaneMediaSideSup = xcvrDOMEntry.Get("per_lane_media_side_loopback_supported")
-    xcvrInfo.SimulHostMediaSideSup = xcvrDOMEntry.Get("simultaneous_host_media_side_loopback_supported")
-
-    xcvrInfo.HostSideInputEnable = xcvrDOMEntry.Get("host_side_input_loopback_enable")
-    xcvrInfo.HostSideOutputEnable = xcvrDOMEntry.Get("host_side_output_loopback_enable")
-    xcvrInfo.MediaSideInputEnable = xcvrDOMEntry.Get("media_side_input_loopback_enable")
-    xcvrInfo.MediaSideOutputEnable = xcvrDOMEntry.Get("media_side_output_loopback_enable")
-    xcvrInfo.PerLaneHostSideEnable = xcvrDOMEntry.Get("per_lane_host_side_loopback_enable")
-    xcvrInfo.PerLaneMediaSideEnable = xcvrDOMEntry.Get("per_lane_media_side_loopback_enable")
-    xcvrInfo.SimulHostMediaSideEnable = xcvrDOMEntry.Get("simultaneous_host_media_side_loopback_enable")
 
     xcvrInfo.LolLane_1 = xcvrDOMEntry.Get("rx1lol")
     xcvrInfo.LolLane_2 = xcvrDOMEntry.Get("rx2lol")
@@ -2168,10 +2454,6 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
 
 func test_if_available (s string) bool {
     return ((s != "") && (s != "N/A") && (s != "n/a"))
-}
-
-func test_if_blank (s string) bool {
-    return (s != "")
 }
 
 func convert_connector_type(ct string) ocbinds.E_OpenconfigTransportTypes_FIBER_CONNECTOR_TYPE {
@@ -2230,9 +2512,11 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
                         name string, all bool, targetUriPath string, d *db.DB) (error) {
     var err error
 
+    log.Infof("DS: fillSysXcvrInfo: %v, %v", name, all)
+
     xcvrInfo, err := getSysXcvrFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting transceiver info from dB")
+        log.Info("Error Getting transceiver info from DB")
         return err
     }
 
@@ -2244,6 +2528,7 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         /* Top level */
         nm := name
         xcvrEEPROMState.Name = &nm
+        xcvrCom.Config.Name = &nm
 
         /* Present state */
         p := !xcvrInfo.Presence
@@ -2322,6 +2607,9 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         if (test_if_available(xcvrInfo.Vendor_OUI)){
             xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
         }
+        if (test_if_available(xcvrInfo.Revision_Compliance)){
+            xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
+        }
 
         if (test_if_available(xcvrInfo.Connector_Type)){
             xcvrState.ConnectorType = convert_connector_type(xcvrInfo.Connector_Type)
@@ -2329,183 +2617,6 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         if (test_if_available(xcvrInfo.Form_Factor)){
             xcvrState.FormFactor = convert_form_factor_type(xcvrInfo.Form_Factor)
         }
-
-        if (test_if_blank(xcvrInfo.HostSideInputSup)){
-            xcvrState.LbHostSideInputSupport = &xcvrInfo.HostSideInputSup
-        }
-        if (test_if_blank(xcvrInfo.HostSideOutputSup)){
-            xcvrState.LbHostSideOutputSupport = &xcvrInfo.HostSideOutputSup
-        }
-        if (test_if_blank(xcvrInfo.MediaSideInputSup)){
-            xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideInputSup
-        }
-        if (test_if_blank(xcvrInfo.MediaSideOutputSup)){
-            xcvrState.LbMediaSideOutputSupport = &xcvrInfo.MediaSideOutputSup
-        }
-        if (test_if_blank(xcvrInfo.PerLaneHostSideSup)){
-            xcvrState.LbPerLaneHostSideSupport = &xcvrInfo.PerLaneHostSideSup
-        }
-        if (test_if_blank(xcvrInfo.PerLaneMediaSideSup)){
-            xcvrState.LbPerLaneMediaSideSupport = &xcvrInfo.PerLaneMediaSideSup
-        }
-        if (test_if_blank(xcvrInfo.SimulHostMediaSideSup)){
-            xcvrState.LbSimulHostMediaSideSupport = &xcvrInfo.SimulHostMediaSideSup
-        }
-
-        if (test_if_blank(xcvrInfo.HostSideInputEnable)){
-            xcvrState.LbHostSideInputEnable = &xcvrInfo.HostSideInputEnable
-        }
-        if (test_if_blank(xcvrInfo.HostSideOutputEnable)){
-            xcvrState.LbHostSideOutputEnable = &xcvrInfo.HostSideOutputEnable
-        }
-        if (test_if_blank(xcvrInfo.MediaSideInputEnable)){
-            xcvrState.LbMediaSideInputEnable = &xcvrInfo.MediaSideInputEnable
-        }
-        if (test_if_blank(xcvrInfo.MediaSideOutputEnable)){
-            xcvrState.LbMediaSideOutputEnable = &xcvrInfo.MediaSideOutputEnable
-        }
-        if (test_if_blank(xcvrInfo.PerLaneHostSideEnable)){
-            xcvrState.LbPerLaneHostSideEnable = &xcvrInfo.PerLaneHostSideEnable
-        }
-        if (test_if_blank(xcvrInfo.PerLaneMediaSideEnable)){
-            xcvrState.LbPerLaneMediaSideEnable = &xcvrInfo.PerLaneMediaSideEnable
-        }
-        if (test_if_blank(xcvrInfo.SimulHostMediaSideEnable)){
-            xcvrState.LbSimulHostMediaSideEnable = &xcvrInfo.SimulHostMediaSideEnable
-        }
-
-        if (test_if_blank(xcvrInfo.LolLane_1)){
-            xcvrState.LolLane_1 = &xcvrInfo.LolLane_1
-        }
-        if (test_if_blank(xcvrInfo.LolLane_2)){
-            xcvrState.LolLane_2 = &xcvrInfo.LolLane_2
-        }
-        if (test_if_blank(xcvrInfo.LolLane_3)){
-            xcvrState.LolLane_3 = &xcvrInfo.LolLane_3
-        }
-        if (test_if_blank(xcvrInfo.LolLane_4)){
-            xcvrState.LolLane_4 = &xcvrInfo.LolLane_4
-        }
-        if (test_if_blank(xcvrInfo.LolLane_5)){
-            xcvrState.LolLane_5 = &xcvrInfo.LolLane_5
-        }
-        if (test_if_blank(xcvrInfo.LolLane_6)){
-            xcvrState.LolLane_6 = &xcvrInfo.LolLane_6
-        }
-        if (test_if_blank(xcvrInfo.LolLane_7)){
-            xcvrState.LolLane_7 = &xcvrInfo.LolLane_7
-        }
-        if (test_if_blank(xcvrInfo.LolLane_8)){
-            xcvrState.LolLane_8 = &xcvrInfo.LolLane_8
-        }
-        if (test_if_blank(xcvrInfo.LosLane_1)){
-            xcvrState.LosLane_1 = &xcvrInfo.LosLane_1
-        }
-        if (test_if_blank(xcvrInfo.LosLane_2)){
-            xcvrState.LosLane_2 = &xcvrInfo.LosLane_2
-        }
-        if (test_if_blank(xcvrInfo.LosLane_3)){
-            xcvrState.LosLane_3 = &xcvrInfo.LosLane_3
-        }
-        if (test_if_blank(xcvrInfo.LosLane_4)){
-            xcvrState.LosLane_4 = &xcvrInfo.LosLane_4
-        }
-        if (test_if_blank(xcvrInfo.LosLane_5)){
-            xcvrState.LosLane_5 = &xcvrInfo.LosLane_5
-        }
-        if (test_if_blank(xcvrInfo.LosLane_6)){
-            xcvrState.LosLane_6 = &xcvrInfo.LosLane_6
-        }
-        if (test_if_blank(xcvrInfo.LosLane_7)){
-            xcvrState.LosLane_7 = &xcvrInfo.LosLane_7
-        }
-        if (test_if_blank(xcvrInfo.LosLane_8)){
-            xcvrState.LosLane_8 = &xcvrInfo.LosLane_8
-        }
-
-        if (test_if_blank(xcvrInfo.RxPowerLane_1)){
-            xcvrState.RxPowerLane_1 = &xcvrInfo.RxPowerLane_1
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_2)){
-            xcvrState.RxPowerLane_2 = &xcvrInfo.RxPowerLane_2
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_3)){
-            xcvrState.RxPowerLane_3 = &xcvrInfo.RxPowerLane_3
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_4)){
-            xcvrState.RxPowerLane_4 = &xcvrInfo.RxPowerLane_4
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_5)){
-            xcvrState.RxPowerLane_5 = &xcvrInfo.RxPowerLane_5
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_6)){
-            xcvrState.RxPowerLane_6 = &xcvrInfo.RxPowerLane_6
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_7)){
-            xcvrState.RxPowerLane_7 = &xcvrInfo.RxPowerLane_7
-        }
-        if (test_if_blank(xcvrInfo.RxPowerLane_8)){
-            xcvrState.RxPowerLane_8 = &xcvrInfo.RxPowerLane_8
-        }
-
-        if (test_if_blank(xcvrInfo.TxBiasLane_1)){
-            xcvrState.TxBiasLane_1  = &xcvrInfo.TxBiasLane_1
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_2)){
-            xcvrState.TxBiasLane_2  = &xcvrInfo.TxBiasLane_2
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_3)){
-            xcvrState.TxBiasLane_3  = &xcvrInfo.TxBiasLane_3
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_4)){
-            xcvrState.TxBiasLane_4  = &xcvrInfo.TxBiasLane_4
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_5)){
-            xcvrState.TxBiasLane_5  = &xcvrInfo.TxBiasLane_5
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_6)){
-            xcvrState.TxBiasLane_6  = &xcvrInfo.TxBiasLane_6
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_7)){
-            xcvrState.TxBiasLane_7  = &xcvrInfo.TxBiasLane_7
-        }
-        if (test_if_blank(xcvrInfo.TxBiasLane_8)){
-            xcvrState.TxBiasLane_8  = &xcvrInfo.TxBiasLane_8
-        }
-
-        if (test_if_blank(xcvrInfo.TxPowerLane_1 )){
-            xcvrState.TxPowerLane_1 = &xcvrInfo.TxPowerLane_1
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_2 )){
-            xcvrState.TxPowerLane_2 = &xcvrInfo.TxPowerLane_2
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_3 )){
-            xcvrState.TxPowerLane_3 = &xcvrInfo.TxPowerLane_3
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_4 )){
-            xcvrState.TxPowerLane_4 = &xcvrInfo.TxPowerLane_4
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_5 )){
-            xcvrState.TxPowerLane_5 = &xcvrInfo.TxPowerLane_5
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_6 )){
-            xcvrState.TxPowerLane_6 = &xcvrInfo.TxPowerLane_6
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_7 )){
-            xcvrState.TxPowerLane_7 = &xcvrInfo.TxPowerLane_7
-        }
-        if (test_if_blank(xcvrInfo.TxPowerLane_8 )){
-            xcvrState.TxPowerLane_8 = &xcvrInfo.TxPowerLane_8
-        }
-
-        if (test_if_blank(xcvrInfo.Temperature)){
-           xcvrState.Temperature = &xcvrInfo.Temperature
-        }
-        if (test_if_blank( xcvrInfo.Voltage)){
-            xcvrState.Voltage = &xcvrInfo.Voltage
-        }
-
-
 
         /*
             Pending YANG updates
@@ -2545,6 +2656,9 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
         case COMP_STATE_NAME:
             nm := name
             xcvrEEPROMState.Name = &nm
+        case COMP_CONFIG_NAME:
+            nm := name
+            xcvrCom.Config.Name = &nm
         case COMP_STATE_DESCR:
             if test_if_available(xcvrInfo.Display_Name) {
                 xcvrEEPROMState.Description = &xcvrInfo.Display_Name
@@ -2636,239 +2750,10 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
             if (test_if_available(xcvrInfo.Vendor_OUI)){
                 xcvrState.VendorOui = &xcvrInfo.Vendor_OUI
             }
-        case XCVR_TEMPERATURE:
-            if (test_if_blank(xcvrInfo.Temperature)){
-                xcvrState.Temperature = &xcvrInfo.Temperature
+        case XCVR_REVISION_COMPLIANCE:
+            if (test_if_available(xcvrInfo.Revision_Compliance)){
+                xcvrState.RevisionCompliance = &xcvrInfo.Revision_Compliance
             }
-        case XCVR_VOLTAGE:
-            if (test_if_blank(xcvrInfo.Voltage)){
-                xcvrState.Voltage = &xcvrInfo.Voltage
-            }
-        case XCVR_LB_MEDIA_SIDE_OUTPUT_SUP:
-            if (test_if_blank(xcvrInfo.MediaSideOutputSup)){
-                xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideOutputSup
-            }
-        case XCVR_LB_MEDIA_SIDE_INPUT_SUP:
-            if (test_if_blank(xcvrInfo.MediaSideInputSup)){
-                xcvrState.LbMediaSideInputSupport = &xcvrInfo.MediaSideInputSup
-            }
-        case XCVR_LB_HOST_SIDE_OUTPUT_SUP:
-            if (test_if_blank(xcvrInfo.HostSideOutputSup)){
-                xcvrState.LbHostSideOutputSupport = &xcvrInfo.HostSideOutputSup
-            }
-        case XCVR_LB_HOST_SIDE_INPUT_SUP:
-            if (test_if_blank(xcvrInfo.HostSideInputSup)){
-                xcvrState.LbHostSideInputSupport = &xcvrInfo.HostSideInputSup
-            }
-        case XCVR_LB_PER_LANE_HOST_SIDE_SUP:
-            if (test_if_blank(xcvrInfo.PerLaneHostSideSup)){
-                xcvrState.LbPerLaneHostSideSupport = &xcvrInfo.PerLaneHostSideSup
-            }
-        case XCVR_LB_PER_LANE_MEDIA_SIDE_SUP:
-            if (test_if_blank(xcvrInfo.PerLaneMediaSideSup)){
-                xcvrState.LbPerLaneMediaSideSupport = &xcvrInfo.PerLaneMediaSideSup
-            }
-        case XCVR_LB_SIMUL_HOST_MEDIA_SIDE_SUP:
-            if (test_if_blank(xcvrInfo.SimulHostMediaSideSup)){
-                xcvrState.LbSimulHostMediaSideSupport = &xcvrInfo.SimulHostMediaSideSup
-            }
-        case XCVR_LB_MEDIA_SIDE_OUTPUT_STATE:
-            if (test_if_blank(xcvrInfo.MediaSideOutputEnable)){
-                xcvrState.LbMediaSideOutputEnable = &xcvrInfo.MediaSideOutputEnable
-            }
-        case XCVR_LB_MEDIA_SIDE_INPUT_STATE:
-            if (test_if_blank(xcvrInfo.MediaSideInputEnable)){
-                xcvrState.LbMediaSideInputEnable = &xcvrInfo.MediaSideInputEnable
-            }
-        case XCVR_LB_HOST_SIDE_OUTPUT_STATE:
-            if (test_if_blank(xcvrInfo.HostSideOutputEnable)){
-                xcvrState.LbHostSideOutputEnable = &xcvrInfo.HostSideOutputEnable
-            }
-        case XCVR_LB_HOST_SIDE_INPUT_STATE:
-            if (test_if_blank(xcvrInfo.HostSideInputEnable)){
-                xcvrState.LbHostSideInputEnable = &xcvrInfo.HostSideInputEnable
-            }
-        case XCVR_LB_PER_LANE_HOST_SIDE_STATE:
-            if (test_if_blank(xcvrInfo.PerLaneHostSideEnable)){
-                xcvrState.LbPerLaneHostSideEnable = &xcvrInfo.PerLaneHostSideEnable
-            }
-        case XCVR_LB_PER_LANE_MEDIA_SIDE_STATE:
-            if (test_if_blank(xcvrInfo.PerLaneMediaSideEnable)){
-                xcvrState.LbPerLaneMediaSideEnable = &xcvrInfo.PerLaneMediaSideEnable
-            }
-        case XCVR_LB_SIMUL_HOST_MEDIA_SIDE_STATE:
-            if (test_if_blank(xcvrInfo.SimulHostMediaSideEnable)){
-                xcvrState.LbSimulHostMediaSideEnable = &xcvrInfo.SimulHostMediaSideEnable
-            }
-
-        case XCVR_LOL_LANE_1:
-            if (test_if_blank(xcvrInfo.LolLane_1)){
-                xcvrState.LolLane_1 = &xcvrInfo.LolLane_1
-            }
-        case XCVR_LOL_LANE_2:
-            if (test_if_blank(xcvrInfo.LolLane_2)){
-                xcvrState.LolLane_2 = &xcvrInfo.LolLane_2
-            }
-        case XCVR_LOL_LANE_3:
-            if (test_if_blank(xcvrInfo.LolLane_3)){
-                xcvrState.LolLane_3 = &xcvrInfo.LolLane_3
-            }
-        case XCVR_LOL_LANE_4:
-            if (test_if_blank(xcvrInfo.LolLane_4)){
-                xcvrState.LolLane_4 = &xcvrInfo.LolLane_4
-            }
-        case XCVR_LOL_LANE_5:
-            if (test_if_blank(xcvrInfo.LolLane_5)){
-                xcvrState.LolLane_5 = &xcvrInfo.LolLane_5
-            }
-        case XCVR_LOL_LANE_6:
-            if (test_if_blank(xcvrInfo.LolLane_6)){
-                xcvrState.LolLane_6 = &xcvrInfo.LolLane_6
-            }
-        case XCVR_LOL_LANE_7:
-            if (test_if_blank(xcvrInfo.LolLane_7)){
-                xcvrState.LolLane_7 = &xcvrInfo.LolLane_7
-            }
-        case XCVR_LOL_LANE_8:
-            if (test_if_blank(xcvrInfo.LolLane_8)){
-                xcvrState.LolLane_8 = &xcvrInfo.LolLane_8
-            }
-
-        case XCVR_LOS_LANE_1:
-            if (test_if_blank(xcvrInfo.LosLane_1)){
-                xcvrState.LosLane_1 = &xcvrInfo.LosLane_1
-            }
-        case XCVR_LOS_LANE_2:
-            if (test_if_blank(xcvrInfo.LosLane_2)){
-                xcvrState.LosLane_2 = &xcvrInfo.LosLane_2
-            }
-        case XCVR_LOS_LANE_3:
-            if (test_if_blank(xcvrInfo.LosLane_3)){
-                xcvrState.LosLane_3 = &xcvrInfo.LosLane_3
-            }
-        case XCVR_LOS_LANE_4:
-            if (test_if_blank(xcvrInfo.LosLane_4)){
-                xcvrState.LosLane_4 = &xcvrInfo.LosLane_4
-            }
-        case XCVR_LOS_LANE_5:
-            if (test_if_blank(xcvrInfo.LosLane_5)){
-                xcvrState.LosLane_5 = &xcvrInfo.LosLane_5
-            }
-        case XCVR_LOS_LANE_6:
-            if (test_if_blank(xcvrInfo.LosLane_6)){
-                xcvrState.LosLane_6 = &xcvrInfo.LosLane_6
-            }
-        case XCVR_LOS_LANE_7:
-            if (test_if_blank(xcvrInfo.LosLane_7)){
-                xcvrState.LosLane_7 = &xcvrInfo.LosLane_7
-            }
-        case XCVR_LOS_LANE_8:
-            if (test_if_blank(xcvrInfo.LosLane_8)){
-                xcvrState.LosLane_8 = &xcvrInfo.LosLane_8
-            }
-
-        case XCVR_RXPOWER_LANE_1:
-            if (test_if_blank(xcvrInfo.RxPowerLane_1)){
-                xcvrState.RxPowerLane_1 = &xcvrInfo.RxPowerLane_1
-            }
-        case XCVR_RXPOWER_LANE_2:
-            if (test_if_blank(xcvrInfo.RxPowerLane_2)){
-                xcvrState.RxPowerLane_2 = &xcvrInfo.RxPowerLane_2
-            }
-        case XCVR_RXPOWER_LANE_3:
-            if (test_if_blank(xcvrInfo.RxPowerLane_3)){
-                xcvrState.RxPowerLane_3 = &xcvrInfo.RxPowerLane_3
-            }
-        case XCVR_RXPOWER_LANE_4:
-            if (test_if_blank(xcvrInfo.RxPowerLane_4)){
-                xcvrState.RxPowerLane_4 = &xcvrInfo.RxPowerLane_4
-            }
-        case XCVR_RXPOWER_LANE_5:
-            if (test_if_blank(xcvrInfo.RxPowerLane_5)){
-                xcvrState.RxPowerLane_5 = &xcvrInfo.RxPowerLane_5
-            }
-        case XCVR_RXPOWER_LANE_6:
-            if (test_if_blank(xcvrInfo.RxPowerLane_6)){
-                xcvrState.RxPowerLane_6 = &xcvrInfo.RxPowerLane_6
-            }
-        case XCVR_RXPOWER_LANE_7:
-            if (test_if_blank(xcvrInfo.RxPowerLane_7)){
-                xcvrState.RxPowerLane_7 = &xcvrInfo.RxPowerLane_7
-            }
-        case XCVR_RXPOWER_LANE_8:
-            if (test_if_blank(xcvrInfo.RxPowerLane_8)){
-                xcvrState.RxPowerLane_8 = &xcvrInfo.RxPowerLane_8
-            }
-
-        case XCVR_TXBIAS_LANE_1:
-            if (test_if_blank(xcvrInfo.TxBiasLane_1)){
-                xcvrState.TxBiasLane_1  = &xcvrInfo.TxBiasLane_1
-            }
-        case XCVR_TXBIAS_LANE_2:
-            if (test_if_blank(xcvrInfo.TxBiasLane_2)){
-                xcvrState.TxBiasLane_2  = &xcvrInfo.TxBiasLane_2
-            }
-        case XCVR_TXBIAS_LANE_3:
-            if (test_if_blank(xcvrInfo.TxBiasLane_3)){
-                xcvrState.TxBiasLane_3  = &xcvrInfo.TxBiasLane_3
-            }
-        case XCVR_TXBIAS_LANE_4:
-            if (test_if_blank(xcvrInfo.TxBiasLane_4)){
-                xcvrState.TxBiasLane_4  = &xcvrInfo.TxBiasLane_4
-            }
-        case XCVR_TXBIAS_LANE_5:
-            if (test_if_blank(xcvrInfo.TxBiasLane_5)){
-                xcvrState.TxBiasLane_5  = &xcvrInfo.TxBiasLane_5
-            }
-        case XCVR_TXBIAS_LANE_6:
-            if (test_if_blank(xcvrInfo.TxBiasLane_6)){
-                xcvrState.TxBiasLane_6  = &xcvrInfo.TxBiasLane_6
-            }
-        case XCVR_TXBIAS_LANE_7:
-            if (test_if_blank(xcvrInfo.TxBiasLane_7)){
-                xcvrState.TxBiasLane_7  = &xcvrInfo.TxBiasLane_7
-            }
-        case XCVR_TXBIAS_LANE_8:
-            if (test_if_blank(xcvrInfo.TxBiasLane_8)){
-                xcvrState.TxBiasLane_8  = &xcvrInfo.TxBiasLane_8
-            }
-
-        case XCVR_TXPOWER_LANE_1:
-            if (test_if_blank(xcvrInfo.TxPowerLane_1)){
-                xcvrState.TxPowerLane_1 = &xcvrInfo.TxPowerLane_1
-            }
-        case XCVR_TXPOWER_LANE_2:
-            if (test_if_blank(xcvrInfo.TxPowerLane_2)){
-                xcvrState.TxPowerLane_2 = &xcvrInfo.TxPowerLane_2
-            }
-        case XCVR_TXPOWER_LANE_3:
-            if (test_if_blank(xcvrInfo.TxPowerLane_3)){
-                xcvrState.TxPowerLane_3 = &xcvrInfo.TxPowerLane_3
-            }
-        case XCVR_TXPOWER_LANE_4:
-            if (test_if_blank(xcvrInfo.TxPowerLane_4)){
-                xcvrState.TxPowerLane_4 = &xcvrInfo.TxPowerLane_4
-            }
-        case XCVR_TXPOWER_LANE_5:
-            if (test_if_blank(xcvrInfo.TxPowerLane_5)){
-                xcvrState.TxPowerLane_5 = &xcvrInfo.TxPowerLane_5
-            }
-        case XCVR_TXPOWER_LANE_6:
-            if (test_if_blank(xcvrInfo.TxPowerLane_6)){
-                xcvrState.TxPowerLane_6 = &xcvrInfo.TxPowerLane_6
-            }
-        case XCVR_TXPOWER_LANE_7:
-            if (test_if_blank(xcvrInfo.TxPowerLane_7)){
-                xcvrState.TxPowerLane_7 = &xcvrInfo.TxPowerLane_7
-            }
-        case XCVR_TXPOWER_LANE_8:
-            if (test_if_blank(xcvrInfo.TxPowerLane_8)){
-                xcvrState.TxPowerLane_8 = &xcvrInfo.TxPowerLane_8
-            }
-
-
-
-
         /*
             Pending YANG updates
 
@@ -2907,7 +2792,7 @@ func fillSysXcvrInfo (xcvrCom *ocbinds.OpenconfigPlatform_Components_Component,
 
 func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
 
-    /* log.Info("Preparing dB for XCVR info"); */
+    /* log.Info("Preparing DB for XCVR info"); */
 
     var err error
     log.Info("targetUriPath:", targetUriPath)
@@ -2925,9 +2810,9 @@ func getSysXcvr(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath st
     switch targetUriPath {
         case "/openconfig-platform:components/component":
             fallthrough
-        case "/openconfig-platform:components/component/transceiver":
+        case "/openconfig-platform:components/component/openconfig-platform-transceiver:transceiver":
             fallthrough
-        case "/openconfig-platform:components/component/transceiver/state":
+        case "/openconfig-platform:components/component/openconfig-platform-transceiver:transceiver/state":
             fillSysXcvrInfo(xcvrCom, xcvrId, true, targetUriPath, d)
         default:
             /* For individual components*/
@@ -2982,7 +2867,7 @@ func getSysTempFromDb(name string, d *db.DB) (TempSensor, error) {
     return tempInfo, err
 }
 
-/* This function converts the timestamp stored in the dB to the pattern accepted
+/* This function converts the timestamp stored in the DB to the pattern accepted
  * by the IETF timestamp pattern specified in the YANG model
  */
 func convertToIetfTime(time string) (string) {
@@ -2991,17 +2876,21 @@ func convertToIetfTime(time string) (string) {
     return time
 }
 
-func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component_State,
+func fillSysTempInfo (temp *ocbinds.OpenconfigPlatform_Components_Component,
                         name string, all bool, targetUriPath string, d *db.DB) (error) {
     var err error
     tempInfo, err := getSysTempFromDb(name, d)
     if err != nil {
-        log.Info("Error Getting Temp Sensor info from dB")
+        log.Info("Error Getting Temp Sensor info from DB")
         return err
     }
-    tempCom := tempState.Temperature
+
+    tempCom := temp.State.Temperature
+    tempState := temp.State
 
     if all || targetUriPath == TEMP_COMP {
+        tempState.Name = &name
+        temp.Config.Name = &name
         if tempInfo.Name != "" {
             tempState.Name = &tempInfo.Name
         }
@@ -3055,7 +2944,10 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
     }
 
     switch targetUriPath {
+    case COMP_CONFIG_NAME:
+        temp.Config.Name = &name
     case COMP_STATE_NAME:
+        tempState.Name = &name
         if tempInfo.Name != "" {
             tempState.Name = &tempInfo.Name
         }
@@ -3112,5 +3004,132 @@ func fillSysTempInfo (tempState *ocbinds.OpenconfigPlatform_Components_Component
         }
     }
 
+    return err
+}
+
+/** Get Firmware **/
+
+func validFirmwareName(name *string) bool {
+    if name == nil || *name == "" {
+        return false
+    }
+    valid, _ := regexp.MatchString("FIRMWARE [1-9][0-9]*$", *name)
+    return valid
+}
+
+func getSysFirmwareFromDb(name string, d *db.DB) (Firmware, error) {
+    var firmwareInfo Firmware
+    var err error
+
+    firmwareEntry, err := d.GetEntry(&db.TableSpec{Name: FIRMWARE_TBL}, db.Key{Comp: []string{name}})
+
+    if err != nil {
+        log.Info("Cant get entry: ", name)
+    }
+
+    firmwareInfo.Chassis = firmwareEntry.Get("chassis")
+    firmwareInfo.Description = firmwareEntry.Get("description")
+    firmwareInfo.Module = firmwareEntry.Get("module")
+    firmwareInfo.Name = firmwareEntry.Get("name")
+    firmwareInfo.Version = firmwareEntry.Get("version")
+
+    return firmwareInfo, err
+}
+
+func fillSysFirmwareInfo (firmwareCom *ocbinds.OpenconfigPlatform_Components_Component,
+                        name string, all bool, getProperty bool, targetUriPath string, d *db.DB) (error) {
+    var err error
+
+    firmwareInfo, err := getSysFirmwareFromDb(name, d)
+    if err != nil {
+        log.Info("Error Getting firmware info from DB")
+        return err
+    }
+
+    firmwareCh := firmwareCom.Chassis.State
+    firmware := firmwareCom.State
+
+    if all {
+        if getProperty {
+            if firmwareInfo.Chassis != "" {
+                firmwareCh.Name = &firmwareInfo.Chassis
+            }
+
+            if firmwareInfo.Module != "" {
+                firmwareCh.Module = &firmwareInfo.Module
+            }
+            return err
+        }
+
+        firmwareCom.Config.Name = &name
+        firmware.Name = &name
+        if firmwareInfo.Description != "" {
+            firmware.Description = &firmwareInfo.Description
+        }
+        if firmwareInfo.Name != "" {
+            firmware.Name = &firmwareInfo.Name
+        }
+        if firmwareInfo.Version != "" {
+            firmware.FirmwareVersion = &firmwareInfo.Version
+        }
+        return err
+    }
+
+    switch targetUriPath {
+    case COMP_STATE_DESCR:
+        if firmwareInfo.Description != "" {
+            firmware.Description = &firmwareInfo.Description
+        }
+    case COMP_STATE_FIRM_VER:
+        if firmwareInfo.Version != "" {
+            firmware.FirmwareVersion = &firmwareInfo.Version
+        }
+    case COMP_STATE_NAME:
+        firmware.Name = &name
+        if firmwareInfo.Name != "" {
+            firmware.Name = &firmwareInfo.Name
+        }
+    case COMP_CONFIG_NAME:
+        firmwareCom.Config.Name = &name
+    case FIRMWARE_CHASSIS_STATE_MODULE:
+        if firmwareInfo.Module != "" {
+            firmwareCh.Module = &firmwareInfo.Module
+        }
+    case FIRMWARE_CHASSIS_STATE_NAME:
+        if firmwareInfo.Chassis != "" {
+            firmwareCh.Name = &firmwareInfo.Chassis
+        }
+    }
+
+    return err
+}
+
+func getSysFirmware(pf_cpts *ocbinds.OpenconfigPlatform_Components, targetUriPath string, uri string, d *db.DB) (error) {
+
+    log.Info("Preparing DB for Firmware info");
+
+    var err error
+    log.Info("targetUriPath:", targetUriPath)
+    firmwareName := NewPathInfo(uri).Var("name")
+
+    if validFirmwareName(&firmwareName) {
+        firmwareCom := pf_cpts.Component[firmwareName]
+        if firmwareCom  == nil {
+            log.Info("Invalid Component Name")
+            return errors.New("Invalid component name")
+        }
+        ygot.BuildEmptyTree(firmwareCom)
+        ygot.BuildEmptyTree(firmwareCom.Chassis)
+        switch targetUriPath {
+        case COMP:
+            fallthrough
+        case FIRMWARE_CHASSIS:
+            fallthrough
+        case FIRMWARE_CHASSIS_STATE:
+            fillSysFirmwareInfo(firmwareCom, firmwareName, true, true, targetUriPath, d)
+        default:
+            fillSysFirmwareInfo(firmwareCom, firmwareName, false, true, targetUriPath, d)
+        }
+    }
     return err
 }

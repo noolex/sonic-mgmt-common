@@ -741,13 +741,13 @@ func getFlowGroups(tamObj *ocbinds.OpenconfigTam_Tam, targetUriPath string, uri 
 var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     keyName := pathInfo.Var("name")
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{"ACL_RULE":{"TAM|"+keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"ACL_RULE":{"TAM|"+keyName:{}}}}
     } else {
         errStr := "Flow Group not present in request"
         log.Info("Subscribe_tam_flowgroups_xfmr: " + errStr)

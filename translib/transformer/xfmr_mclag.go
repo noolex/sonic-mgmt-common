@@ -269,9 +269,9 @@ var DbToYang_mclag_interface_subtree_xfmr SubTreeXfmrDbToYang = func(inParams Xf
 	mclagObj := getMclagRoot(inParams.ygRoot)
 	pathInfo := NewPathInfo(inParams.uri)
 
-	log.Info("DbToYang_mclag_interface_subtree_xfmr: ", data, inParams.ygRoot)
+	log.Infof("DbToYang_mclag_interface_subtree_xfmr:%s template:%s", data, pathInfo.Template)
 
-	if isSubtreeRequest(pathInfo.Template, "/openconfig-mclag:mclag/interfaces/interface{name}") {
+	if isSubtreeRequest(pathInfo.Template, "/openconfig-mclag:mclag/interfaces/interface{}") {
 		mclagIntfKeys, _ := inParams.d.GetKeys(&db.TableSpec{Name: "MCLAG_INTERFACE"})
 		if len(mclagIntfKeys) > 0 {
 			for _, intfKey := range mclagIntfKeys {
@@ -429,7 +429,7 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
       }
 
      
-     result.dbDataMap = make(RedisDbMap)
+     result.dbDataMap = make(RedisDbSubscribeMap)
      if (domainId == "") { 
          log.Infof("Subscribe_mclag_interface_subtree_xfmr resouce not found for ifName:%s ", ifName)
          return result, tlerr.NotFound("Resource not found")
@@ -437,11 +437,11 @@ var Subscribe_mclag_interface_subtree_xfmr SubTreeXfmrSubscribe = func(inParams 
 
      mclagIntfKey := domainId + "|" + ifName
      log.Infof("Subscribe_mclag_interface_subtree_xfmr path:%s; template:%s targetUriPath:%s key:%s", pathInfo.Path, pathInfo.Template, targetUriPath, mclagIntfKey)
-     result.dbDataMap = RedisDbMap{db.ConfigDB:{"MCLAG_INTERFACE":{mclagIntfKey:{}}}} // tablename & table-idx for the inParams.uri
+     result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"MCLAG_INTERFACE":{mclagIntfKey:{}}}} // tablename & table-idx for the inParams.uri
 
      //result.needCache = true
      //Onchange notification subscription
-     //result.onChange = true
+     //result.onChange = OnchangeEnable
      //result.nOpts = new(notificationOpts)
      //result.nOpts.mInterval = 0
      //result.nOpts.pType = OnChange

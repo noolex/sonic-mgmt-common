@@ -5,6 +5,7 @@ import (
         log "github.com/golang/glog"
         "github.com/openconfig/ygot/ygot"
         "strings"
+        "strconv"
         "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
         "github.com/Azure/sonic-mgmt-common/translib/db"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -52,8 +53,9 @@ var NwInstTblNameMapWithName = map[string]string {
     "Vlan": "VLAN",
 }
 
-var intf_tbl_name_list = [4]string{"INTERFACE", "LOOPBACK_INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE"}
+var intf_tbl_name_list = [5]string{"INTERFACE", "LOOPBACK_INTERFACE", "VLAN_INTERFACE", "PORTCHANNEL_INTERFACE", "VLAN_SUB_INTERFACE"}
 
+var subintf_tbl_non_L3_keys = [5]string{"vlan", "parent", "admin_status", "description", "mtu"}
 /*
  * Get internal network instance name based on the incoming network instance name
  * and use it for top level table map lookup
@@ -209,6 +211,22 @@ func ValidateIntfNotL3ConfigedOtherThanVrf(d *db.DB, tblName string, intfName st
                 *otherValueExist = true
             }
 
+            /* Specific case for sub-interfaces */
+            if strings.Contains(intfName, ".") {
+                //Following keys are not to be treated as L3 config
+                is_non_l3_key := false
+                for _, item := range subintf_tbl_non_L3_keys {
+                    if item == key {
+                        is_non_l3_key = true
+                        break
+                    }
+                } 
+                if is_non_l3_key {
+                    continue
+                }
+            }
+
+            /* common case for all types of interface */
             if (key == "NULL" || key == "vrf_name") {
                 continue
             } else {
@@ -805,7 +823,8 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
 
         /* get the name at the top network-instance table level, this is the key */
         keyName := pathInfo.Var("name")
-        intfId := pathInfo.Var("id")
+        uiintfId := pathInfo.Var("id")
+        intfId := *utils.GetNativeNameFromUIName(&uiintfId)
 
         if (keyName == "") {
                 log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: no intf binding for VRF ", keyName)
@@ -912,7 +931,7 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
                 return res_map, err
         }
 
-        intf_type, _, err := getIntfTypeByName(intfId)
+        intf_type, _, err := getIntfTypeByName(uiintfId)
         if err != nil {
                 log.Info("YangToDb_network_instance_interface_binding_subtree_xfmr: unknown intf type for ", intfId)
         }
@@ -1043,6 +1062,9 @@ var YangToDb_network_instance_interface_binding_subtree_xfmr SubTreeXfmrYangToDb
         if err != nil {
             return res_map, err
         }
+        if (intf_tbl_name == "VLAN_SUB_INTERFACE") {
+            fieldOtherThanVrf = true
+        }
 
         if checkPimCfgExistOnIntf(inParams.d, *ifName) {
             errStr = "Interface " + intfId + " has PIM configurations"
@@ -1140,7 +1162,6 @@ func getVrfIntfMapping(inParams *XfmrParams) error {
             if vrfName_str == "" {
                 vrfName_str = "default"
             }
-
             vrfIntfMap[vrfName_str] = append(vrfIntfMap[vrfName_str], intfKeys[i].Comp[0])
         }
     }
@@ -1175,6 +1196,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
     if ((niName != "") && (ifUIName != "")) {
 
 	ifNativeName := utils.GetNativeNameFromUIName(&ifUIName)
+
 	var present = false
 	/* Check if the given interface is member of the input network instance */
 	for _, intfName := range vrfIntfMap.(map[string][]string)[niName] {
@@ -1239,6 +1261,20 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 
 	    intfData.Config.Id = intfData.Id
 	    intfData.State.Id = intfData.Id
+                                if strings.Contains(*uiName, ".") {
+                                    intfsplit := strings.Split(*uiName, ".")
+                                    //subintf
+                                    intfData.Config.Interface = &intfsplit[0]
+                                    intfData.State.Interface = &intfsplit[0]
+                                    i64, _ := strconv.ParseUint(intfsplit[1], 10, 32)
+                                    i32 := uint32(i64)
+                                    intfData.Config.Subinterface = &i32
+                                    intfData.State.Subinterface = &i32
+                                } else {
+                                    final := *uiName
+                                    intfData.Config.Interface = &final
+                                    intfData.State.Interface = &final
+                                }
 
 	}
     }
@@ -1249,7 +1285,7 @@ var DbToYang_network_instance_interface_binding_subtree_xfmr SubTreeXfmrDbToYang
 var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
         var err error
         var result XfmrSubscOutParams
-        result.dbDataMap = make(RedisDbMap)
+        result.dbDataMap = make(RedisDbSubscribeMap)
 
         pathInfo := NewPathInfo(inParams.uri)
 
@@ -1257,12 +1293,13 @@ var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams Xf
 
         /* get the name at the top network-instance table level, this is the key */
         keyName := pathInfo.Var("name")
-        intfId := pathInfo.Var("id")
+        uiIntfId := pathInfo.Var("id")
+        intfId := *utils.GetNativeNameFromUIName(&uiIntfId)
 
         log.Infof("Subscribe_network_instance_interface_binding_subtree_xfmr: targetUri %v key %v intfId %v", targetUriPath, keyName, intfId)
 
         if (intfId != "") {
-                intf_type, _, err := getIntfTypeByName(intfId)
+                intf_type, _, err := getIntfTypeByName(uiIntfId)
                 if err != nil {
                         log.Info("Subscribe_network_instance_interface_binding_subtree_xfmr: unknown intf type for  ", intfId)
                 }
@@ -1271,10 +1308,10 @@ var Subscribe_network_instance_interface_binding_subtree_xfmr = func(inParams Xf
 
                 port_tbl_name, _ := getPortTableNameByDBId(intTbl, 4)
 
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{port_tbl_name:{intfId:{}}}}   // tablename & table-idx for the inParams.uri
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{port_tbl_name:{intfId:{}}}}   // tablename & table-idx for the inParams.uri
         } else {
                 /* for GET at VRF level, interface name is not given */
-                result.dbDataMap = RedisDbMap{db.ConfigDB:{"VRF":{keyName:{}}}}
+                result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"VRF":{keyName:{}}}}
         }
 
         result.needCache = true

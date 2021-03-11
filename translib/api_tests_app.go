@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
@@ -84,8 +85,13 @@ func (app *apiTests) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return nil
 }
 
-func (app *apiTests) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	return nil, nil, nil
+func (app *apiTests) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	return nil, nil
+}
+
+func (app *apiTests) processSubscribe(req *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
+	return resp, nil
 }
 
 func (app *apiTests) processCreate(d *db.DB) (SetResponse, error) {
@@ -104,7 +110,7 @@ func (app *apiTests) processDelete(d *db.DB) (SetResponse, error) {
 	return app.processSet()
 }
 
-func (app *apiTests) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *apiTests) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var gr GetResponse
 	err := app.getError()
 	if err != nil {

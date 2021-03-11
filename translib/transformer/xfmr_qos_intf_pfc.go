@@ -651,12 +651,12 @@ var Subscribe_qos_intf_pfc_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscI
     if_name := *dbIfName
     log.Info("Subscribe_qos_intf_pfc_xfmr: ", inParams.uri, " if_name ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{"PORT_QOS_MAP":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"PORT_QOS_MAP":{if_name:{}}}}   // tablename & table-idx for the inParams.uri
     result.isVirtualTbl = true
     result.needCache = true
-    result.onChange = true
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

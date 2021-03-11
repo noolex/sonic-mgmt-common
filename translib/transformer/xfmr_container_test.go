@@ -1046,8 +1046,6 @@ func Test_Container_Default_Value_Fill_NoMappingToRedis_Replace2(t *testing.T) {
         unloadConfigDB(rclient, cleanuptbl)
 }
 
-
-
 func Test_Container_Default_Value_Fill_NoMappingToRedis_Update(t *testing.T) {
 
 	cleanuptbl := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet32":""}}
@@ -1065,6 +1063,48 @@ func Test_Container_Default_Value_Fill_NoMappingToRedis_Update(t *testing.T) {
         t.Run("UPDATE on with Default_Value_Fill_NoMappingToRedis", processSetRequest(url, patch_payload, "PATCH", false))
         time.Sleep(1 * time.Second)
         t.Run("Verify update on container with Default_Value_Fill_NoMappingToRedis", verifyDbResult(rclient, "PORT|Ethernet32", patch_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+
+func Test_Default_Value_Fill_ValueXfmr_Update(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"mtu":"9100", "admin_status":"down","description":"desc-1"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]/subinterfaces"
+
+        fmt.Println("++++++++++++++  UPDATE/CREATE Test_Default_Value_Fill_ValueXfmr  +++++++++++++")
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	patch_payload := "{\"openconfig-interfaces:subinterfaces\":{\"subinterface\":[{\"index\":23,\"config\":{\"index\":23}}]}}"
+	patch_expected := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"admin_status":"up","parent":"Ethernet0"}}}
+
+        t.Run("UPDATE on with Default_Value_Fill_ValueXfmr", processSetRequest(url, patch_payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify update on container with Default_Value_Fill_ValueXfmr", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.23", patch_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+func Test_Default_And_Aux_Value_Fill_ValueXfmr_Replace(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":""}}
+        prereq := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"mtu":"9100", "admin_status":"down","description":"desc-1"}},
+	"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"mtu":"9100", "admin_status":"down","parent":"Ethernet0","description":"subintf-desc"}}}
+        url := "/openconfig-interfaces:interfaces/interface[name=Ethernet0]/subinterfaces/subinterface[index=23]/config"
+
+        fmt.Println("++++++++++++++  REPLACE Test_Default_And_Aux_Value_Fill_ValueXfmr  +++++++++++++")
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	replace_payload := "{\"config\":{\"index\":23,\"mtu\":9200}}"
+	replace_expected := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.23":map[string]interface{}{"admin_status":"up","parent":"Ethernet0","mtu":9200}}}
+
+        t.Run("REPLACE on with Default_And_Aux_Value_Fill_ValueXfmr", processSetRequest(url, replace_payload, "PUT", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify replace on container with Default_iand_Aux_Value_Fill_ValueXfmr", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.23", replace_expected, false))
 
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
@@ -1154,23 +1194,149 @@ func Test_Ygot_Merge_Xfmr_Infra_Get(t *testing.T) {
 /* test leafref datatype resolution for leafref with absoulte path and having leafref to leafref reference */
 // TODO: Enable when ip-helper/interface-ref yang is added to modela/yang
 /*
-func Test_Leafref_Resolve_Get(t *testing.T) {
+func Test_OC_Leafref_Resolve_Get(t *testing.T) {
 
         cleanuptbl := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":""}}
         prereq := map[string]interface{}{"UDP_BROADCAST_FORWARDING":map[string]interface{}{"Ports":map[string]interface{}{"interface":"Ethernet0", "subinterface":"10", "include_ports@", "69,53,37,137,138,49"}}}
         url := "/openconfig-ip-helper:ip-helper/interface-ref"
 
-        fmt.Println("++++++++++++++  Get Test_Leafref_Resolve  +++++++++++++")
+        fmt.Println("++++++++++++++  Get Test_OC_Leafref_Resolve  +++++++++++++")
 
         // Setup - Prerequisite
         loadConfigDB(rclient, prereq)
 
         get_expected := "{\"openconfig-ip-helper:interface-ref\":{\"config\":{\"interface\":\"Ethernet0\",\"subinterface\":10}}}"
 
-        t.Run("GET Leafref Resolve", processGetRequest(url, get_expected, false))
+        t.Run("GET OC Leafref Resolve", processGetRequest(url, get_expected, false))
 
         // Teardown
         unloadConfigDB(rclient, cleanuptbl)
+
+}
+
+*/
+/*
+// TODO: Enable when VLAN_SUB_INTERFACE_REF table is added to sonic-interface yang
+func Test_Sonic_Leafref_Resolve_Get(t *testing.T) {
+
+        cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.6":""}}
+        cleanuptbl2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.6":""}}
+        cleanuptbl3 := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":""}}
+        prereq1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.6":map[string]interface{}{"subintfidx":"6", "parent":"Ethernet0"}}}
+	prereq2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.6":map[string]interface{}{"index":"6", "admin_status":"up","vrf_name":"Vrf1","ifName":"Ethernet0"}}}
+	prereq3 := map[string]interface{}{"PORT":map[string]interface{}{"Ethernet0":map[string]interface{}{"admin_status":"up", "index":"1", "alias":"Eth1/1/1", "lanes":"49,50,51,52","speed":"100000"}}}
+        url := "/sonic-interface:sonic-interface/VLAN_SUB_INTERFACE_REF"
+
+        fmt.Println("++++++++++++++  Get Test_Sonic_Leafref_Resolve  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+        loadConfigDB(rclient, prereq3)
+
+        get_expected := "{\"sonic-interface:VLAN_SUB_INTERFACE_REF\":{\"VLAN_SUB_INTERFACE_REF_LIST\":[{\"parent\":\"Ethernet0\",\"subifid\":\"Ethernet0.6\"}]}}"
+
+        t.Run("GET Sonic Leafref Resolve", processGetRequest(url, get_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+        unloadConfigDB(rclient, cleanuptbl3)
+
+}
+
+// TODO: Enable when VLAN_SUB_INTERFACE_IPADDR_LIST/id is changed to leafref in sonic-interface yang
+func Test_Sonic_Leafref_WithinTable_Resolve_Get(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20|20.1.1.1/24":""}}
+        cleanuptbl2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20":""}}
+	prereq1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20|20.1.1.1/24":map[string]interface{}{"NULL":"NULL"}}}
+        prereq2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20":map[string]interface{}{"NULL":"NULL"}}}
+        url := "/sonic-interface:sonic-interface/VLAN_SUB_INTERFACE"
+
+        fmt.Println("++++++++++++++  Get Test_Sonic_Leafref_Resolve_Within_Same_Table  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        get_expected := "{\"sonic-interface:VLAN_SUB_INTERFACE\":{\"VLAN_SUB_INTERFACE_IPADDR_LIST\":[{\"id\":\"Ethernet0.20\",\"ip_prefix\":\"20.1.1.1/24\"}],\"VLAN_SUB_INTERFACE_LIST\":[{\"id\":\"Ethernet0.20\"}]}}"
+
+        t.Run("GET Sonic Leafref Resolve", processGetRequest(url, get_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+
+}
+
+// TODO: Enable when VLAN_SUB_INTERFACE_IPADDR_LIST/id is changed to leafref in sonic-interface yang
+func Test_Leafref_WithinSonicTable_Resolve_Patch(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20|0.1.1.1/24":""}}
+        cleanuptbl2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20":""}}
+	expected1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20":map[string]interface{}{"NULL":"NULL"}}}
+	expected2 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.20|0.1.1.1/24":map[string]interface{}{"NULL":"NULL"}}}
+        url := "/openconfig-interfaces:interfaces/interface=Ethernet0/subinterfaces/subinterface=20/openconfig-if-ip:ipv4/addresses"
+
+        fmt.Println("++++++++++++++  Patch Test_Leafref_Resolve_Within_Same_Sonic_Table  +++++++++++++")
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+
+	payload := "{\"openconfig-if-ip:addresses\": {\"address\": [{\"ip\": \"20.1.1.1\", \"openconfig-if-ip:config\": {\"ip\": \"20.1.1.1\", \"prefix-length\": 24}}]}}"
+
+	t.Run("RFC - PATCH on container for sonic table with leafref within same table", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+        t.Run("RFC - Verify PATCH on container for sonic table with leafref within same table", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.20", expected1, false))
+        t.Run("RFC - Verify PATCH on container for sonic table with leafref within same table", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.20|20.1.1.1/24", expected2, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
+
+}
+
+*/
+/*
+//Enable when new leafref relation has been introduced to VLAN_SUB_INTERFACE/VLAN_SUB_INTERFACE_LIST/id in sonic-interface.yang 
+func Test_Delete_WithinSonicDBKey_Ordering_Patch(t *testing.T) {
+
+	cleanuptbl1 := map[string]interface{}{"VLAN_SUB_INTERFACE":map[string]interface{}{"Eth0.10|1010::1/64":"", "Eth0.10|10.10.1.1/24":"", "Eth0.10|10.10.2.1/24":"", "Eth0.10":""}}
+	cleanuptbl2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0|10.0.0.1/24":"", "Ethernet0|10::1/64":"", "Ethernet0":""}}
+
+        prereq1 := map[string]interface{}{"VLAN_SUB_INTERFACE_REF":map[string]interface{}{"Eth0.10":map[string]interface{}{"parent":"Ethernet0"},"Eth0.10|1010::1/64":map[string]interface{}{"NULL":"NULL"},"Eth0.10|10.10.1.1/24":map[string]interface{}{"NULL":"NULL"},"Eth0.10|10.10.2.1/24":map[string]interface{}{"NULL":"NULL"}}}
+	prereq2 := map[string]interface{}{"INTERFACE":map[string]interface{}{"Ethernet0":map[string]interface{}{"NULL":"NULL"},"Ethernet0|10::1/64":map[string]interface{}{"NULL":"NULL"},"Ethernet0|10.0.0.1/24":map[string]interface{}{"NULL":"NULL"}}}
+
+
+        url := "/openconfig-platform:components"
+
+	delete_expected := make(map[string]interface{})
+
+        fmt.Println("++++++++++++++  Patch Verify SubOpMap Delete ordering for sonic DbKeys  +++++++++++++")
+
+        // Setup - Prerequisite
+        loadConfigDB(rclient, prereq1)
+        loadConfigDB(rclient, prereq2)
+
+        payload := "{\"openconfig-platform:components\": {\"component\": [{\"name\": \"1/1\", \"port\": {\"openconfig-platform-port:breakout-mode\": {\"config\": {\"num-channels\": 4, \"channel-speed\": \"SPEED_25GB\"}}}}]}}"
+
+        t.Run("Patch Verify SubOpMap Delete ordering for sonic DbKeys", processSetRequest(url, payload, "PATCH", false))
+        time.Sleep(1 * time.Second)
+
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|1010::1/64", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|10.10.1.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10|10.10.2.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "VLAN_SUB_INTERFACE|Eth0.10", delete_expected, false))
+
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0|10.0.0.1/24", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0|10::1/64", delete_expected, false))
+        t.Run("Verify SubOpMap Delete ordering for sonic DbKeys", verifyDbResult(rclient, "INTERFACE|Ethernet0", delete_expected, false))
+
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl1)
+        unloadConfigDB(rclient, cleanuptbl2)
 
 }
 */

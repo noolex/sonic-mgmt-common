@@ -1153,13 +1153,13 @@ var Subscribe_qos_get_one_intf_all_q_counters_xfmr SubTreeXfmrSubscribe = func (
     if_name := *dbIfName
     log.Info("Subscribe_qos_get_one_intf_all_q_counters_xfmr: ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_qos_get_one_intf_all_q_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
     result.isVirtualTbl = true
     result.needCache = true
-    result.onChange = false
+    result.onChange = OnchangeDisable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1414,13 +1414,13 @@ var Subscribe_qos_get_one_intf_all_pg_counters_xfmr SubTreeXfmrSubscribe = func 
     if_name := *dbIfName
     log.Info("Subscribe_qos_get_one_intf_all_pg_counters_xfmr: ", if_name)
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     log.Infof("Subscribe_qos_get_one_intf_all_pg_counters_xfmr path:%s; template:%s targetUriPath:%s key:%s",
               pathInfo.Path, pathInfo.Template, targetUriPath, if_name)
 
     result.isVirtualTbl = true
     result.needCache = true
-    result.onChange = false
+    result.onChange = OnchangeDisable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange
@@ -1786,7 +1786,10 @@ var qos_intf_table_xfmr TableXfmrFunc = func (inParams XfmrParams) ([]string, er
         if log.V(3) {
             log.Info("qos_intf_table_xfmr - intf_table_xfmr Intf key is present, curr DB ", inParams.curDb)
         }
-        if strings.HasPrefix(*dbifName, "Eth") {
+
+        if utils.IsIntfSubInterface(dbifName) {
+            tbl_name = "VLAN_SUB_INTERFACE"
+        } else if strings.HasPrefix(*dbifName, "Eth") {
             tbl_name = "PORT"
         } else if strings.HasPrefix(*dbifName, "CPU") {
             tbl_name = "QOS_PORT"
@@ -1876,10 +1879,9 @@ var YangToDb_qos_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (
 var DbToYang_qos_intf_tbl_key_xfmr  KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
 
-    ifName := utils.GetUINameFromNativeName(&inParams.key)
-    res_map["interface-id"] = *ifName
+    res_map["interface-id"] = inParams.key 
     if log.V(3) {
-       log.Info("Entering DbToYang_qos_intf_tbl_key_xfmr - End ", inParams.uri, " ifName ", *ifName, " res_map ", res_map)
+       log.Info("Entering DbToYang_qos_intf_tbl_key_xfmr - End ", inParams.uri, " res_map ", res_map)
     }
     return res_map, nil
 }
@@ -1895,8 +1897,7 @@ var YangToDb_qos_intf_intf_id_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 
 var DbToYang_qos_intf_intf_id_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
-    ifName := utils.GetUINameFromNativeName(&inParams.key)
-    res_map["interface-id"] = *ifName
+    res_map["interface-id"] = inParams.key 
     return res_map, nil
 }
 
@@ -1916,10 +1917,9 @@ var YangToDb_qos_intf_intfref_intf_fld_xfmr FieldXfmrYangToDb = func(inParams Xf
 
 var DbToYang_qos_intf_intfref_intf_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
     res_map := make(map[string]interface{})
-    ifName := utils.GetUINameFromNativeName(&inParams.key)
-    res_map["interface"] = *ifName
+    res_map["interface"] = inParams.key 
     if log.V(3) {
-        log.Info("Entering DbToYang_qos_intf_intfref_intf_fld_xfmr - End ", inParams.uri, " ifName ", *ifName, " res_map ", res_map)
+        log.Info("Entering DbToYang_qos_intf_intfref_intf_fld_xfmr - End ", inParams.uri, " res_map ", res_map)
     }
     return res_map, nil
 }

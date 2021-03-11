@@ -19,7 +19,7 @@ module openconfig-switch-resource {
 
   description
     "This module contains a collection of YANG definitions for the
-    Switch Resources Management for resource like Exact Match Entries. 
+    Switch Resources Management for resource like Exact Match Entries.
     It has Global settings.";
 
   revision "2020-07-27" {
@@ -37,6 +37,10 @@ module openconfig-switch-resource {
       enum DROP_MONITOR {
         description
           "Drop Monitor Resource";
+      }
+      enum ROUTE_SCALE {
+        description
+          "Route Scale Resource";
       }
     }
     description
@@ -60,6 +64,22 @@ module openconfig-switch-resource {
 
   }
 
+  typedef route-scale-limit {
+    type enumeration {
+      enum "DEFAULT" {
+        description
+          "No route scale configured.";
+      }
+      enum "MAX" {
+        description
+          "Maximum route scale configured.";
+      }
+    }
+    description
+      "Route Scale Options";
+
+  }
+
   // grouping statements
 
   grouping switch-resource-config {
@@ -77,6 +97,12 @@ module openconfig-switch-resource {
       type flow-scale-limit;
       description
         "Drop Monitor Flow Scale  limit";
+    }
+
+    leaf routes {
+      type route-scale-limit;
+      description
+        "Route Scale limit";
     }
 
   }
@@ -100,12 +126,12 @@ module openconfig-switch-resource {
             path "../config/name";
           }
           description
-            "Key name"; 
+            "Key name";
         }
 
         container config {
           description
-            "Configuration parameters of Switch Resources"; 
+            "Configuration parameters of Switch Resources";
 
           uses switch-resource-config;
         }

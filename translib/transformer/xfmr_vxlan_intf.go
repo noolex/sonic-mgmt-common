@@ -652,21 +652,29 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
 
 				if len(tblVxlanMapKeys) > 0 {
 					log.Error("handleDeleteReq ==> returning ERROR")
-					return &res_map, tlerr.New("source-vtep-ip cannot be deleted since tunnel map (VLAN-VNI) has reference to the vxlan interface \"%s\" of the source-vtep-ip %s", vxlanIntfName, tblValList.Field["src_ip"])
+					return &res_map, tlerr.New("Please delete all VLAN VNI mappings.")
 				}
+                log.Info("handleDeleteReq ==> targetname",reqP.targetNode.Name);
+
                 if reqP.targetNode.Name == "qos-mode" {
                     //vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
                     return &res_map, tlerr.New("qos-mode cannot be deleted.")
                 } else if reqP.targetNode.Name == "src_ip" {
                     vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                } else if reqP.targetNode.Name == "primary-ip" {
+                    vxlanIntfdbV.Field["primary_ip"] = tblValList.Field["primary_ip"]
                 } else if reqP.targetNode.Name == "dscp" {
                     //vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
                     return &res_map, tlerr.New("dscp cannot be deleted.")
                 } else {
                     vxlanIntfdbV.Field["qos-mode"] = tblValList.Field["qos-mode"]
                     vxlanIntfdbV.Field["src_ip"] = tblValList.Field["src_ip"]
+                    vxlanIntfdbV.Field["primary_ip"] = tblValList.Field["primary_ip"]
                     vxlanIntfdbV.Field["dscp"] = tblValList.Field["dscp"]
+                    log.Info("handleDeleteReq ==> filling all fields");
                 }
+                log.Info("handleDeleteReq ==> vxlanIntfdbV",vxlanIntfdbV.Field);
+
                 subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
                 subOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
                 subOpMap[db.ConfigDB]["VXLAN_TUNNEL"] = make(map[string]db.Value)
@@ -675,7 +683,7 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
                 inParams.subOpDataMap[UPDATE] = &subOpMap
                 vxlanIntfConfTbl[vxlanIntfName] = vxlanIntfdbV
                 res_map["VXLAN_TUNNEL"] = vxlanIntfConfTbl
-                if reqP.targetNode.Name != "qos-mode" && reqP.targetNode.Name != "dscp" {
+                if reqP.targetNode.Name != "primary-ip" && reqP.targetNode.Name != "qos-mode" && reqP.targetNode.Name != "dscp" {
                     //evpnNvodbV.Field["source_vtep"] = vxlanIntfName
                     evpnNvoTbl["nvo1"] = evpnNvodbV
                     res_map["EVPN_NVO"] = evpnNvoTbl
@@ -707,6 +715,8 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 	vxlanIntfName := pathInfo.Var("name")
     src_ip_in := ""
     src_ip_db := ""
+    pip_in := ""
+    pip_db := ""
     qos_mode_in :=""
     qos_mode_db := ""
     dscp_in := ""
@@ -719,6 +729,9 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 
     if reqP.vxlanIntfConfigObj.SourceVtepIp != nil {
         src_ip_in = *(reqP.vxlanIntfConfigObj.SourceVtepIp)
+    }
+    if reqP.vxlanIntfConfigObj.PrimaryIp != nil {
+        pip_in = *(reqP.vxlanIntfConfigObj.PrimaryIp)
     }
     //QosMode is an enum with values 1 for "uniform" and 2 for "pipe"
     qos_mode_in_int := (reqP.vxlanIntfConfigObj.QosMode)
@@ -761,6 +774,10 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
             src_ip_db = dbv.Field["src_ip"]
             if log.V(3) {
                 log.Infof("src_ip_in: %s src_ip_db: %s",src_ip_in, src_ip_db)
+            }
+            pip_db = dbv.Field["primary_ip"]
+            if log.V(3) {
+                log.Infof("pip_in: %s pip_db: %s",pip_in, pip_db)
             }
 
             if dbv.Field["qos-mode"] != "" {
@@ -845,10 +862,18 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
                     //duplicate qos-mode is configured and dscp isn't configured
                     log.Errorf("qos-mode:%s already configured",qos_mode_in)
                     return &res_map, tlerr.New("qos-mode:%s already configured",qos_mode_in)
-                } else if (duplicate_sip && qos_mode_in == "" && !dscp_configured) {
+                } else if (duplicate_sip && qos_mode_in == "" && !dscp_configured && pip_in == pip_db) {
                     log.Errorf("source-vtep-ip:%s already configured",src_ip_in)
                     return &res_map, tlerr.New("source_vtep-ip:%s already configured",src_ip_in)
                 }
+            }
+
+            if ((pip_in != "") && (pip_in != pip_db)) {
+		            var VXLAN_TUNNEL_MAP_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_MAP"}
+					tunnelMapKeys, err := reqP.db.GetKeys(VXLAN_TUNNEL_MAP_TS)
+					if err == nil && len(tunnelMapKeys) > 0 {
+                        return &res_map, tlerr.New("Please delete all VLAN VNI mappings")
+					}
             }
 		}
 	}
@@ -856,13 +881,16 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 	var vxlanTunnelTblMap map[string]db.Value = make(map[string]db.Value)
 	var evpnNvoTblMap map[string]db.Value = make(map[string]db.Value)
 
-	if src_ip_in == "" && qos_mode_in == "" && !dscp_configured {
+	if src_ip_in == "" && pip_in == "" && qos_mode_in == "" && !dscp_configured {
 		log.Error(" =====> vxlanReqProcessor ==> handleCRUReq - ERROR ")
-		return &res_map, tlerr.InvalidArgs("Cannot configure the vxlan interface without source-vtep-ip/qos-mode/dscp; Please provide atleast one input /openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if/config/{source-vtep-ip | qos-mode | dscp}")
+		return &res_map, tlerr.InvalidArgs("Cannot configure the vxlan interface without source-vtep-ip/qos-mode/dscp; Please provide atleast one input /openconfig-interfaces:interfaces/interface/openconfig-vxlan:vxlan-if/config/{source-vtep-ip | primary-ip | qos-mode | dscp}")
 	} else {
 		dbV1 := db.Value{Field: make(map[string]string)}
         if src_ip_in != "" {
 		    dbV1.Field["src_ip"] = src_ip_in
+        }
+        if pip_in != "" {
+		    dbV1.Field["primary_ip"] = pip_in
         }
         if qos_mode_in != "" {
             dbV1.Field["qos-mode"] = qos_mode_in
@@ -873,7 +901,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
         if dscp_in != "" {
             dbV1.Field["dscp"] = dscp_in
         }
-        log.Infof("Writing to DB source_ip:%s qos_mode:%s dscp_in:%s",src_ip_in, qos_mode_in, dscp_in)
+        log.Infof("Writing to DB source_ip:%s primary_ip:%s qos_mode:%s dscp_in:%s",src_ip_in, pip_in, qos_mode_in, dscp_in)
 		vxlanTunnelTblMap[*(reqP.intfObject.Name)] = dbV1
 		dbV2 := db.Value{Field: make(map[string]string)}
 		dbV2.Field["source_vtep"] = *(reqP.intfObject.Name)
@@ -1051,11 +1079,13 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 			}
 
 			srcIpStr := dbv.Field["src_ip"]
+			pipIpStr := dbv.Field["primary_ip"]
             qosModeStr := dbv.Field["qos-mode"]
             dscpStr := dbv.Field["dscp"]
 
 			if log.V(3) {
 				log.Info("DbToYang_intf_vxlan_config_xfmr ========  srcIpStr ===> ", srcIpStr)
+				log.Info("DbToYang_intf_vxlan_config_xfmr ========  pipIpStr ===> ", pipIpStr)
 				log.Info("DbToYang_intf_vxlan_config_xfmr ========  qosModeStr ===> ", qosModeStr)
 				log.Info("DbToYang_intf_vxlan_config_xfmr ========  dscpStr ===> ", dscpStr)
 			}
@@ -1071,6 +1101,7 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.intfObject.VxlanIf.Config => ", reqP.intfObject.VxlanIf.Config)
 					}
 					reqP.intfObject.VxlanIf.Config.SourceVtepIp = &srcIpStr
+					reqP.intfObject.VxlanIf.Config.PrimaryIp = &pipIpStr
 
                     //Return appropriate enum values based on the qos-mode set in DB
                     if qosModeStr != "" {
@@ -1087,6 +1118,7 @@ var DbToYang_intf_vxlan_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPara
                     }
 					if log.V(3) {
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.SourceVtepIp ===> ", reqP.intfObject.VxlanIf.Config.SourceVtepIp)
+						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.PrimaryIp ===> ", reqP.intfObject.VxlanIf.Config.PrimaryIp)
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.QosMode ===> ", reqP.intfObject.VxlanIf.Config.QosMode)
 						log.Info("DbToYang_intf_vxlan_config_xfmr ========  reqP.vxlanIntfConfigObj.Dscp ===> ", reqP.intfObject.VxlanIf.Config.Dscp)
 					}
@@ -1798,14 +1830,14 @@ var Subscribe_vxlan_vni_instance_subtree_xfmr SubTreeXfmrSubscribe = func (inPar
 
 	var redisKey string = srcNveKeyStr + "|" + "map_" + vniIdKeyStr + "_" + niName
 
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
     if log.V(3) {
         log.Infof("Subscribe_vxlan_vni_instance_subtree_xfmr path:%s; template:%s targetUriPath:%s",
                   pathInfo.Path, pathInfo.Template, targetUriPath)
     }
 
-    result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
-    result.onChange = true
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{tblName:{redisKey:{}}}}   // tablename & table-idx for the inParams.uri
+    result.onChange = OnchangeEnable
     result.nOpts = new(notificationOpts)
     result.nOpts.mInterval = 0
     result.nOpts.pType = OnChange

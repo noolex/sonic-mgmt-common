@@ -93,6 +93,16 @@ module openconfig-rib-bgp-ext {
     }
   }
 
+  grouping rib-bgp-ext-route-bestpath-annotations-state {
+    leaf best-path {
+       type boolean;
+         description
+           "Current path was selected as the best path.";
+    }
+    description
+      "Current path was selected as the best path.";
+  }
+
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
     "oc-ni:protocols/oc-ni:protocol/" +
     "oc-ni:bgp/oc-ni:rib/oc-ni:afi-safis/" +
@@ -102,6 +112,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to the Loc-RIB for IPv4";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -113,6 +124,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to the Loc-RIB for IPv6";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -126,6 +138,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to Adj-RIB for IPv4";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   augment
@@ -153,6 +166,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to Adj-RIB for IPv4";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -166,6 +180,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to Adj-RIB for IPv6";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   augment "/oc-ni:network-instances/oc-ni:network-instance/" +
@@ -192,6 +207,7 @@ module openconfig-rib-bgp-ext {
         "Add extended annotations to Adj-RIB for IPv6";
 
       uses rib-bgp-ext-route-annotations-state;
+      uses rib-bgp-ext-route-bestpath-annotations-state;
   }
 
   grouping rib-bgp-ext-prefix-paths-top {

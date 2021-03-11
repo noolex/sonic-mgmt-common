@@ -35,6 +35,18 @@ module sonic-bgp-common {
         prefix cmn;
     }
 
+    import ietf-yang-types {
+        prefix ietf-yang;
+    }
+
+    import sonic-interface {
+        prefix sintf;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -43,6 +55,16 @@ module sonic-bgp-common {
 
     description
         "SONIC BGP common YANG attributes for Neighbors and Peer group";
+
+    revision 2021-02-01 {
+        description
+            "Added CVL check to compare strict_capability_match and override_capability.";
+    }
+
+    revision 2021-01-08 {
+        description
+            "Added support for routed vlan-sub-interface.";
+    }
 
     revision 2020-07-26 {
         description
@@ -221,6 +243,9 @@ module sonic-bgp-common {
                     path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                 }
                 type leafref {
+                    path "/sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id";
+                }
+                type leafref {
                     path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                 }
                 type leafref {
@@ -243,6 +268,7 @@ module sonic-bgp-common {
         leaf disable_ebgp_connected_route_check {
             type boolean;
             description "Connected checked disabled";
+            sonic-ext:custom-validation ValidateDisableConnectedCheck;
         }
 
         leaf enforce_first_as {
@@ -259,7 +285,7 @@ module sonic-bgp-common {
             type uint8 {
                 range 1..254;
             }
-            must "((current() = 1 and (starts-with(current()/../neighbor, 'Ethernet') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Ethernet') or starts-with(current()/../neighbor, 'PortChannel') or starts-with(current()/../neighbor, 'Vlan'))))" {
+            must "((current() = 1 and (starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))) or (not(starts-with(current()/../neighbor, 'Eth') or starts-with(current()/../neighbor, 'Po') or starts-with(current()/../neighbor, 'Vlan'))))" {
                 error-message "Hops for connected neighbor cannot exceed 1";
             }
             description "TTL";
@@ -309,6 +335,7 @@ module sonic-bgp-common {
 
         leaf strict_capability_match {
             type boolean;
+            sonic-ext:custom-validation ValidateStrictAndOverRideCapability;
             description "Strict capability negotiation match";
         }
 
@@ -549,6 +576,36 @@ module sonic-bgp-common {
             type string;
         }
 
+        leaf advertise-pip {
+            type boolean;
+            default true;
+            description
+               "Enable advertise PIP";
+        }
+
+        leaf advertise-pip-ip {
+            type inet:ipv4-address;
+            description
+               "PIP IPv4 address";
+        }
+
+        leaf advertise-pip-peer-ip {
+            must "current()/../vrf_name = 'default'" {
+                error-message "Advertise peer ip is supported only on default VRF!";
+            }
+            type inet:ipv4-address;
+            description
+               "PIP peer IPv4 address";
+        }
+
+        leaf advertise-pip-mac {
+            must "current()/../vrf_name != 'default'" {
+                error-message "Advertise peer MAC is supported only on user VRF!";
+            }
+            type ietf-yang:mac-address;
+            description
+                "PIP MAC address address to addvertise";
+        }
     }
 
     grouping sonic-bgp-af-evpn-global {

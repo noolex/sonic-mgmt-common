@@ -28,6 +28,11 @@ import (
 	"strconv"
 )
 
+const (
+  //Default MTU of interface
+  DEFAULT_MTU = "9100"
+)
+
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
 func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErrorInfo {
 
@@ -94,6 +99,20 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+func getSubInterfaceTruncatedName(longName *string) *string {
+    var truncatedName string
+
+    if strings.Contains(*longName, "Ethernet") {
+        truncatedName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+    } else if strings.Contains(*longName, "PortChannel") {
+        truncatedName = strings.Replace(*longName, "PortChannel", "Po", -1)
+    } else {
+        truncatedName = *longName
+    }
+
+    return &truncatedName
+}
+
 //ValidateMtuForPOMemberCount Custom validation for MTU configuration on PortChannel
 func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp == OP_DELETE {
@@ -115,11 +134,33 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
 				}
 
-				poMtu, hasPoMtu := poData["mtu"]
+                                portChannelMemberName := *getSubInterfaceTruncatedName(&intfName)
+                                subIntfKeys, err2 := vc.RClient.Keys("VLAN_SUB_INTERFACE|" + portChannelMemberName + ".*").Result()
+                                if err2 != nil {
+                                   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+                                }
+
+                                if len(subIntfKeys) > 0 {
+                                        return CVLErrorInfo{
+                                                ErrCode:          CVL_SEMANTIC_ERROR,
+                                                TableName:        "VLAN_SUB_INTERFACE",
+                                                Keys:             strings.Split(vc.CurCfg.Key, "|"),
+                                                ConstraintErrMsg: fmt.Sprintf("Cannot configure %s as member of %s as sub-interface is created on %s.", intfName, poName, intfName),
+                                        }
+                                }
+
+				poMtu := poData["mtu"]
+
+				// If PO MTU is not configured, choose default MTU.
+				if len(poMtu) == 0 {
+                                        poMtu = DEFAULT_MTU
+				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Setting default MTU for PO MTU=%v", poMtu)
+                                }
+
 				intfMtu := intfData["mtu"]
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateMtuForPOMemberCount: PO MTU=%v and Intf MTU=%v", poMtu, intfMtu)
 
-				if hasPoMtu && poMtu != intfMtu {
+                                if poMtu != intfMtu {
 					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member MTU not same as portchannel MTU")
 					return CVLErrorInfo{
 						ErrCode:          CVL_SEMANTIC_ERROR,
@@ -159,6 +200,22 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 								ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
 								ErrAppTag:        "speed-invalid",
 						}
+					}
+
+				}
+
+				// Check for VLAN configuration on interface being added as PO member.
+				isAccessVlanCfg := intfData["access_vlan"]
+				isTrunkVlanCfg := intfData["tagged_vlans@"]
+
+				// Prevent interfaces with VLAN configuration from being added to PO.
+				if (len(isAccessVlanCfg) > 0 || len(isTrunkVlanCfg) > 0) {
+					return CVLErrorInfo{
+							ErrCode:          CVL_SEMANTIC_ERROR,
+							TableName:        "PORT",
+							Keys:             strings.Split(vc.CurCfg.Key, "|"),
+							ConstraintErrMsg: fmt.Sprintf("Configuration not allowed as Vlan configuration exists on %s.", intfName),
+							ErrAppTag:        "member-invalid",
 					}
 				}
 			}

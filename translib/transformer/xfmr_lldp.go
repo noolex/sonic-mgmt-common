@@ -101,7 +101,7 @@ var DbToYang_suppress_tlv_adv_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
 var Subscribe_lldp_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var err error
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbMap)
+    result.dbDataMap = make(RedisDbSubscribeMap)
 
     pathInfo := NewPathInfo(inParams.uri)
     targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
@@ -110,7 +110,7 @@ var Subscribe_lldp_intf_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutPar
     log.Info("Subscribe_lldp_intf_xfmr: TargetURI: ", targetUriPath, " Key: ", keyName)
 
     if (keyName != "") {
-        result.dbDataMap = RedisDbMap{db.ApplDB:{"LLDP_PORT_TABLE":{keyName:{}}}}
+        result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{"LLDP_PORT_TABLE":{keyName:{}}}}
     } else {
         errStr := "Interface name not present in request"
         log.Info("Subscribe_unnumbered_intf_xfmr: " + errStr)
@@ -307,6 +307,7 @@ var DbToYang_lldp_intf_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) (err
 		    log.Info("init interface obj")
 		    ygot.BuildEmptyTree(intfObj)
 	    }
+
         convInternalLldpIntfOc(inParams, intfObj, ifName)
     }
 
@@ -322,9 +323,12 @@ func getLldpIntfEntry(inParams XfmrParams, isState bool, ifName string, intfObj 
 	lldpEntry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name: "LLDP_PORT"}, db.Key{Comp: []string{ifName}})
 	if err != nil {
 		log.Info("can't access LLDP_PORT table for ifName: ", ifName)
-		errStr := "Can't access LLDP_PORT table"
-		return errors.New(errStr)
 	}
+
+    lldpAppEntry, err := inParams.dbs[db.ApplDB].GetEntry(&db.TableSpec{Name: "LLDP_PORT_TABLE"}, db.Key{Comp: []string{ifName}})
+    if err != nil {
+        log.Info("getLldpIntfEntry: can't access LLDP_PORT app table for ifName: ", ifName)
+    }
 
 	if isState {
 		if intfObj.State == nil {
@@ -333,6 +337,20 @@ func getLldpIntfEntry(inParams XfmrParams, isState bool, ifName string, intfObj 
 		}
 		lldpIntfState = intfObj.State
 		ygot.BuildEmptyTree(lldpIntfState)
+
+        if lldpIntfState.Counters != nil {
+            txCnt, _ := strconv.ParseUint(lldpAppEntry.Get("tx"), 10, 32)
+            rxCnt, _ := strconv.ParseUint(lldpAppEntry.Get("rx"), 10, 32)
+            unrecogCnt, _ := strconv.ParseUint(lldpAppEntry.Get("rx_unrecognized_cnt"), 10, 32)
+            disCnt, _ := strconv.ParseUint(lldpAppEntry.Get("rx_discarded_cnt"), 10, 32)
+            ageCnt, _ := strconv.ParseUint(lldpAppEntry.Get("ageout_cnt"), 10, 32)
+
+            lldpIntfState.Counters.FrameOut = &txCnt 
+            lldpIntfState.Counters.FrameIn  = &rxCnt 
+            lldpIntfState.Counters.TlvUnknown = &unrecogCnt
+            lldpIntfState.Counters.FrameDiscard = &disCnt
+            lldpIntfState.Counters.Ageout = &ageCnt 
+        }
 	} else {
 		if intfObj.Config == nil {
 			log.Info("lldpIntfCfg == nil")
