@@ -1335,20 +1335,10 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
         return err
     }
 
-
-    vridStr := pathInfo.Var("virtual-router-id")
-    if len(vridStr) == 0 {
-        log.Info("Missing key in convertVrrpMapToOC")
-        return err
-    }
-
     if len(vrrpMap) == 0 {
         log.Info("VRRP entry not present")
         return err
     }
-
-    vrid64, err := strconv.ParseUint(vridStr, 10, 8)
-    vrid := uint8(vrid64)
 
     if validIPv4(ipB) {
         if _, ok := subIntf.Ipv4.Addresses.Address[ipB]; !ok {
@@ -1368,7 +1358,14 @@ func convertVrrpMapToOC (inParams XfmrParams, targetUriPath string, ifName strin
         return err
     }
 
-    for _, vrrpData := range vrrpMap {
+    for vrrpKeyStr, vrrpData := range vrrpMap {
+
+        vrrpKeySplitStr := strings.Split(vrrpKeyStr, "|")
+        vridStr := vrrpKeySplitStr[1]
+
+        vrid64, _ := strconv.ParseUint(vridStr, 10, 8)
+        vrid := uint8(vrid64)
+        log.Info("VRID", vrid)
 
         if v4Flag {
 
@@ -1766,20 +1763,10 @@ func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName s
         return err
     }
 
-
-    vridStr := pathInfo.Var("virtual-router-id")
-    if len(vridStr) == 0 {
-        log.Info("Missing key in convertVrrpMapToVlanOC")
-        return err
-    }
-
     if len(vrrpMap) == 0 {
         log.Info("VRRP entry not present")
         return err
     }
-
-    vrid64, err := strconv.ParseUint(vridStr, 10, 8)
-    vrid := uint8(vrid64)
 
     if validIPv4(ipB) {
         if _, ok := subIntf.Ipv4.Addresses.Address[ipB]; !ok {
@@ -1799,7 +1786,14 @@ func convertVrrpMapToVlanOC (inParams XfmrParams, targetUriPath string, ifName s
         return err
     }
 
-    for _, vrrpData := range vrrpMap {
+    for vrrpKeyStr, vrrpData := range vrrpMap {
+
+        vrrpKeySplitStr := strings.Split(vrrpKeyStr, "|")
+        vridStr := vrrpKeySplitStr[1]
+
+        vrid64, _ := strconv.ParseUint(vridStr, 10, 8)
+        vrid := uint8(vrid64)
+        log.Info("VRID", vrid)
 
         if v4Flag {
 
