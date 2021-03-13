@@ -1363,6 +1363,9 @@ func (d *DB) performWatch(w []WatchKeys, tss []*TableSpec) error {
 	}
 
 	// Issue the WATCH
+	if glog.V(4) {
+		glog.Info("performWatch: Do: ", args)
+	}
 	_, e = d.client.Do(args...).Result()
 
 	if e != nil {
@@ -1410,6 +1413,9 @@ func (d *DB) CommitTx() error {
 	}
 
 	// Issue MULTI
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: MULTI")
+	}
 	_, e = d.client.Do("MULTI").Result()
 
 	if e != nil {
@@ -1482,12 +1488,19 @@ func (d *DB) CommitTx() error {
 
 	// Flag the Tables as updated.
 	for ts := range tsmap {
+		if glog.V(4) {
+			glog.Info("CommitTx: Do: SET ", d.ts2redisUpdated(&ts), " 1")
+		}
 		_, e = d.client.Do("SET", d.ts2redisUpdated(&ts), "1").Result()
 		if e != nil {
 			glog.Warning("CommitTx: Do: SET ",
 				d.ts2redisUpdated(&ts), " 1: e: ",
 				e.Error())
 		}
+	}
+
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: SET ", d.ts2redisUpdated(&TableSpec{Name: "*"}), " 1")
 	}
 	_, e = d.client.Do("SET", d.ts2redisUpdated(&TableSpec{Name: "*"}),
 		"1").Result()
@@ -1497,6 +1510,9 @@ func (d *DB) CommitTx() error {
 	}
 
 	// Issue EXEC
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: EXEC")
+	}
 	_, e = d.client.Do("EXEC").Result()
 
 	if e != nil {
@@ -1554,6 +1570,9 @@ func (d *DB) AbortTx() error {
 	}
 
 	// Issue UNWATCH
+	if glog.V(4) {
+		glog.Info("AbortTx: Do: UNWATCH")
+	}
 	_, e = d.client.Do("UNWATCH").Result()
 
 	if e != nil {

@@ -57,6 +57,10 @@ type Stats struct {
 	GetMapHits              uint `json:"get-map-hits"`
 	GetMapAllHits           uint `json:"get-map-all-hits"`
 
+	NewScanCursorHits       uint `json:"new-scan-cursor-hits"`
+	DeleteScanCursorHits    uint `json:"delete-scan-cursor-hits"`
+	GetNextKeysHits         uint `json:"get-next-keys-hits"`
+
 		// Cache Statistics
 
 	GetEntryCacheHits       uint `json:"get-entry-cache-hits"`
@@ -72,12 +76,14 @@ type Stats struct {
 	GetKeysPatternTime      time.Duration `json:"get-keys-pattern-time"`
 	GetMapTime              time.Duration `json:"get-map-time"`
 	GetMapAllTime           time.Duration `json:"get-map-all-time"`
+	GetNextKeysTime         time.Duration `json:"get-next-keys-time"`
 
 	GetEntryPeak            time.Duration `json:"get-entry-peak-time"`
 	GetKeysPeak             time.Duration `json:"get-keys-peak-time"`
 	GetKeysPatternPeak      time.Duration `json:"get-keys-pattern-peak-time"`
 	GetMapPeak              time.Duration `json:"get-map-peak-time"`
 	GetMapAllPeak           time.Duration `json:"get-map-all-peak-time"`
+	GetNextKeysPeak         time.Duration `json:"get-next-keys-peak-time"`
 
 }
 
@@ -334,6 +340,10 @@ func (stats *Stats) updateStats(connStats *Stats) (error) {
 		stats.GetMapHits += connStats.GetMapHits
 		stats.GetMapAllHits += connStats.GetMapAllHits
 
+		stats.NewScanCursorHits += connStats.NewScanCursorHits
+		stats.DeleteScanCursorHits += connStats.DeleteScanCursorHits
+		stats.GetNextKeysHits += connStats.GetNextKeysHits
+
 		stats.GetEntryCacheHits += connStats.GetEntryCacheHits
 		stats.GetKeysCacheHits += connStats.GetKeysCacheHits
 		stats.GetKeysPatternCacheHits += connStats.GetKeysPatternCacheHits
@@ -352,6 +362,7 @@ func (stats *Stats) updateStats(connStats *Stats) (error) {
 			stats.GetKeysPatternTime += connStats.GetKeysPatternTime
 			stats.GetMapTime += connStats.GetMapTime
 			stats.GetMapAllTime += connStats.GetMapAllTime
+			stats.GetNextKeysTime += connStats.GetNextKeysTime
 
 			if connStats.GetEntryPeak > stats.GetEntryPeak {
 				stats.GetEntryPeak = connStats.GetEntryPeak
@@ -367,6 +378,9 @@ func (stats *Stats) updateStats(connStats *Stats) (error) {
 			}
 			if connStats.GetMapAllPeak > stats.GetMapAllPeak {
 				stats.GetMapAllPeak = connStats.GetMapAllPeak
+			}
+			if connStats.GetNextKeysPeak > stats.GetNextKeysPeak {
+				stats.GetNextKeysPeak = connStats.GetNextKeysPeak
 			}
 
 		}
