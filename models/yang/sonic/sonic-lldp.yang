@@ -11,6 +11,10 @@ module sonic-lldp {
         prefix sonic-ext;
     }
 
+    import ietf-yang-types {
+        prefix ietf-yang;
+    }
+
     organization
         "SONiC";
 
@@ -122,6 +126,53 @@ module sonic-lldp {
                 }
 
                 uses lldp_mode_config;
+            }
+        }
+
+        container LLDP_PORT_TABLE {
+            config false;
+
+            list LLDP_PORT_TABLE_LIST {
+                sonic-ext:db-name "APPL_DB";
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                    description
+                        "Reference of port on which LLDP is configured.";
+                }
+
+                leaf rx {
+                    type ietf-yang:counter64;
+                    description
+                        "The number of lldp frames received";
+                }
+
+                leaf tx {
+                    type ietf-yang:counter64;
+                    description
+                        "The number of lldp frames transmitted out";
+                }
+
+                leaf rx_discarded_cnt {
+                    type ietf-yang:counter64;
+                    description
+                        "The number of lldp frames received and discarded";
+                }
+
+                leaf rx_unrecognized_cnt {
+                    type ietf-yang:counter64;
+                    description
+                        "The number of frames received with unknown TLV";
+                }
+
+                leaf ageout_cnt {
+                    type ietf-yang:counter64;
+                    description
+                        "Indicates number of times neighbor aged out";
+                }
             }
         }
     }
