@@ -680,7 +680,13 @@ var DbToYang_route_map_bgp_action_set_community SubTreeXfmrDbToYang = func (inPa
        }
 
        rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
-       rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+       if rtStmtActionCommObj.Inline.State == nil {
+           log.Info("rtStmtActionCommObj.Inline.State is empty")
+       } else if rtStmtActionCommObj.Inline.State.Communities == nil {
+           log.Info("rtStmtActionCommObj.Inline.State.Communities is empty")
+       } else {
+           rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+       }
     } else {
        communityRef, ok := rtMapInst.Field["set_community_ref"]
        log.Info("DbToYang_route_map_bgp_action_set_community reference: ", communityRef)
@@ -938,7 +944,13 @@ var DbToYang_route_map_bgp_action_set_ext_community SubTreeXfmrDbToYang = func (
            }
        }
        rtStmtActionCommObj.Inline.Config.Communities = CfgCommunities
-       rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+       if rtStmtActionCommObj.Inline.State == nil {
+           log.Info("rtStmtActionCommObj.Inline.State is empty")
+       } else if rtStmtActionCommObj.Inline.State.Communities == nil {
+           log.Info("rtStmtActionCommObj.Inline.State.Communities is empty")
+       } else {
+           rtStmtActionCommObj.Inline.State.Communities = StateCommunities
+       }
     } else {
        communityRef, ok := rtMapInst.Field["set_ext_community_ref"]
        log.Info("DbToYang_route_map_bgp_action_set_ext_community reference value: ", communityRef)
@@ -1009,21 +1021,24 @@ var YangToDb_route_map_set_med_xfmr FieldXfmrYangToDb = func(inParams XfmrParams
 }
 
 var DbToYangPath_route_map_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
-    log.Info("DbToYangPath_route_map_path_xfmr params: ", params)
-
-    //params.tableName - ROUTE_MAP_SET
+    //params.tableName - ROUTE_MAP_SET or ROUTE_MAP
     //params.tableKey - "name"
+
+    log.Info("DbToYangPath_route_map_path_xfmr params: ", params)
+    for i, s := range params.tblKeyComp {
+        log.Info("DbToYangPath_route_map_path_xfmr: params.tblKeyComp[", i, "]: ",  s)
+    }
 
     rpRoot := "/openconfig-routing-policy:routing-policy/policy-definitions/policy-definition"
     spRoot := rpRoot + "/statements/statement"
 
     params.ygPathKeys[rpRoot + "/name"] = params.tblKeyComp[0]
-    if params.tblName == "ROUTE_MAP" {
+    if params.tblName == "ROUTE_MAP" && len(params.tblKeyComp) > 1 {
         log.Info("DbToYangPath_route_map_path_xfmr second key is provided: ", params.tblKeyComp[1])
         params.ygPathKeys[spRoot + "/name"] = params.tblKeyComp[1]
     }
 
-	log.Info("DbToYangPath_route_map_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+    log.Info("DbToYangPath_route_map_path_xfmr: params.ygPathKeys: ", params.ygPathKeys)
 
     return nil
 }
