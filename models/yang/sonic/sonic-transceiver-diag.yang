@@ -1,0 +1,227 @@
+module sonic-transceiver-diag {
+    namespace "http://github.com/Azure/sonic-transceiver-diag";
+    prefix sxcvrdiag;
+
+    import sonic-port {
+        prefix prt;
+    }
+
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
+    organization
+        "SONiC";
+
+    contact
+        "SONiC";
+
+    description
+        "SONiC Transceiver Diagnostic Information";
+
+    revision 2020-06-10 {
+        description
+            "Initial revision.";
+    }
+
+    container sonic-transceiver-diag {
+
+        container TRANSCEIVER_DIAG {
+            sonic-ext:db-name "CONFIG_DB";
+            list TRANSCEIVER_DIAG_LIST {
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                }
+                leaf lb_media_input_enabled {
+                    type string;
+                    description "Line/Media side input loopback enablement";
+                }
+                leaf lb_media_output_enabled {
+                    type string;
+                    description "Line/Media side output loopback enablement";
+                }
+                leaf lb_host_input_enabled {
+                    type string;
+                    description "System/Host side input loopback enablement";
+                }
+                leaf lb_host_output_enabled {
+                    type string;
+                    description "System/Host side output loopback enablement";
+                }
+                leaf prbs_chk_host_enabled {
+                    type string;
+                    description "System/Host side PRBS pattern checking enablement";
+                }
+                leaf prbs_chk_media_enabled {
+                    type string;
+                    description "Media/Line side PRBS pattern checking enablement";
+                }
+                leaf prbs_gen_host_enabled {
+                    type string;
+                    description "System/Host side PRBS pattern generation enablement";
+                }
+                leaf prbs_gen_media_enabled {
+                    type string;
+                    description "Media/Line side PRBS pattern generation enablement";
+                }
+            }
+        }
+
+    }
+
+    container sonic-transceiver-diag-state {
+
+        container TRANSCEIVER_DIAG {
+            sonic-ext:db-name "STATE_DB";
+            list TRANSCEIVER_DIAG_LIST {
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                }
+                leaf diag_host_ber1 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 1";
+                }
+                leaf diag_host_ber2 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 2";
+                }
+                leaf diag_host_ber3 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 3";
+                }
+                leaf diag_host_ber4 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 4";
+                }
+                leaf diag_host_ber5 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 5";
+                }
+                leaf diag_host_ber6 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 6";
+                }
+                leaf diag_host_ber7 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 7";
+                }
+                leaf diag_host_ber8 {
+                    type string;
+                    description "Bit Error Rate: Host Lane 8";
+                }
+                leaf diag_media_ber1 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 1";
+                }
+                leaf diag_media_ber2 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 2";
+                }
+                leaf diag_media_ber3 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 3";
+                }
+                leaf diag_media_ber4 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 4";
+                }
+                leaf diag_media_ber5 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 5";
+                }
+                leaf diag_media_ber6 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 6";
+                }
+                leaf diag_media_ber7 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 7";
+                }
+                leaf diag_media_ber8 {
+                    type string;
+                    description "Bit Error Rate: Media Lane 8";
+                }
+
+                leaf diag_host_snr1 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 1";
+                }
+                leaf diag_host_snr2 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 2";
+                }
+                leaf diag_host_snr3 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 3";
+                }
+                leaf diag_host_snr4 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 4";
+                }
+                leaf diag_host_snr5 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 5";
+                }
+                leaf diag_host_snr6 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 6";
+                }
+                leaf diag_host_snr7 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 7";
+                }
+                leaf diag_host_snr8 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Host Lane 8";
+                }
+                leaf diag_media_snr1 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 1";
+                }
+                leaf diag_media_snr2 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 2";
+                }
+                leaf diag_media_snr3 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 3";
+                }
+                leaf diag_media_snr4 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 4";
+                }
+                leaf diag_media_snr5 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 5";
+                }
+                leaf diag_media_snr6 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 6";
+                }
+                leaf diag_media_snr7 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 7";
+                }
+                leaf diag_media_snr8 {
+                    type string;
+                    description "Signal-to-Noise Ratio: Media Lane 8";
+                }
+
+                leaf module_state {
+                    type string;
+                    description "Module State";
+                }
+            }
+        }
+
+    }
+
+}
