@@ -218,7 +218,6 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     }
 
     log.Info("subOpMap ", *subOpMap)
-    (*subOpMap)[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
     entryDeleted := false
     for _, intfTblKey := range keys {
@@ -226,6 +225,10 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
         if keyIfName != ifNameInDb {
             log.Error("delete_neigh_interface_config_all:: key ifname doesnt match ",keyIfName)
             continue
+        }
+
+        if !entryDeleted {
+            (*subOpMap)[db.ConfigDB][neighTblName] = make(map[string]db.Value)
         }
 
         intfTblKey2 := intfTblKey.Get(0) + "|" + intfTblKey.Get(1)
