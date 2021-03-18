@@ -379,6 +379,8 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 	if pathXltr.subReq.isOnchange || pathXltr.subReq.xlateNodeType == TARGET_NODE || !subOutPram.isVirtualTbl {
 		isTrgtNodeLeaf := (ygXpathInfo.yangEntry.IsLeaf() || ygXpathInfo.yangEntry.IsLeafList())
 		isLeafTblFound := false
+		ygLeafNodePathPrefix := pathXltr.subReq.ygPath // default target node path
+		if pathXltr.xpathYgNode != nil { ygLeafNodePathPrefix = pathXltr.xpathYgNode.ygPath }
 		ygLeafNodeSecDbMap := make (map[string]bool) // yang leaf/leaf-list node name as key
 		for dbNum, tblKeyInfo := range subOutPram.secDbDataMap {
 			if isLeafTblFound { break } // do not process any more entry if the target node is leaf and it is processed
@@ -402,8 +404,6 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 								"transformer callback: %v and the type is %v ", ygXpathInfo.xfmrFunc, intfVal)
 							return tlerr.InternalError{Format: "Onchange subscription: Incorrect type recieved from the Subscribe transformer callback", Path: pathXltr.uriPath}
 					}
-					ygLeafNodePathPrefix := pathXltr.subReq.ygPath // default target node path
-					if pathXltr.xpathYgNode != nil { ygLeafNodePathPrefix = pathXltr.xpathYgNode.ygPath }
 
 					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 					if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: secDbDataMap: keyComp: ", keyComp) }
@@ -492,7 +492,14 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 						for ygNameSecDbMap := range ygLeafNodeSecDbMap { yangNodes[ygNameSecDbMap] =  true }
 						for dbFld, ygNodeName := range tblFld {
 							if !isTrgtNodeLeaf {
-								dbYgPath.DbFldYgPathMap[dbFld] = ygNodeName
+								ygLeafNodePath := ygLeafNodePathPrefix + "/" + ygNodeName
+								if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: ygLeafNodePath: ", ygLeafNodePath) }
+								ygNodeNameWithPrefix := ygNodeName
+								if ygLeafXpathInfo, okLeaf := xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
+									ygNodeNameWithPrefix = *(ygLeafXpathInfo.nameWithMod)
+									if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: leaf node name: ", ygNodeName) }
+								}
+								dbYgPath.DbFldYgPathMap[dbFld] = ygNodeNameWithPrefix
 								yangNodes[ygNodeName] = true
 							} else if ygNodeName == ygXpathInfo.yangEntry.Name {  // for the target node - leaf / leaf-list
 								if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath) }
@@ -508,7 +515,13 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() (error) {
 								if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: traversing yang node: ", ygNodeName) }
 								if !(yangNodes[ygNodeName]) && (ygLeafEntry.IsLeaf() || ygLeafEntry.IsLeafList()) {
 									if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: adding default leaf node: ", ygNodeName) }
-									dbYgPath.DbFldYgPathMap[ygNodeName] = ygNodeName
+									ygNodeNameWithPrefix := ygNodeName
+									ygLeafNodePath := ygLeafNodePathPrefix + "/" + ygNodeName
+									if ygLeafXpathInfo, okLeaf := xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
+										ygNodeNameWithPrefix = *(ygLeafXpathInfo.nameWithMod)
+										if log.V(dbLgLvl) { log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: leaf node name: ", ygNodeName) }
+									}
+									dbYgPath.DbFldYgPathMap[ygNodeName] = ygNodeNameWithPrefix
 								}
 							}
 							dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
