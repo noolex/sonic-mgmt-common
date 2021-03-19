@@ -334,6 +334,9 @@ func (nb *notificationInfoBuilder) Build() (*translateSubResponse, error) {
 	index, ymap := nb.yangMap.match(nb.requestPath, 1)
 
 	log.Infof("Path match index %d", index)
+	if index < 0 {
+		return nil, tlerr.InvalidArgsErr("invalid-path", nb.pathInfo.Path, "Invalid path")
+	}
 
 	nb.currentIndx = index
 	nb.currentPath = nb.requestPath
