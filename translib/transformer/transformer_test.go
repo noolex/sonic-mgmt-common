@@ -192,6 +192,10 @@ func setup() error {
 		return err
         }
 
+	if err := initDbConfig(); err != nil {
+		return err
+	}
+
 	//Clear all tables which are used for testing
         clearDb()
 
@@ -202,6 +206,10 @@ func setup() error {
 }
 
 func teardown() error {
+	if rclient == nil {
+		return nil
+	}
+
 	fmt.Println("----- Performing teardown -----")
         unloadConfigDB(rclient, port_map)
         if (loadDeviceDataMap == true) {
@@ -319,72 +327,51 @@ func loadDB(dbNum int, mpi map[string]interface{}) {
         }
 }
 
-func getRedisPassword(dbName string) string {
-	var dbConfigMap map[string]interface{}
-	var password string
-        dbConfigFile := "/run/redis/sonic-db/database_config.json"
-        dbConfigJson, err := ioutil.ReadFile(dbConfigFile)
-        if err != nil {
-                fmt.Errorf("read file %v err: %v", dbConfigFile, err)
-        }
-        err = json.Unmarshal(dbConfigJson, &dbConfigMap)
-        if err != nil {
-                fmt.Errorf("failed to unmarshal %v err: %v", dbConfigJson, err)
-        }
-        db, ok := dbConfigMap["DATABASES"].(map[string]interface{})[dbName]
-        if !ok {
-                fmt.Errorf("database name '%v' is not found", dbName)
-        }
-        instName, ok := db.(map[string]interface{})["instance"]
-        if !ok {
-                fmt.Errorf("'instance' is not a valid field")
-        }
-        inst, ok := dbConfigMap["INSTANCES"].(map[string]interface{})[instName.(string)]
-        if !ok {
-                fmt.Errorf("instance name '%v' is not found", instName)
-        }
-	pwdpath, ok := inst.(map[string]interface{})["password_path"]
-	if !ok {
-		fmt.Errorf("password_path '%v' is not found", pwdpath)
-	} else {
-		redisPwdFileName := pwdpath.(string)
-		fmt.Printf("redisPwdFileName: %v \n", redisPwdFileName)
+var dbConfig struct {
+	Instances map[string]map[string]interface{} `json:"INSTANCES"`
+	Databases map[string]map[string]interface{} `json:"DATABASES"`
+}
 
-		pwd, err := ioutil.ReadFile(redisPwdFileName)
-		if err != nil {
-			fmt.Printf("read file %v err: %v", redisPwdFileName, err)
-			return ""
-		}
-		password = string(pwd)
+func initDbConfig() error {
+	dbConfigFile := "/run/redis/sonic-db/database_config.json"
+	if path, ok := os.LookupEnv("DB_CONFIG_PATH"); ok {
+		dbConfigFile = path
 	}
-	return password
+
+	fmt.Println("dbConfigFile =", dbConfigFile)
+	dbConfigJson, err := ioutil.ReadFile(dbConfigFile)
+	if err == nil {
+		err = json.Unmarshal(dbConfigJson, &dbConfig)
+	}
+
+	return err
 }
 
 func getConfigDbClient() *redis.Client {
-
-	pwd := getRedisPassword("CONFIG_DB")
-	if pwd == "" {
-		return nil
-	}
-        rclient := redis.NewClient(&redis.Options{
-                Network:     "tcp",
-                Addr:        "localhost:6379",
-                Password:    pwd,
-                DB:          4,
-                DialTimeout: 0,
-        })
-	_, err := rclient.Ping().Result()
-        if err != nil {
-                fmt.Printf("failed to connect to redis server %v", err)
-        }
-        return rclient
+	return getDbClient(int(db.ConfigDB))
 }
 
 func getDbClient(dbNum int) *redis.Client {
+	addr := "localhost:6379"
+	pass := ""
+	for _, d := range dbConfig.Databases {
+		if id, ok := d["id"]; !ok || id != dbNum {
+			continue
+		}
+
+		dbi := dbConfig.Instances[d["instance"].(string)]
+		addr = fmt.Sprintf("%v:%v", dbi["hostname"], dbi["port"])
+		if p, ok := dbi["password_path"].(string); ok {
+			pwd, _ := ioutil.ReadFile(p) //TODO handle IO error
+			pass = string(pwd)
+		}
+		break
+	}
+
         rclient := redis.NewClient(&redis.Options{
                 Network:     "tcp",
-                Addr:        "localhost:6379",
-                Password:    "", // no password set
+                Addr:        addr,
+                Password:    pass,
                 DB:          dbNum,
                 DialTimeout: 0,
         })

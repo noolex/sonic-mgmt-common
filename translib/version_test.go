@@ -22,7 +22,9 @@ package translib
 import (
 	"fmt"
 	"testing"
+
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Workiva/go-datastructures/queue"
 )
 
 func ver(major, minor, patch uint32) Version {
@@ -122,8 +124,8 @@ func testVCheck(t *testing.T, ver string, expSuccess bool) {
 	t.Run(fmt.Sprintf("get_%s", ver), vGet(v, expSuccess))
 	t.Run(fmt.Sprintf("create_%s", ver), vCreate(v, expSuccess))
 	t.Run(fmt.Sprintf("update_%s", ver), vUpdate(v, expSuccess))
-	t.Run(fmt.Sprintf("delete_%s", ver), vDelete(v, expSuccess))
 	t.Run(fmt.Sprintf("replace_%s", ver), vReplace(v, expSuccess))
+	t.Run(fmt.Sprintf("delete_%s", ver), vDelete(v, expSuccess))
 	t.Run(fmt.Sprintf("action_%s", ver), vAction(v, expSuccess))
 	t.Run(fmt.Sprintf("subs_%s", ver), vSubscribe(v, expSuccess))
 	t.Run(fmt.Sprintf("is_subs_%s", ver), vIsSubscribe(v, expSuccess))
@@ -136,28 +138,28 @@ var (
 
 func vCreate(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := Create(SetRequest{Path:tPath, Payload:tBody, ClientVersion: v})
+		_, err := Create(SetRequest{Path: tPath, Payload: tBody, ClientVersion: v})
 		checkErr(t, err, expSuccess)
 	}
 }
 
 func vUpdate(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := Update(SetRequest{Path:tPath, Payload:tBody, ClientVersion: v})
+		_, err := Update(SetRequest{Path: tPath, Payload: tBody, ClientVersion: v})
 		checkErr(t, err, expSuccess)
 	}
 }
 
 func vReplace(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := Replace(SetRequest{Path:tPath, Payload:tBody, ClientVersion: v})
+		_, err := Replace(SetRequest{Path: tPath, Payload: tBody, ClientVersion: v})
 		checkErr(t, err, expSuccess)
 	}
 }
 
 func vDelete(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := Delete(SetRequest{Path:tPath, ClientVersion: v})
+		_, err := Delete(SetRequest{Path: tPath, ClientVersion: v})
 		checkErr(t, err, expSuccess)
 	}
 }
@@ -178,7 +180,9 @@ func vAction(v Version, expSuccess bool) func(*testing.T) {
 
 func vSubscribe(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		_, err := Subscribe(SubscribeRequest{Paths: []string{tPath}, ClientVersion: v})
+		q := queue.NewPriorityQueue(1, false)
+		defer q.Dispose()
+		_, err := Subscribe(SubscribeRequest{Paths: []string{tPath}, Q: q, ClientVersion: v})
 		checkErr(t, ignoreNotImpl(err), expSuccess)
 	}
 }
