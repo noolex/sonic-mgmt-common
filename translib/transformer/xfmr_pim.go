@@ -443,6 +443,19 @@ func fill_pim_nbr_state_info (inParams XfmrParams, nbrKey _xfmr_pim_nbr_state_ke
         nbrStateObj.NeighborExpires = &_neighborExpires
     }
 
+    if bfdInfo, ok := nbrData["peerBfdInfo"] ; ok {
+        if _bfdInfo, ok := bfdInfo.(map[string]interface{}) ; ok {
+            if value, ok := _bfdInfo["status"] ; ok {
+                switch value {
+                    case "Up":
+                        nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPimExt_BfdSessionState_UP
+                    case "Down":
+                        nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPimExt_BfdSessionState_DOWN
+                }
+            }
+        }
+    }
+
     intfKey := _xfmr_pim_intf_state_key {niName:nbrKey.niName, intfId:nbrKey.intfId}
     if cfgDbEntry, cfgDbGetErr := get_spec_pim_intf_cfg_tbl_entry (inParams.dbs[db.ConfigDB], &intfKey) ; cfgDbGetErr == nil {
         if value, ok := cfgDbEntry["mode"] ; ok {
@@ -491,7 +504,7 @@ var DbToYang_pim_nbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
         return operErr
     }
 
-    cmd = "show ip pim vrf " + niName + " neighbor json"
+    cmd = "show ip pim vrf " + niName + " neighbor detail json"
     pimNbrOutputJson, cmdErr := pim_exec_vtysh_cmd (cmd)
     if (cmdErr != nil) {
         log.Errorf ("%s failed !! Error:%s", cmnLog, cmdErr);

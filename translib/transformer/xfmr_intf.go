@@ -4952,12 +4952,11 @@ func validateSpeed(d *db.DB, ifName string, speed string) error {
         log.Info("Valid speeds for ",ifName, " is ", speeds, " SET ", speed)
         for _, vspeed := range speeds {
             if  speed == strings.TrimSpace(vspeed) {
+                log.V(3).Info(vspeed, " is valid.")
                 if speed == portEntry.Field["speed"] {
-                    err = tlerr.InvalidArgs("No change in the speed")
-                } else {
-                    err = nil
-                    log.Info(vspeed, " is valid.")
+                    log.Info("No change in speed for ", ifName)
                 }
+                err = nil
                 break
             }
         }
