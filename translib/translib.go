@@ -142,6 +142,7 @@ type SubscribeRequest struct {
 	User          UserRoles
 	AuthEnabled   bool
 	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type SubscribeResponse struct {
@@ -165,6 +166,7 @@ type IsSubscribeRequest struct {
 	User          UserRoles
 	AuthEnabled   bool
 	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type IsSubscribeResponse struct {
@@ -850,6 +852,22 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	return resp, err
 }
 
+// NewSubscribeSession creates a new SubscribeSession. Caller
+// MUST close the session object through CloseSubscribeSession
+// call at the end.
+func NewSubscribeSession() *SubscribeSession {
+	return &SubscribeSession{
+		ID: fmt.Sprintf("%d", subscribeCounter.Next()),
+	}
+}
+
+// CloseSubscribeSession closes a SubscribeSession and release
+// any resources it held. API client MUST close the sessions it
+// creates; and not reuse the session after closing.
+func CloseSubscribeSession(ss *SubscribeSession) {
+	// nothing for now!
+}
+
 //Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
 func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	var err error
@@ -892,8 +910,10 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	}
 
 	sCtx := subscribeContext{
-		sInfo: sInfo,
-		mode:  OnChange,
+		sInfo:   sInfo,
+		mode:    OnChange,
+		version: req.ClientVersion,
+		session: req.Session,
 	}
 
 	for _, path := range paths {
@@ -942,6 +962,7 @@ func Stream(req SubscribeRequest) error {
 		id:      sid,
 		dbs:     dbs,
 		version: req.ClientVersion,
+		session: req.Session,
 	}
 
 	for _, path := range req.Paths {
@@ -965,8 +986,8 @@ func Stream(req SubscribeRequest) error {
 	}
 
 	// Push a SyncComplete message at the end
-	sc.sInfo.syncDone = true
-	sendSyncNotification(sc.sInfo, false)
+	sInfo.syncDone = true
+	sendSyncNotification(sInfo, false)
 	return nil
 }
 
@@ -1005,16 +1026,20 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 	sc := subscribeContext{
 		id:      reqID,
 		version: req.ClientVersion,
+		session: req.Session,
 	}
 
 	for i, path := range paths {
-		nAppInfos, _, errApp := sc.translatePath(path)
+		nAppInfos, trData, errApp := sc.translatePath(path)
 
 		r := resp[i]
 
 		if nAppInfos != nil {
 			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
 			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
+		}
+		if trData != nil {
+			sc.saveTranslatedData(path, trData)
 		}
 
 		log.Infof("IsSubscribeResponse[%d]: onChg=%v, pref=%v, minInt=%d, err=%v",

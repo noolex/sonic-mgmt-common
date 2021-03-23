@@ -70,6 +70,8 @@ type notificationInfo struct {
 	opaque  interface{} // App specific opaque data
 }
 
+// subscribeInfo holds the client data of Subscribe or Stream request.
+// Should not be reused across multiple API calls.
 type subscribeInfo struct {
 	id       uint64 // Subscribe request id
 	syncDone bool
@@ -78,6 +80,19 @@ type subscribeInfo struct {
 	stop     chan struct{}
 	sDBs     []*db.DB         //Subscription DB should be used only for keyspace notification unsubscription
 	dbs      [db.MaxDB]*db.DB //used to perform get operations
+}
+
+// SubscribeSession is used to share session data between subscription
+// related APIs - IsSubscribeSupported, Subscribe and Stream.
+type SubscribeSession struct {
+	ID       string
+	pathData map[string]*translatedSubData
+}
+
+// translatedSubData holds translated subscription data for a path.
+type translatedSubData struct {
+	targetInfos []*notificationInfo
+	childInfos  []*notificationInfo
 }
 
 // notificationGroup is the grouping of notificationInfo by the key pattern.
@@ -184,17 +199,12 @@ func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) 
 	return nil
 }
 
-// translatedSubData holds translated subscription data for a path.
-type translatedSubData struct {
-	targetInfos []*notificationInfo
-	childInfos  []*notificationInfo
-}
-
 type subscribeContext struct {
 	id      uint64 // context id
 	dbs     [db.MaxDB]*db.DB
 	version Version
 	mode    NotificationType
+	session *SubscribeSession
 
 	dbNInfos map[db.DBNum]map[db.TableSpec]*notificationGroup
 	tgtInfos []*notificationInfo
@@ -257,8 +267,29 @@ func (sc *subscribeContext) addToNGroup(nInfo *notificationInfo) {
 	nGrp.add(nInfo)
 }
 
+// saveTranslatedData saves the translatedSubData into the SubscribeSession
+func (sc *subscribeContext) saveTranslatedData(path string, trData *translatedSubData) {
+	if sc.session == nil || trData == nil {
+		return
+	}
+	if sc.session.pathData == nil {
+		sc.session.pathData = make(map[string]*translatedSubData)
+	}
+	log.Infof("[%v] set trData %p in session for \"%s\"", sc.id, trData, path)
+	sc.session.pathData[path] = trData
+}
+
 func (sc *subscribeContext) translateAndAddPath(path string) error {
-	_, trData, err := sc.translatePath(path)
+	var trData *translatedSubData
+	var err error
+
+	if sc.session != nil {
+		trData = sc.session.pathData[path]
+		log.Infof("[%v] found trData %p from session for '%s'", sc.id, trData, path)
+	}
+	if trData == nil {
+		_, trData, err = sc.translatePath(path)
+	}
 	if err != nil {
 		return err
 	}
