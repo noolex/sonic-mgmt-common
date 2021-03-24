@@ -105,6 +105,18 @@ func TestKeyMatches(t *testing.T) {
 	t.Run("*ab*:aabb", keyMatch(NewKey("aabb"), NewKey("*ab*"), true))
 	t.Run("*ab*:aab", keyMatch(NewKey("aab"), NewKey("*ab*"), true))
 	t.Run("*ab*:abb", keyMatch(NewKey("abb"), NewKey("*ab*"), true))
+	t.Run("ab*:abb", keyMatch(NewKey("abb"), NewKey("ab*"), true))
+	t.Run("ab\\*:ab*", keyMatch(NewKey("ab*"), NewKey("ab\\*"), true))
+	t.Run("ab\\*:abb", keyMatch(NewKey("ab*"), NewKey("abb"), false))
+	t.Run("ab\\:abb", keyMatch(NewKey("ab\\"), NewKey("abb"), false))
+	t.Run("abb:ab", keyMatch(NewKey("ab"), NewKey("abb"), false))
+	t.Run("aa:bb", keyMatch(NewKey("bb"), NewKey("aa"), false))
+	t.Run("a*b:aa/bb", keyMatch(NewKey("aa/bb"), NewKey("a*b"), true))
+	t.Run("a**b:ab", keyMatch(NewKey("ab"), NewKey("a******b"), true))
+	t.Run("a**b:axyb", keyMatch(NewKey("axyb"), NewKey("a******b"), true))
+	t.Run("**b:axyb", keyMatch(NewKey("axyb"), NewKey("******b"), true))
+	t.Run("a**:axyb", keyMatch(NewKey("axyb"), NewKey("a******"), true))
+	t.Run("ipaddr", keyMatch(NewKey("10.1.2.3/24"), NewKey("10.*"), true))
 }
 
 func keyMatch(k, p *Key, exp bool) func(*testing.T) {
