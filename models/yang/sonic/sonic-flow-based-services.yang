@@ -1201,9 +1201,9 @@ module sonic-flow-based-services {
 
     rpc get-policy {
         description
-            "RPC to retrieve the policy data. The name and type are optional. If no name is specified then all
-            policies with the matching type will be retrieved. If no type is provided then all policies will
-            be retrieved.";
+            "RPC to retrieve the policy data. The policy name, policy type and class name are optional. If no policy name is specified then all
+            policies with the matching type will be retrieved. If no policy type is provided then all policies will
+            be retrieved. Class name is valid only when policy name is valid.";
 
         input {
             leaf POLICY_NAME {
@@ -1215,6 +1215,11 @@ module sonic-flow-based-services {
                 type policy-types;
                 description
                     "Type of the policy to retrieved. (Optional)";
+            }
+            leaf CLASS_NAME {
+                type string;
+                description
+                    "Name of the flow classifier using this policy to retrieved. (Optional)";
             }
         }
         output {
