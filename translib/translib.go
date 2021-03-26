@@ -869,26 +869,13 @@ func CloseSubscribeSession(ss *SubscribeSession) {
 }
 
 //Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
-func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
-	var err error
-	var sErr error
-
+func Subscribe(req SubscribeRequest) error {
 	paths := req.Paths
 	q := req.Q
 	stop := req.Stop
 
-	resp := make([]*IsSubscribeResponse, len(paths))
-
-	for i := range resp {
-		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: true,
-			MinInterval:         minSubsInterval,
-			PreferredType:       OnChange,
-			Err:                 nil}
-	}
-
 	if !isAuthorizedForSubscribe(req) {
-		return resp, tlerr.AuthorizationError{
+		return tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
 	}
@@ -899,7 +886,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
-		return resp, err
+		return err
 	}
 
 	sInfo := &subscribeInfo{
@@ -911,6 +898,7 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	sCtx := subscribeContext{
 		sInfo:   sInfo,
+		dbs:     dbs,
 		mode:    OnChange,
 		version: req.ClientVersion,
 		session: req.Session,
@@ -918,20 +906,17 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 
 	for _, path := range paths {
 		err = sCtx.translateAndAddPath(path)
-		if err == nil {
-			return nil, err
+		if err != nil {
+			closeAllDbs(dbs[:])
+			return err
 		}
 	}
 
-	// Close the db pointers only on error. Otherwise keep them
-	// open till subscription is active.
-	if sErr != nil {
-		closeAllDbs(dbs[:])
-	} else {
-		sErr = sCtx.startSubscribe()
-	}
+	// Start db subscription and exit. DB objects will be
+	// closed automatically when the subscription ends.
+	err = sCtx.startSubscribe()
 
-	return resp, sErr
+	return err
 }
 
 // Stream function streams the value for requested paths through a queue.
@@ -1025,6 +1010,7 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 	sc := subscribeContext{
 		id:      reqID,
+		dbs:     dbs,
 		version: req.ClientVersion,
 		session: req.Session,
 	}

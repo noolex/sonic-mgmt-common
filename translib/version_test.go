@@ -182,7 +182,7 @@ func vSubscribe(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
 		q := queue.NewPriorityQueue(1, false)
 		defer q.Dispose()
-		_, err := Subscribe(SubscribeRequest{Paths: []string{tPath}, Q: q, ClientVersion: v})
+		err := Subscribe(SubscribeRequest{Paths: []string{tPath}, Q: q, ClientVersion: v})
 		checkErr(t, ignoreNotImpl(err), expSuccess)
 	}
 }

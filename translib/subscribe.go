@@ -265,6 +265,7 @@ func (sc *subscribeContext) addToNGroup(nInfo *notificationInfo) {
 	}
 
 	nGrp.add(nInfo)
+	nInfo.sInfo = sc.sInfo
 }
 
 // saveTranslatedData saves the translatedSubData into the SubscribeSession
