@@ -802,7 +802,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	return nil
 }
 
-func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
+func fill_policy_details(policy_name string, policyTblVal db.Value, class_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
 	policyEntry.POLICY_NAME = policy_name
 	policyEntry.TYPE = strings.Replace(policyTblVal.Field["TYPE"], "_", "-", 1)
 	if str_val, found := policyTblVal.Field["DESCRIPTION"]; found {
@@ -810,7 +810,7 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 	}
 
 	var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
-	referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policy_name, "*"}})
+	referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policy_name, class_name}})
 	if err != nil {
 		log.Error(err)
 		return err
@@ -865,14 +865,14 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 	return nil
 }
 
-func fill_policy_copp_details(policy_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
+func fill_policy_copp_details(policy_name string, class_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
 	var COPP_TRAP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COPP_TRAP"}
 	configDbPtr := dbs[db.ConfigDB]
 
 	policyEntry.POLICY_NAME = policy_name
 	policyEntry.TYPE = "copp"
 
-	referingClassKeys, err := configDbPtr.GetKeysPattern(COPP_TRAP_TABLE_TS, db.Key{[]string{"*"}})
+	referingClassKeys, err := configDbPtr.GetKeysPattern(COPP_TRAP_TABLE_TS, db.Key{[]string{class_name}})
 	if err != nil {
 		log.Error(err)
 		return err
@@ -923,6 +923,10 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 	showOutput.Output.POLICIES = make([]PolicyEntry, 0)
 	policy_name, policy_name_found := mapData["POLICY_NAME"].(string)
 	policy_type, policy_type_found := mapData["TYPE"].(string)
+	class_name, class_name_found := mapData["CLASS_NAME"].(string)
+    if !class_name_found {
+        class_name = "*"
+    }
 
 	if policy_name_found {
 		//get policy db output
@@ -930,15 +934,14 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 		var policyEntry PolicyEntry
 		if err == nil {
 			log.Infof("In rpc_show_policy, policy_name:%v, RPC policyTblVal:%v", policy_name, policyTblVal)
-
-			err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+			err = fill_policy_details(policy_name, policyTblVal, class_name, dbs, &policyEntry)
 			if err != nil {
 				log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
 				return nil, err
 			}
 		} else {
 			if policy_name == "copp-system-policy" {
-				err = fill_policy_copp_details(policy_name, dbs, &policyEntry)
+				err = fill_policy_copp_details(policy_name, class_name, dbs, &policyEntry)
 				if err != nil {
 					log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
 					return nil, err
@@ -971,7 +974,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 					continue
 				}
 				var policyEntry PolicyEntry
-				err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+				err = fill_policy_details(policy_name, policyTblVal, class_name, dbs, &policyEntry)
 				if err != nil {
 					continue
 				}
@@ -981,7 +984,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 
 		if policy_type == "COPP" || !policy_type_found {
 			var policyEntry PolicyEntry
-			err = fill_policy_copp_details("copp-system-policy", dbs, &policyEntry)
+			err = fill_policy_copp_details("copp-system-policy", class_name, dbs, &policyEntry)
 			if err != nil {
 				log.Errorf("Failed to fetch policy:copp-system-policy details err%v", err)
 				return nil, err
