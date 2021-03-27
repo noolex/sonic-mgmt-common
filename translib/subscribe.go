@@ -446,13 +446,11 @@ func (ng *notificationGroup) toString() string {
 //  2) Map each key to yang path
 //  3) Get value for each path and send the notification message
 func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
-	db := sInfo.dbs[int(nInfo.dbno)]
 	ne := notificationEvent{
 		id:    fmt.Sprintf("%d:0", sInfo.id),
 		sInfo: sInfo,
 	}
 
-	var ddup map[string]bool
 	topNode := []*yangNodeInfo{new(yangNodeInfo)}
 
 	if nInfo.table == nil { // non-db case
@@ -466,31 +464,50 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 		return nil
 	}
 
-	keys, err := db.GetKeysPattern(nInfo.table, *nInfo.key)
+	// DB path.. iterate over keys and generate notification for each.
+
+	opts := db.ScanCursorOpts{}
+	d := sInfo.dbs[int(nInfo.dbno)]
+	cursor, err := d.NewScanCursor(nInfo.table, *nInfo.key, &opts)
 	if err != nil {
+		log.Errorf("[%s] Failed to create db cursor for %d/%s/%v; err=%v",
+			ne.id, nInfo.dbno, nInfo.table.Name, nInfo.key, err)
 		return err
 	}
+
+	defer cursor.DeleteScanCursor()
+	var ddup map[string]bool
+	var keys []db.Key
 
 	if nInfo.key.IsPattern() && !nInfo.flags.Has(niWildcardPath) {
 		log.Infof("[%s] db key is a glob pattern. Forcing processSubscribe..", ne.id)
 		ne.forceProcessSub = true
 	}
 
-	for _, k := range keys {
-		ne.key = &k
-		if ddk := ne.getDdupKey(); len(ddk) != 0 && ddup[ddk] {
-			log.Infof("[%s] skip init sync for key %v; another key with matching comps %v has been processed",
-				ne.id, k, ne.keyGroupComps)
-			continue
+	for done := false; !done; {
+		keys, done, err = cursor.GetNextKeys(&opts)
+		if err != nil {
+			log.Infof("[%s] Failed to read db cursor for %d/%s/%v; err=%v",
+				ne.id, nInfo.dbno, nInfo.table.Name, nInfo.key, err)
+			return err
 		}
 
-		ne.sendNotification(nInfo, topNode)
-
-		if ddk := ne.getDdupKey(); len(ddk) != 0 {
-			if ddup == nil {
-				ddup = make(map[string]bool)
+		for _, k := range keys {
+			ne.key = &k
+			if ddk := ne.getDdupKey(); len(ddk) != 0 && ddup[ddk] {
+				log.Infof("[%s] skip init sync for key %v; another key with matching comps %v has been processed",
+					ne.id, k, ne.keyGroupComps)
+				continue
 			}
-			ddup[ddk] = true
+
+			ne.sendNotification(nInfo, topNode)
+
+			if ddk := ne.getDdupKey(); len(ddk) != 0 {
+				if ddup == nil {
+					ddup = make(map[string]bool)
+				}
+				ddup[ddk] = true
+			}
 		}
 	}
 
