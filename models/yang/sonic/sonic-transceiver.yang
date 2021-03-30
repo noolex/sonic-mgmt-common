@@ -24,7 +24,52 @@ module sonic-transceiver {
             "Initial revision.";
     }
 
-    container sonic-transceiver-info {
+    container sonic-transceiver {
+
+        container TRANSCEIVER_DIAG {
+            sonic-ext:db-name "CONFIG_DB";
+            list TRANSCEIVER_DIAG_LIST {
+                key "ifname";
+
+                leaf ifname {
+                    type leafref {
+                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+                    }
+                }
+                leaf lb_media_input_enabled {
+                    type string;
+                    description "Line/Media side input loopback enablement";
+                }
+                leaf lb_media_output_enabled {
+                    type string;
+                    description "Line/Media side output loopback enablement";
+                }
+                leaf lb_host_input_enabled {
+                    type string;
+                    description "System/Host side input loopback enablement";
+                }
+                leaf lb_host_output_enabled {
+                    type string;
+                    description "System/Host side output loopback enablement";
+                }
+                leaf prbs_chk_host_enabled {
+                    type string;
+                    description "System/Host side PRBS pattern checking enablement";
+                }
+                leaf prbs_chk_media_enabled {
+                    type string;
+                    description "Media/Line side PRBS pattern checking enablement";
+                }
+                leaf prbs_gen_host_enabled {
+                    type string;
+                    description "System/Host side PRBS pattern generation enablement";
+                }
+                leaf prbs_gen_media_enabled {
+                    type string;
+                    description "Media/Line side PRBS pattern generation enablement";
+                }
+            }
+        }
 
         container TRANSCEIVER_INFO {
             sonic-ext:db-name "STATE_DB";
