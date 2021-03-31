@@ -30,11 +30,12 @@ PKG=translib/...
 while [[ $# -gt 0 ]]; do
     case "$1" in
     -h|-help|--help)
-        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME] [-json] [ARGS...]"
+        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME|-bench PATTERN] [-json] [ARGS...]"
         exit 0;;
     -p|-pkg|-package) PKG=$2; shift 2;;
-    -r|-run)  TARGS+=( -run $2 ); shift 2;;
-    -j|-json) TARGS+=( -json ); shift;;
+    -r|-run)   TARGS+=( -run $2 ); shift 2;;
+    -b|-bench) TARGS+=( -bench $2 -run XXX ); shift 2;;
+    -j|-json)  TARGS+=( -json ); shift;;
     *) PARGS+=( "$1"); shift;;
     esac
 done

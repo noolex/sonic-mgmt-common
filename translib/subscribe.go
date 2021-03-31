@@ -64,7 +64,6 @@ type notificationInfo struct {
 	dbno    db.DBNum
 	fields  []*dbFldYgPathInfo // map of db field to yang fields map
 	path    *gnmi.Path         // Path to which the db key maps to
-	app     *appInterface
 	appInfo *appInfo
 	sInfo   *subscribeInfo
 	opaque  interface{} // App specific opaque data
@@ -113,6 +112,7 @@ type notificationEvent struct {
 	// Meta info for processSubscribe calls
 	forceProcessSub bool
 	keyGroupComps   []int
+	appCache        map[*appInfo]appInterface
 }
 
 // subscribeCounter counts number of Subscribe calls.
@@ -205,24 +205,20 @@ type subscribeContext struct {
 	version Version
 	mode    NotificationType
 	session *SubscribeSession
+	sInfo   *subscribeInfo
 
 	dbNInfos map[db.DBNum]map[db.TableSpec]*notificationGroup
 	tgtInfos []*notificationInfo
-
-	sInfo   *subscribeInfo
-	app     *appInterface
-	appInfo *appInfo
 }
 
-func (sc *subscribeContext) newNInfo(nAppInfo *notificationAppInfo) *notificationInfo {
+func (sc *subscribeContext) newNInfo(nAppInfo *notificationAppInfo, aInfo *appInfo) *notificationInfo {
 	nInfo := &notificationInfo{
 		dbno:    nAppInfo.dbno,
 		table:   nAppInfo.table,
 		key:     nAppInfo.key,
 		fields:  nAppInfo.dbFldYgPathInfoList,
 		path:    nAppInfo.path,
-		app:     sc.app,
-		appInfo: sc.appInfo,
+		appInfo: aInfo,
 		sInfo:   sc.sInfo,
 		opaque:  nAppInfo.opaque,
 	}
@@ -337,10 +333,6 @@ func (sc *subscribeContext) translatePath(path string) (*translateSubResponse, *
 		return nAppInfos, nil, fmt.Errorf("Error processing path: %s", path)
 	}
 
-	// Save the app module info in the context for subsequent newNInfo()
-	sc.app = app
-	sc.appInfo = appInfo
-
 	targetLen := len(nAppInfos.ntfAppInfoTrgt)
 	childLen := len(nAppInfos.ntfAppInfoTrgtChlds)
 	subData := &translatedSubData{
@@ -353,12 +345,12 @@ func (sc *subscribeContext) translatePath(path string) (*translateSubResponse, *
 
 	for i, nAppInfo := range nAppInfos.ntfAppInfoTrgt {
 		log.Infof("[%v] targetInfo[%d] = %v", sid, i, nAppInfo)
-		subData.targetInfos[i] = sc.newNInfo(nAppInfo)
+		subData.targetInfos[i] = sc.newNInfo(nAppInfo, appInfo)
 	}
 
 	for i, nAppInfo := range nAppInfos.ntfAppInfoTrgtChlds {
 		log.Infof("[%v] childInfo[%d] = %v", sid, i, nAppInfo)
-		subData.childInfos[i] = sc.newNInfo(nAppInfo)
+		subData.childInfos[i] = sc.newNInfo(nAppInfo, appInfo)
 	}
 
 	return nAppInfos, subData, err
@@ -740,25 +732,39 @@ func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields
 	return yInfos
 }
 
+func (ne *notificationEvent) getApp(nInfo *notificationInfo) appInterface {
+	if app := ne.appCache[nInfo.appInfo]; app != nil {
+		return app
+	}
+
+	app, _ := getAppInterface(nInfo.appInfo.appType)
+	if ne.appCache == nil {
+		ne.appCache = map[*appInfo]appInterface{nInfo.appInfo: app}
+	} else {
+		ne.appCache[nInfo.appInfo] = app
+	}
+	return app
+}
+
 func (ne *notificationEvent) getValue(nInfo *notificationInfo, path string) (ygot.ValidatedGoStruct, error) {
 	var payload ygot.ValidatedGoStruct
-	app := nInfo.app
+	app := ne.getApp(nInfo)
 	appInfo := nInfo.appInfo
 	dbs := ne.sInfo.dbs
 
-	err := appInitialize(app, appInfo, path, nil, nil, GET)
+	err := appInitialize(&app, appInfo, path, nil, nil, GET)
 
 	if err != nil {
 		return payload, err
 	}
 
-	err = (*app).translateGet(dbs)
+	err = app.translateGet(dbs)
 
 	if err != nil {
 		return payload, err
 	}
 
-	resp, err := (*app).processGet(dbs, TRANSLIB_FMT_YGOT)
+	resp, err := app.processGet(dbs, TRANSLIB_FMT_YGOT)
 
 	if err == nil {
 		if resp.ValueTree == nil {
@@ -787,7 +793,8 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
 		ne.id, in.dbno, in.table.Name, in.key)
 
-	out, err := (*nInfo.app).processSubscribe(&in)
+	app := ne.getApp(nInfo)
+	out, err := app.processSubscribe(&in)
 	if err != nil {
 		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
 		return nil
