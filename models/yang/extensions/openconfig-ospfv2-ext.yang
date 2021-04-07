@@ -526,6 +526,18 @@ module openconfig-ospfv2-ext {
         "Advertise all Router LSA stub links with OSPF max-metric";
     }
 
+    leaf external-lsa-all {
+      type ospf-cost-metric ;
+      description
+        "Advertise all External LSA prefixes with OSPF max-metric";
+    }
+
+    leaf external-lsa-connected {
+      type ospf-cost-metric ;
+      description
+        "Advertise connected External LSA prefixes with OSPF max-metric";
+    }
+
     /*
     leaf on-shutdown {
       type uint32 {
