@@ -145,6 +145,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				gwIPListStr = sagIpv4Obj.Config.StaticAnycastGateway[0]
 				if sagIPv4Entry.IsPopulated() {
 					if strings.Count(sagIPv4Entry.Field["gwip@"], ",") == 0 {
+
+            if gwIPListStr != sagIPv4Entry.Field["gwip@"] {
+              errStr := "IP anycast does not exist on the interface " + sagIpv4Obj.Config.StaticAnycastGateway[0]
+              err = tlerr.InvalidArgsError{Format: errStr}
+              return subIntfmap, err
+            }
+
 						if len(vlanEntry.Field) == 1 {
 							if _, ok := vlanEntry.Field["NULL"]; ok {
 								subIntfmap[tblName] = vlanIntfMap
@@ -225,6 +232,13 @@ var YangToDb_intf_sag_ip_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (m
 				gwIPListStr = sagIpv6Obj.Config.StaticAnycastGateway[0]
 				if sagIPv6Entry.IsPopulated() {
 					if strings.Count(sagIPv6Entry.Field["gwip@"], ",") == 0 {
+
+            if gwIPListStr != sagIPv6Entry.Field["gwip@"] {
+              errStr := "IP anycast does not exist on the interface " + sagIpv6Obj.Config.StaticAnycastGateway[0]
+              err = tlerr.InvalidArgsError{Format: errStr}
+              return subIntfmap, err
+            }
+
 						if len(vlanEntry.Field) == 1 {
 							if _, ok := vlanEntry.Field["NULL"]; ok {
 								subIntfmap[tblName] = vlanIntfMap
