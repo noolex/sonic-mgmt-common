@@ -64,10 +64,10 @@ cvl-test:
 	$(MAKE) -C ./cvl gotest
 
 .PHONY: translib
-translib: $(GO_DEPS)
+translib: $(GO_DEPS) | models
 	$(MAKE) -C ./translib
 
-translib-all: $(GO_DEPS)
+translib-all: $(GO_DEPS) | models
 	$(MAKE) -C ./translib all
 
 translib-clean:

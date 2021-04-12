@@ -25,18 +25,23 @@ YANGDIR_COMMON              := $(YANGDIR)/common
 YANGDIR_ANNOTATIONS         := $(YANGDIR)/annotations
 YANGDIR_EXTENSIONS_DIR	    := $(YANGDIR)/extensions
 YANGDIR_SONIC               := $(YANGDIR)/sonic
-YANG_MOD_FILES              := $(shell find $(YANGDIR) -maxdepth 1 -name '*.yang' | sort)
-YANG_MOD_EXTENSION_FILES    := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name '*.yang' | sort)
-YANG_IETF_MOD_EXT_FILES     := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name 'ietf-*.yang' | sort)
+YANGDIR_PATCH               := $(YANGDIR)/patches
 YANG_ANNOTATIONS_FILES      := $(shell find $(YANGDIR_ANNOTATIONS) -name '*.yang' | sort)
-YANG_COMMON_FILES           := $(shell find $(YANGDIR_COMMON) -name '*.yang' | sort)
 OC_COMMUNITY_LINTER         := $(TOPDIR)/build/oc-community-linter
 OC_COMMUNITY_LINTER_PATCH   := $(OC_COMMUNITY_LINTER)/.done
+YANG_MOD_FILES              := $(shell find $(YANGDIR) -maxdepth 1 -name '*.yang' | sort)
+YANG_MOD_EXTENSION_FILES    := $(shell find $(YANGDIR_EXTENSIONS_DIR) -maxdepth 1 -name '*.yang' | sort)
+YANG_COMMON_FILES           := $(shell find $(YANGDIR_COMMON) -name '*.yang' | sort)
+YANG_PATCH_FILES            := $(shell find $(YANGDIR_PATCH) -name '*.patch' | sort)
 
-YANG_BUILD_DIR    := $(TOPDIR)/build/yang
-YANG_API_IGNORES  := $(YANG_BUILD_DIR)/api_ignore
-YANG_ANNOTS_CHK   := $(YANG_BUILD_DIR)/annots_checked
-YANG_VALIDATE_CHK := $(YANG_BUILD_DIR)/validate_checked
+YANG_BUILD_DIR                  := $(TOPDIR)/build/yang
+YANG_BUILD_DIR_COMMON           := $(YANG_BUILD_DIR)/common
+YANG_BUILD_DIR_EXTENSIONS_DIR	:= $(YANG_BUILD_DIR)/extensions
+YANG_API_IGNORES                := $(YANG_BUILD_DIR)/api_ignore
+YANG_ANNOTS_CHK                 := $(YANG_BUILD_DIR)/annots_checked
+YANG_VALIDATE_CHK               := $(YANG_BUILD_DIR)/validate_checked
+PATCH_STD_YANGS                 := $(YANG_BUILD_DIR)/.patchdone
+SYNC_STD_YANGS_TO_BUILD         := $(YANG_BUILD_DIR)/.syncdone
 
 TOOLS_DIR        := $(TOPDIR)/tools
 PYANG_PLUGIN_DIR := $(TOOLS_DIR)/pyang/pyang_plugins
@@ -44,41 +49,45 @@ PYANG            ?= pyang
 LINTER           := $(TOOLS_DIR)/test/yang_validate.sh
 
 .PHONY: all
-all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
+all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK) | $(PATCH_STD_YANGS)
 
 .PHONY: annot
 annot: $(YANG_ANNOTS_CHK)
-	
+
 $(YANG_ANNOTS_CHK): $(YANG_ANNOTATIONS_FILES) $(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES) $(YANG_COMMON_FILES)
 	$(PYANG) --strict -f tree \
 		-p $(YANGDIR_COMMON):$(YANGDIR_SONIC):$(YANGDIR_ANNOTATIONS):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
 		$(YANG_ANNOTATIONS_FILES) > /dev/null
 	touch $@
 
-allyangs.tree:  $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
+%.tree %.html %.md: BUILD_YANG_MOD_EXTENSION_FILES  = $(shell find $(YANG_BUILD_DIR_EXTENSIONS_DIR) -maxdepth 1 -name '*.yang' | sort)
+%.tree %.html %.md: BUILD_YANG_MOD_FILES            = $(shell find $(YANG_BUILD_DIR) -maxdepth 1 -name '*.yang' | sort)
+
+allyangs.tree: $(PATCH_STD_YANGS)
 	$(PYANG) \
 		-f tree \
 		-o $@ \
-		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
-		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
+		-p $(YANG_BUILD_DIR_COMMON):$(YANG_BUILD_DIR):$(YANG_BUILD_DIR_EXTENSIONS_DIR) \
+		$(BUILD_YANG_MOD_FILES) $(BUILD_YANG_MOD_EXTENSION_FILES)
 	@echo "+++++ Generation of  YANG tree for Yang modules completed +++++"
 
-allyangs_tree.html:  $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
+allyangs_tree.html: $(PATCH_STD_YANGS)
 	$(PYANG) \
 		-f jstree \
 		-o $@ \
-		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
-		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
+		-p $(YANG_BUILD_DIR_COMMON):$(YANG_BUILD_DIR):$(YANG_BUILD_DIR_EXTENSIONS_DIR) \
+		$(BUILD_YANG_MOD_FILES) $(BUILD_YANG_MOD_EXTENSION_FILES)
 	@echo "+++++ Generation of  HTML tree for Yang modules completed +++++"
 
-yang_tree.md:  $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES)
+yang_tree.md: $(PATCH_STD_YANGS)
 	$(PYANG) \
 		-f doctree \
+		--basepaths $(YANGDIR):$(YANGDIR_COMMON):$(YANGDIR_EXTENSIONS_DIR) \
 		-o $@ \
-		--extdir $(YANGDIR_EXTENSIONS_DIR) \
+		--extdir $(YANG_BUILD_DIR_EXTENSIONS_DIR) \
 		--plugindir $(PYANG_PLUGIN_DIR) \
-		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
-		$(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES)
+		-p $(YANG_BUILD_DIR_COMMON):$(YANG_BUILD_DIR):$(YANG_BUILD_DIR_EXTENSIONS_DIR) \
+		$(BUILD_YANG_MOD_FILES) $(BUILD_YANG_MOD_EXTENSION_FILES)
 	@echo "+++++ Generation of  DOC tree for Yang modules completed +++++"
 
 #======================================================================
@@ -94,8 +103,9 @@ $(YANG_API_IGNORES): $(YANG_ANNOTATIONS_FILES)
 #======================================================================
 
 clean:
-	rm -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
-	rm -f allyangs.tree allyangs_tree.html yang_tree.md
+	$(RM) -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
+	$(RM) -r $(YANG_BUILD_DIR_COMMON) $(YANG_BUILD_DIR_EXTENSIONS_DIR) $(YANG_BUILD_DIR)
+	$(RM) -f allyangs.tree allyangs_tree.html yang_tree.md *.log $(PATCH_STD_YANGS) $(SYNC_STD_YANGS_TO_BUILD)
 
 validate: $(YANG_VALIDATE_CHK)
 
@@ -108,8 +118,17 @@ $(OC_COMMUNITY_LINTER_PATCH): $(OC_COMMUNITY_LINTER)
 	git apply $(TOOLS_DIR)/pyang/patches/openconfig_validator.patch
 	touch $@
 
-$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH)
+$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH) $(YANG_PATCH_FILES)
 	$(LINTER) 
 	touch $@
 
+$(SYNC_STD_YANGS_TO_BUILD): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(YANG_PATCH_FILES)
+	mkdir -p $(@D)
+	rsync -avh --exclude-from=$(YANGDIR)/copy_to_build_dir.exclude $(YANGDIR) $(YANG_BUILD_DIR)
+	touch $@
 
+$(PATCH_STD_YANGS): $(SYNC_STD_YANGS_TO_BUILD)
+	for file in $(YANG_PATCH_FILES) ; do \
+		patch -d $(YANG_BUILD_DIR) -p3 < $${file} ; \
+	done
+	touch $@

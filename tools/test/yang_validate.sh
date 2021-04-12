@@ -40,7 +40,8 @@ if [[ "$REPO" != *sonic-mgmt-common ]]; then
 	exit 3
 fi
 
-YANGDIR=$REPO/models/yang
+YANGDIR_BASE=$REPO/models/yang
+YANGDIR=$REPO/build/yang
 YANGDIR_COMMON=$YANGDIR/common
 YANGDIR_EXTENSIONS=$YANGDIR/extensions
 
@@ -66,6 +67,7 @@ fi
 echo "++++++ Upgrade check completed ++++++"
 
 # check for openconfig issues
+# TODO: This tool will be decommissioned once we start reporting issues from community's linter 
 echo "Starting OpenConfig YANG style check ...."
 $PYANG -f stcheck --ignore-errors --extensiondir $YANGDIR_EXTENSIONS \
 	--plugindir $PYANG_PLUGIN_DIR \
@@ -78,14 +80,15 @@ echo "++++++ OpenConfig style check completed ++++++"
 
 # check for openconfig issues using OC Community Linter
 echo "Starting OpenConfig YANG validation using OC Community Linter ...."
-$PYANG --openconfig --report-errors-only-in $YANGDIR_EXTENSIONS \
+$PYANG --openconfig --logfile $REPO/models/yang/oc_lint_issues.log \
 	--plugindir $PYANG_COMMUNITY_PLUGIN_DIR \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $OPENCONFIG_YANG_MOD_FILES \
-	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES |& tee $REPO/models/yang/oc_lint_issues.log
+	--ignorefile $YANGDIR_BASE/lint_ignore.ocstyle --patchdir $YANGDIR_BASE/patches \
+	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES
 # Commenting below lines as we dont intent to error out build for now
-#if [[ $? != 0 ]]; then
-#	exit_code=1
-#fi
+# if [[ $? != 0 ]]; then
+# 	exit_code=1
+# fi
 echo "++++++ OpenConfig style validation using Community linter completed ++++++"
 
 # check for lint-strict issues
@@ -93,6 +96,7 @@ echo "Starting YANG lint-strict check ...."
 $PYANG --strict --lint --extensiondir $YANGDIR_EXTENSIONS \
 	--plugindir $PYANG_PLUGIN_DIR -f strictlint \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS \
+	--ignorefile $YANGDIR_BASE/lint_ignore.strict --patchdir $YANGDIR_BASE/patches \
 	$YANG_MOD_EXTENSION_FILES 2> /dev/null
 if [[ $? != 0 ]]; then
 	exit_code=1
@@ -102,6 +106,7 @@ echo "++++++ lint-check check completed ++++++"
 # check for IETF issues
 echo "Starting YANG IETF check ...."
 $PYANG --ietf --plugindir $PYANG_PLUGIN_DIR -f strictlint \
+	--ignorefile $YANGDIR_BASE/lint_ignore.ietf --patchdir $YANGDIR_BASE/patches \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_IETF_MOD_EXT_FILES 2> /dev/null
 if [[ $? != 0 ]]; then
 	exit_code=1

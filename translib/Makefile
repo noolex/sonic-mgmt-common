@@ -20,6 +20,9 @@ TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
 TRANSL_DB_ALL_SRCS = $(shell find db/ -name '*.go' | grep -v '/test/')
 
 TRANSLIB_TEST_DIR  = $(BUILD_DIR)/tests/translib
+YANG_DIR           = $(TOPDIR)/models/yang
+YANG_PATCH_DIR     = $(YANG_DIR)/patches
+PATCH_YANG         = $(BUILD_DIR)/yang/.patchdone
 TRANSLIB_TEST_BIN  = $(TRANSLIB_TEST_DIR)/translib.test
 TRANSL_DB_TEST_BIN = $(TRANSLIB_TEST_DIR)/db.test
 
@@ -27,7 +30,8 @@ TRANSFORMER_TEST_BIN = $(TRANSLIB_TEST_DIR)/transformer.test
 TRANSFORMER_TEST_FILES=$(wildcard transformer/*_test.go)
 TRANSFORMER_SRCS = $(shell find transformer/ -name '*.go' | grep -v '/test/')
 
-YANG_FILES = $(shell find $(TOPDIR)/models/yang -name '*.yang')
+YANG_FILES = $(shell find $(YANG_DIR) -name '*.yang')
+YANG_PATCH_FILES = $(shell find $(YANG_PATCH_DIR) -name '*.patch')
 YGOT_BINDS = ocbinds/ocbinds.go
 
 DEFAULT_TARGETS = $(YGOT_BINDS) $(STATIC_CHECK)
@@ -38,6 +42,9 @@ endif
 default: $(DEFAULT_TARGETS)
 
 all: $(DEFAULT_TARGETS) $(TRANSLIB_PKG)
+
+$(PATCH_YANG): $(YANG_PATCH_FILES)
+	$(MAKE) -C $(TOPDIR)/models/yang ../../build/yang/.patchdone
 
 $(TRANSLIB_PKG): $(TRANSLIB_MAIN_SRCS) $(YGOT_BINDS)
 	$(GO) build -mod=vendor -gcflags="all=-N -l" -v -o $(TRANSLIB_PKG) ../translib
@@ -52,7 +59,7 @@ $(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_FILES) $(TRANSFORMER_SRCS) $(TRANSLI
 	mkdir -p $(@D)/testdata && cp -r transformer/testdata/*.json $(@D)/testdata
 	$(GO) test -mod=vendor -c -vet=off -cover -coverpkg=../translib/transformer ../translib/transformer -o $@
 
-$(YGOT_BINDS): $(YANG_FILES)
+$(YGOT_BINDS): $(YANG_FILES) $(YANG_PATCH_FILES) | $(PATCH_YANG)
 	$(RM) $@
 	cd ocbinds && $(GO) generate
 
