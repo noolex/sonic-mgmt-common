@@ -148,6 +148,25 @@ module sonic-vxlan {
                 }
             }
         }
+        container VXLAN_EVPN_NVO {
+
+            list VXLAN_EVPN_NVO_LIST { 
+
+                key "name";
+                max-elements 1;
+
+                leaf name {
+                    type string;
+                }
+
+                leaf source_vtep {
+                    mandatory true;
+                    type leafref {
+                        path "../../../VXLAN_TUNNEL/VXLAN_TUNNEL_LIST/name";
+                    }
+                }
+            }
+        }
         container SUPPRESS_VLAN_NEIGH {
 
             list SUPPRESS_VLAN_NEIGH_LIST {
@@ -199,6 +218,29 @@ module sonic-vxlan {
             description "app db vxlan remote vni table";
 
             list EVPN_REMOTE_VNI_TABLE_LIST {
+                key "vlan remote_vtep";
+
+                leaf vlan {
+                    type leafref {
+                        path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                    }
+                }
+                leaf remote_vtep {
+                    type inet:ipv4-address;
+                }
+                leaf vni {
+                    type string;
+                }
+            }
+        }
+        container VXLAN_REMOTE_VNI_TABLE {
+            sonic-ext:db-name "APPL_DB";
+            sonic-ext:key-delim ":";
+
+            config false;
+            description "app db vxlan remote vni table";
+
+            list VXLAN_REMOTE_VNI_TABLE_LIST {
                 key "vlan remote_vtep";
 
                 leaf vlan {

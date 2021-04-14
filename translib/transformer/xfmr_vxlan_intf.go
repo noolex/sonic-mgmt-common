@@ -113,7 +113,7 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		if err != nil {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning err ==> ", err)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
 		log.Info("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> tunnelTblData ==> ", tunnelTblData)
@@ -122,7 +122,7 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		if err != nil || len(tunnelKeys) != 1 {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", err)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
 		if log.V(3) {
@@ -138,14 +138,14 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		if err != nil || len(tunnelEntry.Field) == 0 {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", err)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
 		if tunnelEntry.Field["src_ip"] != srcIpStr {
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> srcIpStr mismatch")
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", retErr)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
 		var VXLAN_TUNNEL_MAP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_TUNNEL_MAP"}
@@ -165,7 +165,7 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		if err != nil || len(tblVxlanMapKeys) != 1 {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", err)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
 //		if log.V(3) {
@@ -181,12 +181,12 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		if len(vlanIdList) != 2 {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", retErr)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 
-		var APP_EVPN_REMOTE_VNI_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "EVPN_REMOTE_VNI_TABLE"}
+		var APP_VXLAN_REMOTE_VNI_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_REMOTE_VNI_TABLE"}
 		remote_ip := peerIpStr
-		evpnRemoteKey, err := applDbPtr.GetEntry(APP_EVPN_REMOTE_VNI_TABLE_TS, db.Key{[]string{"Vlan" + vlanIdList[1], remote_ip}})
+		evpnRemoteKey, err := applDbPtr.GetEntry(APP_VXLAN_REMOTE_VNI_TABLE_TS, db.Key{[]string{"Vlan" + vlanIdList[1], remote_ip}})
 
 //		if log.V(3) {
 			log.Info("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> evpnRemoteKey ==> ", evpnRemoteKey)
@@ -199,7 +199,7 @@ var YangToDb_vxlan_vni_state_peer_info_key_xfmr KeyXfmrYangToDb = func(inParams 
 		} else {
 			retErr := tlerr.NotFound("Resource Not Found")
 			log.Error("YangToDb_vxlan_vni_state_peer_info_key_xfmr ==> returning ERROr ==> ", retErr)
-			return "EVPN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
+			return "VXLAN_REMOTE_VNI_TABLE", retErr // returning table name without keys in error case
 		}
 	}
 
@@ -678,7 +678,7 @@ func (reqP *vxlanReqProcessor) handleDeleteReq(inParams XfmrParams) (*map[string
                 if reqP.targetNode.Name != "qos-mode" && reqP.targetNode.Name != "dscp" {
                     //evpnNvodbV.Field["source_vtep"] = vxlanIntfName
                     evpnNvoTbl["nvo1"] = evpnNvodbV
-                    res_map["EVPN_NVO"] = evpnNvoTbl
+                    res_map["VXLAN_EVPN_NVO"] = evpnNvoTbl
                 }
             } // else {
             //				return &res_map, tlerr.NotFound("Resource Not Found")
@@ -733,7 +733,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
         dscp_configured = true
     }
 
-    var NVO_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "EVPN_NVO"}
+    var NVO_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "VXLAN_EVPN_NVO"}
     dbvNvo, err := reqP.db.GetEntry(NVO_TABLE_TS, db.Key{[]string{"nvo1"}})
     var nvoCreated bool
     nvoCreated = false
@@ -880,7 +880,7 @@ func (reqP *vxlanReqProcessor) handleCRUReq() (*map[string]map[string]db.Value, 
 		evpnNvoTblMap["nvo1"] = dbV2
 		res_map["VXLAN_TUNNEL"] = vxlanTunnelTblMap
         if !nvoCreated {
-            res_map["EVPN_NVO"] = evpnNvoTblMap
+            res_map["VXLAN_EVPN_NVO"] = evpnNvoTblMap
         }
 	}
 	

@@ -3272,14 +3272,14 @@ func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
     	return tlerr.NotFound("Resource Not Found")
     }
 
-    _, err = inParams.d.GetEntry(&db.TableSpec{Name:"EVPN_NVO"}, db.Key{Comp: []string{"nvo1"}})
+    _, err = inParams.d.GetEntry(&db.TableSpec{Name:"VXLAN_EVPN_NVO"}, db.Key{Comp: []string{"nvo1"}})
     if err == nil {
-        log.Infof("deleteVxlanIntf: vxlanIf: %s EVPN_NVO Table found ", *ifName)
+        log.Infof("deleteVxlanIntf: vxlanIf: %s VXLAN_EVPN_NVO Table found ", *ifName)
 	    evpnNvoMap := make(map[string]db.Value)
 	    evpnDbV := db.Value{Field:map[string]string{}}
 	    //evpnDbV.Field["source_vtep"] = *ifName
 	    evpnNvoMap["nvo1"] = evpnDbV
-	    resMap["EVPN_NVO"] = evpnNvoMap
+	    resMap["VXLAN_EVPN_NVO"] = evpnNvoMap
     }
 
     vxlanIntfMap := make(map[string]db.Value)
