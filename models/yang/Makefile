@@ -37,7 +37,6 @@ YANG_PATCH_FILES            := $(shell find $(YANGDIR_PATCH) -name '*.patch' | s
 YANG_BUILD_DIR                  := $(TOPDIR)/build/yang
 YANG_BUILD_DIR_COMMON           := $(YANG_BUILD_DIR)/common
 YANG_BUILD_DIR_EXTENSIONS_DIR	:= $(YANG_BUILD_DIR)/extensions
-YANG_API_IGNORES                := $(YANG_BUILD_DIR)/api_ignore
 YANG_ANNOTS_CHK                 := $(YANG_BUILD_DIR)/annots_checked
 YANG_VALIDATE_CHK               := $(YANG_BUILD_DIR)/validate_checked
 PATCH_STD_YANGS                 := $(YANG_BUILD_DIR)/.patchdone
@@ -49,7 +48,7 @@ PYANG            ?= pyang
 LINTER           := $(TOOLS_DIR)/test/yang_validate.sh
 
 .PHONY: all
-all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK) | $(PATCH_STD_YANGS)
+all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK) | $(PATCH_STD_YANGS)
 
 .PHONY: annot
 annot: $(YANG_ANNOTS_CHK)
@@ -91,19 +90,11 @@ yang_tree.md: $(PATCH_STD_YANGS)
 	@echo "+++++ Generation of  DOC tree for Yang modules completed +++++"
 
 #======================================================================
-# Generate api_ignore file
-#======================================================================
-$(YANG_API_IGNORES): $(YANG_ANNOTATIONS_FILES)
-	mkdir -p $(@D)
-	echo "# Yangs ignored" > $@
-	(cd $(YANGDIR_ANNOTATIONS) && ls -f *.yang) >> $@
-
-#======================================================================
 # Cleanups
 #======================================================================
 
 clean:
-	$(RM) -f $(YANG_API_IGNORES) $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
+	$(RM) -f $(YANG_ANNOTS_CHK) $(YANG_VALIDATE_CHK)
 	$(RM) -r $(YANG_BUILD_DIR_COMMON) $(YANG_BUILD_DIR_EXTENSIONS_DIR) $(YANG_BUILD_DIR)
 	$(RM) -f allyangs.tree allyangs_tree.html yang_tree.md *.log $(PATCH_STD_YANGS) $(SYNC_STD_YANGS_TO_BUILD)
 

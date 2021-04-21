@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ################################################################################
 #                                                                              #
-#  Copyright 2020 Broadcom. The term Broadcom refers to Broadcom Inc. and/or   #
+#  Copyright 2021 Broadcom. The term Broadcom refers to Broadcom Inc. and/or   #
 #  its subsidiaries.                                                           #
 #                                                                              #
 #  Licensed under the Apache License, Version 2.0 (the "License");             #
@@ -20,52 +20,39 @@
 
 set -e
 
-TOPDIR=$(git rev-parse --show-toplevel)
-GO=${GO:-go}
-
-TARGS=( -mod=vendor -v -cover -tags test )
-PARGS=()
-PKG=translib/...
+SRCDIR=$(dirname ${BASH_SOURCE[0]})
+TOPDIR=$(git -C ${SRCDIR} rev-parse --show-toplevel)
+V=
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
+case "$1" in
     -h|-help|--help)
-        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME|-bench PATTERN] [-json] [ARGS...]"
+        echo "$(basename $0) copies yangs and related config files to YANG_MODELS_PATH dirctory."
+        echo "Current YANG_MODELS_PATH value is \"${YANG_MODELS_PATH}\""
         exit 0;;
-    -p|-pkg|-package) PKG=$2; shift 2;;
-    -r|-run)   TARGS+=( -run $2 ); shift 2;;
-    -b|-bench) TARGS+=( -bench $2 -run XXX ); shift 2;;
-    -j|-json)  TARGS+=( -json ); shift;;
-    *) PARGS+=( "$1"); shift;;
-    esac
+    -v|-verbose|--verbose)
+        V="-v"
+        shift;;
+esac
 done
 
-cd ${TOPDIR}
-if [[ ! -d ${PKG} ]] && [[ -d translib/${PKG} ]]; then
-    PKG=translib/${PKG}
-fi
-
-if [[ -z ${GOPATH} ]]; then
-    export GOPATH=/tmp/go
-fi
-
-# cvl schema
-if [[ -z ${CVL_SCHEMA_PATH} ]]; then
-    export CVL_SCHEMA_PATH=${TOPDIR}/build/cvl/schema
-fi
-
-# db config file
-if [[ -z ${DB_CONFIG_PATH} ]]; then
-    export DB_CONFIG_PATH=${TOPDIR}/tools/test/database_config.json
-fi
-
-# yang files
 if [[ -z ${YANG_MODELS_PATH} ]]; then
-    export YANG_MODELS_PATH=${TOPDIR}/build/all_test_yangs
-    ${TOPDIR}/tools/test/yangpath_init.sh
+    echo "error: YANG_MODELS_PATH not set"
+    exit 1
+fi
+if [[ ! -f ${TOPDIR}/build/yang/.patchdone ]]; then
+    echo "error: yangs are not patched!"
+    exit 1
 fi
 
-[[ "${PARGS[@]}" =~ -(also)?log* ]] || PARGS+=( -logtostderr )
-
-set -x
-${GO} test ./${PKG} "${TARGS[@]}" -args "${PARGS[@]}"
+mkdir -p $V ${YANG_MODELS_PATH}
+pushd ${YANG_MODELS_PATH} > /dev/null
+rm -rf *
+PREFIX=$(realpath --relative-to=$PWD ${TOPDIR})
+find ${PREFIX}/models/yang/sonic -name "*.yang" -exec ln $V -sf {} \;
+find ${PREFIX}/models/yang/annotations -name "*.yang" -exec ln $V -sf {} \;
+find ${PREFIX}/build/yang -name "*.yang" -exec ln $V -sf {} \;
+ln $V -sf ${PREFIX}/models/yang/version.xml
+ln $V -sf ${PREFIX}/config/transformer/models_list
+ln $V -sf ${PREFIX}/config/transformer/sonic_table_info.json
+popd > /dev/null
