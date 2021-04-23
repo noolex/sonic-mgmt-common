@@ -55,7 +55,21 @@ PYANG_PLUGIN_DIR=$REPO/tools/pyang/pyang_plugins
 PYANG_COMMUNITY_PLUGIN_DIR=$REPO/build/oc-community-linter/openconfig_pyang/plugins
 exit_code=0
 
+SONIC_YANGDIR=$YANGDIR_BASE/sonic
+SONIC_YANGDIR_COMMON=$SONIC_YANGDIR/common
+SONIC_YANG_MOD_FILES=`find $SONIC_YANGDIR -maxdepth 1 -name 'sonic*.yang' | sort`
+
 # Execute tools
+# check for SONiC yang models
+echo "Starting SONiC YANG lint check ...."
+python3 `which $PYANG` --strict --sonic --plugindir $PYANG_PLUGIN_DIR \
+    -p $SONIC_YANGDIR_COMMON:$SONIC_YANGDIR $SONIC_YANG_MOD_FILES
+# Commenting below lines as we dont intent to error out build for now
+#if [[ $? != 0 ]]; then
+#	exit_code=1
+#fi
+echo "++++++ SONiC YANG lint check completed ++++++"
+
 # check for upgrade issues
 echo "Starting YANG upgrade check ...."
 $PYANG -f upcheck --ignore-errors --yang-dir $YANGDIR --plugindir $PYANG_PLUGIN_DIR \
