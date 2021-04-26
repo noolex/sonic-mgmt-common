@@ -8,6 +8,8 @@ openconfig-platform-fan.yang
 openconfig-platform-fan-ext.yang
 openconfig-platform-transceiver.yang
 openconfig-platform-transceiver-ext.yang
+openconfig-platform-diagnostics.yang
+openconfig-platform-diagnostics-annot.yang
 openconfig-interfaces.yang
 openconfig-interfaces-ext.yang
 openconfig-if-ip.yang

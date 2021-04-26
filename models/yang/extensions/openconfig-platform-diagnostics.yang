@@ -1,0 +1,207 @@
+module openconfig-platform-diagnostics {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/platform-diagnostics/extension";
+
+    prefix oc-plat-diag;
+
+    // import some basic types
+    import openconfig-extensions {
+        prefix oc-ext;
+    }
+
+    organization
+        "Broadcom Inc.";
+    contact
+        "SONiC";
+    description
+        "SONIC Platform Diagnostics";
+
+    revision 2021-03-26 {
+        description
+            "Initial revision.";
+        reference
+            "0.1";
+    }
+
+    grouping transceiver-dom-top {
+        description "Top level of the transceiver digital optical monitoring";
+            list transceiver-dom-info {
+                key "ifname";
+                description "Transceiver digital optical monitoring information list";
+
+                leaf ifname {
+                    type leafref {
+                        path "../config/ifname";
+                    }
+                    description "Interface ID";
+                }
+                container config {
+                    description
+                        "Configuration data for the transceiver digital optical monitoring";
+
+                    leaf ifname {
+                        type string;
+                        description
+                            "Interface ID";
+                    }
+                }
+                container state {
+                    config false;
+                    description
+                        "Operational states of the transceiver digital optical monitoring";
+
+                    leaf ifname {
+                        type leafref {
+                            path "../../config/ifname";
+                        }
+                        description
+                            "Interface ID";
+                    }
+                    leaf type {
+                        type string;
+                        description "Transceiver Type";
+                    }
+                    leaf vendor {
+                        type string {
+                            length 1..16;
+                        }
+                        description
+                           "Full name of transceiver vendor. 16-octet field that
+                            contains ASCII characters, left-aligned and padded on the
+                            right with ASCII spaces (20h)";
+                    }
+                    leaf vendor-part {
+                        type string {
+                            length 1..16;
+                        }
+                        description
+                           "Transceiver vendor's part number. 16-octet field that
+                            contains ASCII characters, left-aligned and padded on the
+                            right with ASCII spaces (20h). If part number is undefined,
+                            all 16 octets = 0h";
+                    }
+                    leaf temperature {
+                        type string;
+                        description "Internally measured transceiver temperature in degrees Celsius";
+                    }
+                    leaf voltage {
+                        type string;
+                        description "Internally measured transceiver supply voltage in Volts";
+                    }
+                    leaf rx-power {
+                        type string;
+                        description "Measured Rx received power in dBm, per-lane states are separated by commas";
+                    }
+                    leaf tx-bias {
+                        type string;
+                        description "Measured Tx bias current in uA, per-lane states are separated by commas";
+                    }
+                    leaf tx-power {
+                        type string;
+                        description "Measured Tx output power in dBm, per-lane states are separated by commas";
+                    }
+                    leaf alarm-temp-hi {
+                        type string;
+                        description "Alarm threshold for high transceiver temperature in degrees Celsius";
+                    }
+                    leaf alarm-temp-lo {
+                        type string;
+                        description "Alarm threshold for low transceiver temperature in degrees Celsius";
+                    }
+                    leaf alarm-volt-hi {
+                        type string;
+                        description "Alarm threshold for high transceiver supply voltage in Volts";
+                    }
+                    leaf alarm-volt-lo {
+                        type string;
+                        description "Alarm threshold for low transceiver supply voltage in Volts";
+                    }
+                    leaf alarm-rx-power-hi {
+                        type string;
+                        description "Alarm threshold for high Rx received power in dBm";
+                    }
+                    leaf alarm-rx-power-lo {
+                        type string;
+                        description "Alarm threshold for low Rx received power in dBm";
+                    }
+                    leaf alarm-tx-bias-hi {
+                        type string;
+                        description "Alarm threshold for high Tx bias current in uA";
+                    }
+                    leaf alarm-tx-bias-lo {
+                        type string;
+                        description "Alarm threshold for low Tx bias current in uA";
+                    }
+                    leaf alarm-tx-power-hi {
+                        type string;
+                        description "Alarm threshold for high Tx output power in dBm";
+                    }
+                    leaf alarm-tx-power-lo {
+                        type string;
+                        description "Alarm threshold for low Tx output power in dBm";
+                    }
+                    leaf warning-temp-hi {
+                        type string;
+                        description "Warning threshold for high transceiver temperature";
+                    }
+                    leaf warning-temp-lo {
+                        type string;
+                        description "Warning threshold for low transceiver temperature";
+                    }
+                    leaf warning-volt-hi {
+                        type string;
+                        description "Warning threshold for high transceiver supply voltage in Volts";
+                    }
+                    leaf warning-volt-lo {
+                        type string;
+                        description "Warning threshold for low transceiver supply voltage in Volts";
+                    }
+                    leaf warning-rx-power-hi {
+                        type string;
+                        description "Warning threshold for high Rx received power in dBm";
+                    }
+                    leaf warning-rx-power-lo {
+                        type string;
+                        description "Warning threshold for low Rx received power in dBm";
+                    }
+                    leaf warning-tx-bias-hi {
+                        type string;
+                        description "Warning threshold for high Tx bias current in uA";
+                    }
+                    leaf warning-tx-bias-lo {
+                        type string;
+                        description "Warning threshold for low Tx bias current in uA";
+                    }
+                    leaf warning-tx-power-hi {
+                        type string;
+                        description "Warning threshold for high Tx output power in dBm";
+                    }
+                    leaf warning-tx-power-lo {
+                        type string;
+                        description "Warning threshold for low Tx output power in dBm";
+                    }
+                    leaf timestamp {
+                        type string;
+                        description "Timestamp of the diagnostics statistics";
+                    }
+                }
+            }
+    }
+
+    grouping platform-diagnostics-top {
+        description
+            "Top-level grouping for Platform Diagnostics";
+
+        container transceiver-dom {
+            description
+                "Top level container for Transceiver Digital Optical Monitoring";
+            uses transceiver-dom-top;
+        }
+    }
+
+    uses platform-diagnostics-top;
+
+}
