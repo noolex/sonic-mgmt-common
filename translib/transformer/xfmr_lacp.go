@@ -19,13 +19,11 @@
 package transformer
 
 import (
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+    "strconv"
     "errors"
-    "encoding/json"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
-    "os/exec"
     log "github.com/golang/glog"
     "github.com/openconfig/ygot/ygot"
 )
@@ -40,73 +38,51 @@ func getLacpRoot (s *ygot.GoStruct) *ocbinds.OpenconfigLacp_Lacp {
     return deviceObj.Lacp
 }
 
-func getLacpData(ifKey string) (map[string]interface{}, error) {
-    var TeamdJson map[string]interface{}
-    var err error
-    errStr := "Internal Error"
+func fillLacpState(inParams XfmrParams, ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
 
-    cmd := exec.Command("docker", "exec", "teamd", "teamdctl", ifKey, "state", "dump")
-    out_stream, e := cmd.StdoutPipe()
-    if e != nil {
-        log.Warningf("Can't get stdout pipe: %s\n", e.Error())
-        return TeamdJson, tlerr.InternalError{Format:errStr}
-    }
-    err = cmd.Start()
+    lagTbl := &db.TableSpec{Name: "LAG_TABLE"}
+    stateDb := inParams.dbs[db.StateDB]
+
+    // Fetch the LAG_TABLE entry for a given portchannel from STATE_DB
+    dbEntry, err := stateDb.GetEntry(lagTbl, db.Key{Comp: []string{ifKey}})
     if err != nil {
-        log.Warningf("cmd.Start() failed with %s\n", err.Error())
-        return TeamdJson, tlerr.InternalError{Format:errStr}
+        errStr := "Failed to Get PortChannel Member details"
+        log.Info(errStr)
+        return errors.New(errStr)
     }
 
-    defer cmd.Wait()
-
-    err = json.NewDecoder(out_stream).Decode(&TeamdJson)
-    if err != nil {
-        log.Infof("Not able to decode teamd json output")
-        return TeamdJson, tlerr.InternalError{Format:errStr}
+    if val, ok := dbEntry.Field["runner.sys_prio"]; ok {
+        sys_prio_tmp,_ := strconv.Atoi(val)
+        sys_prio  := uint16(sys_prio_tmp)
+        state.SystemPriority = &sys_prio
     }
-
-    return TeamdJson, nil
-}
-
-func fillLacpState(inParams XfmrParams, ifKey string, TeamdJson map[string]interface{}, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State) error {
-    var runner_map map[string]interface{}
-    var status bool
-
-    setup_map := TeamdJson["setup"].(map[string]interface{})
-    if setup_map["runner_name"] != "lacp" {
-        errStr := "LAG not in LACP mode"
-        log.Infof(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
-    }
-
-    if runner_map, status = TeamdJson["runner"].(map[string]interface{}); !status {
-        errStr := "LAG doesn't contain runner details"
-        log.Infof(errStr)
-        return tlerr.InvalidArgsError{Format:errStr}
-    }
-
-    prio := runner_map["sys_prio"].(float64)
-    sys_prio := uint16(prio)
-    state.SystemPriority = &sys_prio
 
     var fast_rate bool = false
-    _get_fast_rate_config(inParams, ifKey, &fast_rate)
+    if val, ok := dbEntry.Field["runner.fast_rate"]; ok {
+        if val == "enabled" {
+            fast_rate = true
+        }
+    }
     if fast_rate {
         state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_FAST
     } else {
         state.Interval = ocbinds.OpenconfigLacp_LacpPeriodType_SLOW
     }
 
-    active := runner_map["active"].(bool)
+    val, ok := dbEntry.Field["runner.active"]
+    var active bool = false
+    if ok {
+        if val == "true" {
+            active = true
+        }
+    }
     if active {
         state.LacpMode = ocbinds.OpenconfigLacp_LacpActivityType_ACTIVE
     } else {
         state.LacpMode = ocbinds.OpenconfigLacp_LacpActivityType_PASSIVE
     }
 
-    team_device := TeamdJson["team_device"].(map[string]interface{})
-    team_device_ifinfo := team_device["ifinfo"].(map[string]interface{})
-    SystemIdMac := team_device_ifinfo["dev_addr"].(string)
+    SystemIdMac :=  dbEntry.Field["team_device.ifinfo.dev_addr"]
     state.SystemIdMac = &SystemIdMac
 
     return nil
@@ -133,81 +109,65 @@ func _getSelectedStatus(inParams XfmrParams, lag string, member string, selected
     return nil
 }
 
-func _get_fast_rate_config(inParams XfmrParams, lag_name string, fast_rate *bool) error {
-    poTblTs := &db.TableSpec{Name: "PORTCHANNEL"}
-    cfgDb := inParams.dbs[db.ConfigDB]
-    dbEntry, err := cfgDb.GetEntry(poTblTs, db.Key{Comp: []string{lag_name}})
+func _fillLacpMemberHelper(inParams XfmrParams, lag string, ifKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
 
+    lagMemberTbl := &db.TableSpec{Name: "LAG_MEMBER_TABLE"}
+    appDb := inParams.dbs[db.StateDB]
+
+    key := lag + "|" + ifKey
+    // Fetch the LAG member details from LAG_MEMBER_TABLE of STATE_DB
+    dbEntry, err := appDb.GetEntry(lagMemberTbl, db.Key{Comp: []string{key}})
     if err != nil {
-        errStr := "Failed to Get PortChannel Config details from DB"
+        errStr := "Failed to Get PortChannel Member details"
         log.Info(errStr)
         return errors.New(errStr)
     }
 
-    *fast_rate = false  // Default
-    if val, ok := dbEntry.Field["fast_rate"]; ok {
-        if val == "true" {
-            *fast_rate = true
-        }
+    var selected bool = false
+    _getSelectedStatus(inParams, lag, ifKey, &selected)
+    lacpMemberObj.State.Selected = &selected
+
+    if port_num, ok := dbEntry.Field["runner.actor_lacpdu_info.port"]; ok {
+        pport_num2,_ := strconv.Atoi(port_num)
+        pport_num := uint16(pport_num2)
+        lacpMemberObj.State.PortNum = &pport_num
     }
+
+    system_id := dbEntry.Field["runner.actor_lacpdu_info.system"]
+    lacpMemberObj.State.SystemId = &system_id
+
+    if oper_key, ok := dbEntry.Field["runner.actor_lacpdu_info.key"]; ok {
+        ooper_key2,_ := strconv.Atoi(oper_key)
+        ooper_key := uint16(ooper_key2)
+        lacpMemberObj.State.OperKey = &ooper_key
+    }
+
+    if partner_port_num, ok := dbEntry.Field["runner.partner_lacpdu_info.port"]; ok {
+        ppartner_num2,_ := strconv.Atoi(partner_port_num)
+        ppartner_num := uint16(ppartner_num2)
+        lacpMemberObj.State.PartnerPortNum = &ppartner_num
+    }
+
+    partner_system_id := dbEntry.Field["runner.partner_lacpdu_info.system"]
+    lacpMemberObj.State.PartnerId = &partner_system_id
+
+    if partner_oper_key, ok := dbEntry.Field["runner.partner_lacpdu_info.key"]; ok {
+        ppartner_key2,_ := strconv.Atoi(partner_oper_key)
+        ppartner_key := uint16(ppartner_key2)
+        lacpMemberObj.State.PartnerKey = &ppartner_key
+    }
+
     return nil
 }
 
-func _fillLacpMemberHelper(inParams XfmrParams, lag string, ports_map map[string]interface{}, ifKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
-    member_map := ports_map[ifKey].(map[string]interface{})
-    if port_runner, ok := member_map["runner"].(map[string]interface{}); ok {
+func fillLacpMember(inParams XfmrParams, lag string, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
 
-        var selected bool = false
-        _getSelectedStatus(inParams, lag, ifKey, &selected)
-        lacpMemberObj.State.Selected = &selected
-
-        actor := port_runner["actor_lacpdu_info"].(map[string]interface{})
-
-        port_num := actor["port"].(float64)
-        pport_num := uint16(port_num)
-        lacpMemberObj.State.PortNum = &pport_num
-
-        system_id := actor["system"].(string)
-        lacpMemberObj.State.SystemId = &system_id
-
-        oper_key := actor["key"].(float64)
-        ooper_key := uint16(oper_key)
-        lacpMemberObj.State.OperKey = &ooper_key
-
-        partner := port_runner["partner_lacpdu_info"].(map[string]interface{})
-        partner_port_num := partner["port"].(float64)
-        ppartner_num := uint16(partner_port_num)
-        lacpMemberObj.State.PartnerPortNum = &ppartner_num
-
-        partner_system_id := partner["system"].(string)
-        lacpMemberObj.State.PartnerId = &partner_system_id
-
-        partner_oper_key := partner["key"].(float64)
-        ppartner_key := uint16(partner_oper_key)
-        lacpMemberObj.State.PartnerKey = &ppartner_key
-        return nil
-    }
-    errStr := "LACP Member Information not available"
-    return tlerr.InvalidArgsError{Format:errStr}
-}
-
-func fillLacpMember(inParams XfmrParams, lag string, TeamdJson map[string]interface{}, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
-
-    var err error
-
-    if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
-        for ifKey := range ports_map {
-            if ifKey == ifMemKey {
-                err = _fillLacpMemberHelper(inParams, lag, ports_map, ifKey, lacpMemberObj)
-            }
-        }
-    }
-
-
+    // Call the helper routine to featch all the needed info
+    err := _fillLacpMemberHelper(inParams, lag, ifMemKey, lacpMemberObj)
     return err
 }
 
-func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]interface{}, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
+func fillLacpMembers(inParams XfmrParams, lag string, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
     var lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member
     var err error
 
@@ -215,20 +175,25 @@ func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]inter
         ygot.BuildEmptyTree(members)
     }
 
-    if ports_map,ok := TeamdJson["ports"].(map[string]interface{}); ok {
-        for ifKey := range ports_map {
-            ifName := utils.GetUINameFromNativeName(&ifKey)
+    lagMemKeys, err := inParams.dbs[db.StateDB].GetKeysByPattern(&db.TableSpec{Name: "LAG_MEMBER_TABLE"},  lag + "|*")
+    if err != nil {
+        return err
+    }
 
-            if lacpMemberObj, ok = members.Member[*ifName]; !ok {
-                lacpMemberObj, err = members.NewMember(*ifName)
-                if err != nil {
-                    log.Error("Creation of portchannel member subtree failed")
-                    return err
-                }
-                ygot.BuildEmptyTree(lacpMemberObj)
-            }
-            err = _fillLacpMemberHelper(inParams, lag, ports_map, ifKey, lacpMemberObj)
+    for i := range lagMemKeys {
+        ifName := lagMemKeys[i].Get(1)
+
+        // TBD: Need to call the below routine to get the UI name
+        // ifName := utils.GetUINameFromNativeName(&ifKey)
+
+        lacpMemberObj, err = members.NewMember(ifName)
+        if err != nil {
+            log.Error("Creation of portchannel member subtree failed")
+            return err
         }
+
+        ygot.BuildEmptyTree(lacpMemberObj)
+        err = _fillLacpMemberHelper(inParams, lag, ifName, lacpMemberObj)
     }
 
     return err
@@ -236,19 +201,13 @@ func fillLacpMembers(inParams XfmrParams, lag string, TeamdJson map[string]inter
 
 func populateLacpData(inParams XfmrParams, ifKey string, state *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_State,
                                     members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
-    TeamdJson, err := getLacpData(ifKey)
-    if err != nil {
-        log.Error("Failure in getting LACP data " )
-        return err
-    }
-
-    e := fillLacpState(inParams, ifKey, TeamdJson, state)
+    e := fillLacpState(inParams, ifKey, state)
     if e != nil {
         log.Error("Failure in filling LACP state data ")
         return e
     }
 
-    er := fillLacpMembers(inParams, ifKey, TeamdJson, members)
+    er := fillLacpMembers(inParams, ifKey, members)
     if er != nil {
         log.Error("Failure in filling LACP members data ")
         return er
@@ -259,13 +218,7 @@ func populateLacpData(inParams XfmrParams, ifKey string, state *ocbinds.Openconf
 
 func populateLacpMembers(inParams XfmrParams, ifKey string, members *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members) error {
 
-    TeamdJson, err := getLacpData(ifKey)
-    if err != nil {
-        log.Errorf("Failure in getting LACP data %s\n", err)
-        return err
-    }
-
-    e := fillLacpMembers(inParams, ifKey, TeamdJson, members)
+    e := fillLacpMembers(inParams, ifKey, members)
     if e != nil {
         log.Errorf("Failure in filling LACP members data %s\n", e)
         return e
@@ -276,13 +229,7 @@ func populateLacpMembers(inParams XfmrParams, ifKey string, members *ocbinds.Ope
 
 func populateLacpMember(inParams XfmrParams, ifPoKey string, ifMemKey string, lacpMemberObj *ocbinds.OpenconfigLacp_Lacp_Interfaces_Interface_Members_Member) error {
 
-    TeamdJson, err := getLacpData(ifPoKey)
-    if err != nil {
-        log.Errorf("Failure in getting LACP data %s\n", err)
-        return err
-    }
-
-    e := fillLacpMember(inParams, ifPoKey, TeamdJson, ifMemKey, lacpMemberObj)
+    e := fillLacpMember(inParams, ifPoKey, ifMemKey, lacpMemberObj)
     if e != nil {
         log.Errorf("Failure in filling LACP member data %s\n", e)
         return e
@@ -379,7 +326,6 @@ var DbToYang_lacp_get_xfmr  SubTreeXfmrDbToYang = func(inParams XfmrParams) erro
     }
 
     return nil
-
 }
 
 var Subscribe_lacp_get_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error)  {
