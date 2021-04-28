@@ -657,6 +657,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	countersDbPtr := dbs[db.CountersDB]
 
 	polPbfKey := db.Key{[]string{policy_name, class_name, interface_name, bind_dir}}
+	stpolPbfKey := db.Key{[]string{strings.Join(polPbfKey.Comp, ":")}}
 
 	var fbsCtrTbl_ts *db.TableSpec = &db.TableSpec{Name: "FBS_COUNTERS"}
 	fbsCtrVal, err := countersDbPtr.GetEntry(fbsCtrTbl_ts, polPbfKey)
@@ -725,8 +726,8 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			}
 
 			policerStateTbl := &db.TableSpec{Name: "POLICER_COUNTERS"}
-			policerTblVal, err = dbs[db.StateDB].GetEntry(policerStateTbl, polPbfKey)
-			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
+			policerTblVal, err = dbs[db.StateDB].GetEntry(policerStateTbl, stpolPbfKey)
+			log.Infof("Key:%v Val:%v Err:%v", stpolPbfKey, policerTblVal, err)
 			if err == nil {
 				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
 				policer.OPERATIONAL_CIR = policer.OPERATIONAL_CIR * 8 // Convert to bits
