@@ -376,6 +376,8 @@ func fillMclagIntfDetails(inParams XfmrParams, ifname string, mclagdomainid stri
 				intfData.State.Remote.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Remote_OperStatus_OPER_UP
 			} else if remoteOperStatus == "down" {
 				intfData.State.Remote.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Remote_OperStatus_OPER_DOWN
+			} else if remoteOperStatus == "unknown" {
+				intfData.State.Remote.OperStatus = ocbinds.OpenconfigMclag_Mclag_Interfaces_Interface_State_Remote_OperStatus_OPER_UNKNOWN
 			}
 		}
 	}

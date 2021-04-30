@@ -1009,6 +1009,8 @@ func (app *LstApp) processLstGroupsGet(dbs [db.MaxDB]*db.DB, grpPtr *ocbinds.Ope
 				diff = 0
 			}
 			grpPtr.State.BringupRemainingTime = &diff
+		    log.Infof("processLstGroupsGet: bringuptime; epoch_str:%s, epoch:%v, timeout:%v, RemainingTime:%v", epoch_str, epoch, tmout_16,
+                diff)
 		}
 	}
 

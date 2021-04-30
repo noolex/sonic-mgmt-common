@@ -144,6 +144,9 @@ const (
    PSU_OUTPUT_VOLTAGE         = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:output-voltage"
    PSU_TEMPERATURE            = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:temperature"
    PSU_VOLT_TYPE              = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:power-type"
+   PSU_INPUT_POWER            = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-ext:input-power"
+   PSU_INPUT_CURRENT          = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:input-current"
+   PSU_INPUT_VOLTAGE          = "/openconfig-platform:components/component/power-supply/state/openconfig-platform-psu:input-voltage"
 
    /** Supported Fan URIs **/
    FAN_SPEED                  = "/openconfig-platform:components/component/fan/state/openconfig-platform-fan:speed"
@@ -225,6 +228,7 @@ type PSU struct {
     Fans                string
     Input_Current       string
     Input_Voltage       string
+    Input_Power         string
     Manufacturer        string
     Model_Name          string
     Output_Current      string
@@ -428,18 +432,17 @@ var DbToYang_pfm_components_transceiver_diag_xfmr SubTreeXfmrDbToYang = func (in
     }
 
     name := pathInfo.Var("name")
-    if utils.IsAliasModeEnabled(){
-        name = *(utils.GetNativeNameFromUIName(&name))
-    }
-
-    log.Infof("xcvrId: %v", name)
-
     pf_cpts := getPfmRootObject(inParams.ygRoot)
     xcvrCom := pf_cpts.Component[name]
     if xcvrCom == nil {
         log.Info("Invalid Component Name")
         return errors.New("Invalid component name")
     }
+
+    if utils.IsAliasModeEnabled(){
+        name = *(utils.GetNativeNameFromUIName(&name))
+    }
+    log.Infof("xcvrId: %v", name)
 
     tbl := db.TableSpec { Name: "TRANSCEIVER_DIAG" }
     key := db.Key { Comp : [] string { name } }
@@ -1947,6 +1950,9 @@ func getSysPsuFromDb (name string, d *db.DB) (PSU, error) {
     psuInfo.Output_Current = psuEntry.Get("output_current")
     psuInfo.Output_Voltage = psuEntry.Get("output_voltage")
     psuInfo.Output_Power = psuEntry.Get("output_power")
+    psuInfo.Input_Current = psuEntry.Get("input_current")
+    psuInfo.Input_Voltage = psuEntry.Get("input_voltage")
+    psuInfo.Input_Power = psuEntry.Get("input_power")
     psuInfo.Volt_Type = psuEntry.Get("type")
 
     psuInfo.Presence = false
@@ -1990,6 +1996,15 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
             }
             if psuInfo.Output_Power != "" {
                 psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+            }
+            if psuInfo.Input_Current != "" {
+                psuState.InputCurrent, err = float32StrTo4Bytes(psuInfo.Input_Current)
+            }
+            if psuInfo.Input_Voltage != "" {
+                psuState.InputVoltage, err = float32StrTo4Bytes(psuInfo.Input_Voltage)
+            }
+            if psuInfo.Input_Power != "" {
+                psuState.InputPower, err = float32StrTo4Bytes(psuInfo.Input_Power)
             }
             if psuInfo.Temperature!= "" {
                 psuState.Temperature, err = float32StrTo4Bytes(psuInfo.Temperature)
@@ -2052,6 +2067,18 @@ func fillSysPsuInfo (psuCom *ocbinds.OpenconfigPlatform_Components_Component,
     case PSU_OUTPUT_POWER:
         if psuInfo.Output_Power != "" {
             psuState.OutputPower, err = float32StrTo4Bytes(psuInfo.Output_Power)
+        }
+    case PSU_INPUT_CURRENT:
+        if psuInfo.Input_Current != "" {
+            psuState.InputCurrent, err = float32StrTo4Bytes(psuInfo.Input_Current)
+        }
+    case PSU_INPUT_VOLTAGE:
+        if psuInfo.Input_Voltage != ""{
+            psuState.InputVoltage, err = float32StrTo4Bytes(psuInfo.Input_Voltage)
+        }
+    case PSU_INPUT_POWER:
+        if psuInfo.Input_Power != "" {
+            psuState.InputPower, err = float32StrTo4Bytes(psuInfo.Input_Power)
         }
     case PSU_TEMPERATURE:
         if psuInfo.Temperature != "" {
