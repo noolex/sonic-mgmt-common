@@ -334,7 +334,7 @@ func getQosCounters(entry *db.Value, attr string, counter_val **uint64 ) error {
     }
 
     log.Info("getQosCounters: ", "Attr " + attr + "doesn't exist in table Map!")
-    return errors.New("Attr " + attr + "doesn't exist in table Map!")
+    return tlerr.NotFoundError{Format: "Not found"}
 }
 
 func getQosOffsetCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_val **uint64 ) error {
