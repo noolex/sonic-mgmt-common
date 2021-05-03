@@ -352,8 +352,12 @@ module openconfig-mclag {
             description
               "Remote Interface operational status down";
           }
+          enum OPER_UNKNOWN {
+              description
+                  "Remote Interface operational status unknown when remote node isdown";
+          }
        }
-       default OPER_DOWN;
+       default OPER_UNKNOWN;
        description
          "MCLAG Remote Interface Operational status";
       }

@@ -24,60 +24,7 @@ module sonic-transceiver {
             "Initial revision.";
     }
 
-    container sonic-transceiver-info {
-
-        container TRANSCEIVER_INFO {
-            sonic-ext:db-name "STATE_DB";
-            list TRANSCEIVER_INFO_LIST {
-                key "ifname";
-
-                leaf ifname {
-                    type leafref {
-                        path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
-                    }
-                }
-                leaf type {
-                    type string;
-                    description "Identifier";
-                }
-                leaf type_abbrv_name {
-                    type string;
-                    description "Abbreviation Name";
-                }
-                leaf manufacturename {
-                    type string;
-                    description "Vendor Name";
-                }
-                leaf modelname {
-                    type string;
-                    description "Vendor Part Name";
-                }
-                leaf hardwarerev {
-                    type string;
-                    description "Vendor Revision";
-                }
-                leaf serialnum {
-                    type string;
-                    description "Vendor Serial Name";
-                }
-                leaf media_type {
-                    type string;
-                    description "Media Type";
-                }
-                leaf power_class {
-                    type string;
-                    description "Power Class";
-                }
-                leaf revision_compliance {
-                    type string;
-                    description "Revision Compliance";
-                }
-            }
-        }
-
-    }
-
-    container sonic-transceiver-diag {
+    container sonic-transceiver {
 
         container TRANSCEIVER_DIAG {
             sonic-ext:db-name "CONFIG_DB";
@@ -124,13 +71,9 @@ module sonic-transceiver {
             }
         }
 
-    }
-
-    container sonic-transceiver-diag-state {
-
-        container TRANSCEIVER_DIAG {
+        container TRANSCEIVER_INFO {
             sonic-ext:db-name "STATE_DB";
-            list TRANSCEIVER_DIAG_LIST {
+            list TRANSCEIVER_INFO_LIST {
                 key "ifname";
 
                 leaf ifname {
@@ -138,139 +81,41 @@ module sonic-transceiver {
                         path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
                     }
                 }
-                leaf diag_host_ber1 {
+                leaf type {
                     type string;
-                    description "Bit Error Rate: Host Lane 1";
+                    description "Identifier";
                 }
-                leaf diag_host_ber2 {
+                leaf type_abbrv_name {
                     type string;
-                    description "Bit Error Rate: Host Lane 2";
+                    description "Abbreviation Name";
                 }
-                leaf diag_host_ber3 {
+                leaf manufacturename {
                     type string;
-                    description "Bit Error Rate: Host Lane 3";
+                    description "Vendor Name";
                 }
-                leaf diag_host_ber4 {
+                leaf modelname {
                     type string;
-                    description "Bit Error Rate: Host Lane 4";
+                    description "Vendor Part Name";
                 }
-                leaf diag_host_ber5 {
+                leaf hardwarerev {
                     type string;
-                    description "Bit Error Rate: Host Lane 5";
+                    description "Vendor Revision";
                 }
-                leaf diag_host_ber6 {
+                leaf serialnum {
                     type string;
-                    description "Bit Error Rate: Host Lane 6";
+                    description "Vendor Serial Name";
                 }
-                leaf diag_host_ber7 {
+                leaf media_type {
                     type string;
-                    description "Bit Error Rate: Host Lane 7";
+                    description "Media Type";
                 }
-                leaf diag_host_ber8 {
+                leaf power_class {
                     type string;
-                    description "Bit Error Rate: Host Lane 8";
+                    description "Power Class";
                 }
-                leaf diag_media_ber1 {
+                leaf revision_compliance {
                     type string;
-                    description "Bit Error Rate: Media Lane 1";
-                }
-                leaf diag_media_ber2 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 2";
-                }
-                leaf diag_media_ber3 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 3";
-                }
-                leaf diag_media_ber4 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 4";
-                }
-                leaf diag_media_ber5 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 5";
-                }
-                leaf diag_media_ber6 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 6";
-                }
-                leaf diag_media_ber7 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 7";
-                }
-                leaf diag_media_ber8 {
-                    type string;
-                    description "Bit Error Rate: Media Lane 8";
-                }
-
-                leaf diag_host_snr1 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 1";
-                }
-                leaf diag_host_snr2 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 2";
-                }
-                leaf diag_host_snr3 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 3";
-                }
-                leaf diag_host_snr4 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 4";
-                }
-                leaf diag_host_snr5 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 5";
-                }
-                leaf diag_host_snr6 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 6";
-                }
-                leaf diag_host_snr7 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 7";
-                }
-                leaf diag_host_snr8 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Host Lane 8";
-                }
-                leaf diag_media_snr1 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 1";
-                }
-                leaf diag_media_snr2 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 2";
-                }
-                leaf diag_media_snr3 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 3";
-                }
-                leaf diag_media_snr4 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 4";
-                }
-                leaf diag_media_snr5 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 5";
-                }
-                leaf diag_media_snr6 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 6";
-                }
-                leaf diag_media_snr7 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 7";
-                }
-                leaf diag_media_snr8 {
-                    type string;
-                    description "Signal-to-Noise Ratio: Media Lane 8";
-                }
-
-                leaf module_state {
-                    type string;
-                    description "Module State";
+                    description "Revision Compliance";
                 }
             }
         }
