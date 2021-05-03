@@ -33,6 +33,8 @@ func init () {
     XlateFuncBind("DbToYang_storm_value_xfmr", DbToYang_storm_value_xfmr)
     XlateFuncBind("YangToDb_storm_type_key_xfmr", YangToDb_storm_type_key_xfmr)
     XlateFuncBind("DbToYang_storm_type_key_xfmr", DbToYang_storm_type_key_xfmr)
+    XlateFuncBind("YangToDb_storm_ifname_xfmr", YangToDb_storm_ifname_xfmr)
+    XlateFuncBind("DbToYang_storm_ifname_xfmr", DbToYang_storm_ifname_xfmr)
 }
 
 func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
@@ -54,7 +56,7 @@ func DbToYang_storm_type_key_xfmr (inParams XfmrParams) (map[string]interface{},
         log.Errorf("Invalid storm-type:%s",stormVals[1])
         return result, tlerr.InvalidArgs("Invalid storm-type: %s", stormVals[1])
     }
-    result["ifname"] = stormVals[0]
+    //result["ifname"] = stormVals[0]
 
     if log.V(3) {
         log.Info(result)
@@ -108,7 +110,7 @@ func DbToYang_storm_value_xfmr (inParams XfmrParams) (map[string]interface{}, er
         log.Errorf("Invalid storm-type:%s",stormVals[1])
         return result, tlerr.InvalidArgs("Invalid storm-type: %s", stormVals[1])
     }
-    result["ifname"] = stormVals[0]
+    //result["ifname"] = stormVals[0]
     
     entry, err := inParams.dbs[db.ConfigDB].GetEntry(&db.TableSpec{Name:"PORT_STORM_CONTROL"}, db.Key{Comp: []string{stormKey}})
     if err == nil {
@@ -132,3 +134,25 @@ var YangToDb_storm_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map
     return res_map, nil
 }
 
+func DbToYang_storm_ifname_xfmr (inParams XfmrParams) (map[string]interface{}, error) {
+    var stormKey string
+    result := make(map[string]interface{})
+    stormKey = inParams.key
+    if log.V(3) {
+        log.Infof("DbToYang_storm_ifname_xfmr: key:%s stormKey:%s", inParams.key,stormKey)
+    }
+    stormVals := strings.Split(stormKey,"|")
+    result["ifname"] = stormVals[0]
+    if log.V(3) {
+        log.Info(result)
+    }
+    return result, nil
+}
+
+var YangToDb_storm_ifname_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    if log.V(3) {
+        log.Info("Entering YangToDb_storm_ifname_xfmr")
+    }
+    res_map := make(map[string]string)
+    return res_map, nil
+}

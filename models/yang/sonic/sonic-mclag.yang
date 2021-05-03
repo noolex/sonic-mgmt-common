@@ -279,7 +279,12 @@ module sonic-mclag {
                 }
 
                 leaf oper_status {
-                    type scommon:oper-status;
+                    type enumeration {
+                        enum up;
+                        enum down;
+                        enum unknown;
+                    }
+                    default unknown;
                 }
             }
         }
