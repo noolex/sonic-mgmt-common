@@ -191,8 +191,10 @@ module sonic-copp {
 						"Comma separated string of trap_ids";
 				}
 				leaf trap_group {
+					type leafref {
+						path "/sonic-copp/COPP_GROUP/COPP_GROUP_LIST/name";
+					}
 					sonic-ext:custom-validation ValidateCoppTrapGroup;
-					type string;
 					description
 						"reference to CoPP group";
 				}

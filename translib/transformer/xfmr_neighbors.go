@@ -200,13 +200,23 @@ func delete_neigh_interface_config_all(inParams *XfmrParams, neighRespMap *map[s
     keys, _ := configDb.GetKeysByPattern(neighTblTs, keyPattern)
     log.Info("delete_neigh_interface_config_all::: neighTbl keys ", keys)
 
-    subOpMap := inParams.subOpDataMap[inParams.oper]
-
 /*
     neighOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
     neighOpMap[db.ConfigDB] = make(map[string]map[string]db.Value)
 
 */
+
+    if inParams.subOpDataMap[inParams.oper] == nil {
+        _subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+        inParams.subOpDataMap[inParams.oper] = &_subOpMap
+    }
+
+    subOpMap := inParams.subOpDataMap[inParams.oper]
+
+    if (*subOpMap)[db.ConfigDB] == nil {
+        (*subOpMap)[db.ConfigDB] = make(map[string]map[string]db.Value)
+    }
+
     log.Info("subOpMap ", *subOpMap)
     (*subOpMap)[db.ConfigDB][neighTblName] = make(map[string]db.Value)
 
@@ -480,7 +490,7 @@ var YangToDb_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrYangToDb = func (inParams Xf
 
 func isNbrExist(dbCl *db.DB, tblName string, key string) (bool) {
 
-    log.Info("isNbrExist:", tblName, key)
+    log.Infof("isNbrExist: tbl: %s, key: %s", tblName, key)
 
     _, err := dbCl.GetTable(&db.TableSpec{Name:tblName})
 
@@ -528,6 +538,11 @@ var Subscribe_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscInParams) (Xf
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
@@ -571,6 +586,11 @@ var Subscribe_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscInParams) (Xf
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_neigh_tbl_get_all_ipv6_xfmr: key " + cfgKey)
@@ -613,6 +633,11 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr = func(inParams XfmrSubscI
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
 
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
+
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
         log.Info("Subscribe_routed_vlan_neigh_tbl_get_all_ipv4_xfmr: key " + cfgKey)
@@ -653,6 +678,11 @@ var Subscribe_routed_vlan_neigh_tbl_get_all_ipv6_xfmr = func(inParams XfmrSubscI
     appKey := intfNameRcvd + ":" + ipAddrRcvd
     cfgDb, _ := db.NewDB(getDBOptions(db.ConfigDB))
     appDb, _ := db.NewDB(getDBOptions(db.ApplDB))
+
+    defer func() {
+        cfgDb.DeleteDB()
+        appDb.DeleteDB()
+    }()
 
     if isNbrExist(cfgDb, cfgTbl, cfgKey) {
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {cfgTbl:{cfgKey:{}}}}
@@ -1118,7 +1148,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv4_Neighbors_Neighbor
 
-    intfNameRcvd := pathInfo.Var("name")
+    intfNameRcvd, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("DbToYang_neigh_tbl_get_all_ipv4_xfmr: RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  intfNameRcvd,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
@@ -1132,8 +1163,6 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         log.Error("DbToYang_neigh_tbl_get_all_ipv4_xfmr - ", errStr)
         return nil
     }
-
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -1151,8 +1180,8 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
     ygot.BuildEmptyTree(intfObj)
 
-    if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[0]; !ok {
-        subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
+    if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[subIdx]; !ok {
+        subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(subIdx)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return nil
@@ -1165,9 +1194,9 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
 
     ipAddrRcvd := pathInfo.Var("ip")
     if len(ipAddrRcvd) > 0 {
-        keyPattern = *nativeIntfName + ":" + ipAddrRcvd
+        keyPattern = ifNameInDb + ":" + ipAddrRcvd
     } else {
-        keyPattern = *nativeIntfName + ":*"
+        keyPattern = ifNameInDb + ":*"
     }
 
     keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
@@ -1183,7 +1212,7 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         msgType = PREFIX
     }
 
-    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern, " msgType: ", msgType)
+    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", ifNameInDb, "),  keyPattern: ", keyPattern, " msgType: ", msgType)
     for _, key := range keys {
         /*separate ip and interface*/
         intfName := key.Comp[0]
@@ -1264,7 +1293,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     var subIntfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface
     var neighObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface_Subinterfaces_Subinterface_Ipv6_Neighbors_Neighbor
 
-    intfNameRcvd := pathInfo.Var("name")
+    intfNameRcvd, ifName, subIdxStr, subIdx, ifNameInDb, err1 := neighGetifNameFrmPathInfo(*pathInfo)
+    log.Infof("DbToYang_neigh_tbl_get_all_ipv6_xfmr: RcvdName: %s, NativeName: %s, subIdxStr: %s, subIdx: %d, ifNameInDb: %s, err1: %s",  intfNameRcvd,  ifName,  subIdxStr, subIdx, ifNameInDb, err1)
 
     if intfNameRcvd == "" {
         errStr := "Interface KEY not present"
@@ -1278,8 +1308,6 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         log.Error("DbToYang_neigh_tbl_get_all_ipv6_xfmr - ", errStr)
         return nil
     }
-
-    nativeIntfName := utils.GetNativeNameFromUIName(&intfNameRcvd)
 
     intfsObj := getIntfsRoot(inParams.ygRoot)
     if intfsObj == nil || len(intfsObj.Interface) < 1 {
@@ -1297,8 +1325,8 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     }
     ygot.BuildEmptyTree(intfObj)
 
-    if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[0]; !ok {
-        subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(0)
+    if subIntfObj, ok = intfObj.Subinterfaces.Subinterface[subIdx]; !ok {
+        subIntfObj, err = intfObj.Subinterfaces.NewSubinterface(subIdx)
         if err != nil {
             log.Error("Creation of subinterface subtree failed!")
             return err
@@ -1314,11 +1342,11 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
     if len(ipAddrRcvd) > 0 {
         /* IPv6 address in the DB is in lower case */
         ipAddrRcvd = strings.ToLower(ipAddrRcvd)
-        keyPattern = *nativeIntfName + ":" + ipAddrRcvd
+        keyPattern = ifNameInDb + ":" + ipAddrRcvd
     } else {
-        keyPattern = *nativeIntfName + ":*"
+        keyPattern = ifNameInDb + ":*"
     }
-    log.Info("Interface Name(Standard, Native):  (", intfNameRcvd, ", ", *nativeIntfName, "),  keyPattern: ", keyPattern)
+    log.Info("Interface Name(Standard, Native):  (", ifName, ", ", ifNameInDb, "),  keyPattern: ", keyPattern)
     keys, _ := appDb.GetKeysByPattern(neighTblTs, keyPattern)
 
     /* avoid string comparison in the loop and figure the msgType here*/
