@@ -106,7 +106,6 @@ type FbsFlowQosStateEntry struct {
 var classTblTs *db.TableSpec = &db.TableSpec{Name: CFG_CLASSIFIER_TABLE}
 var policyTblTs *db.TableSpec = &db.TableSpec{Name: CFG_POLICY_TABLE}
 var policySectionTblTs *db.TableSpec = &db.TableSpec{Name: CFG_POLICY_SECTIONS_TABLE}
-var policerTblTs *db.TableSpec = &db.TableSpec{Name: APP_POLICER_TABLE}
 var policyBindingTblTs *db.TableSpec = &db.TableSpec{Name: CFG_POLICY_BINDING_TABLE}
 var pbfGrpTblTs *db.TableSpec = &db.TableSpec{Name: PBF_GROUP_TABLE}
 var fbsCntrTblTs *db.TableSpec = &db.TableSpec{Name: FBS_COUNTERS_TABLE}
@@ -3143,9 +3142,9 @@ func (app *FbsApp) fillFbsForwardingStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey d
 }
 
 func (app *FbsApp) fillFbsPolicerStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey db.Key, qosState *FbsPolicerStateEntry) (err error) {
-	appDbPtr := dbs[db.ApplDB]
+	stateDbPtr := dbs[db.StateDB]
 	var policerTblVal db.Value
-	policerTblVal, err = appDbPtr.GetEntry(policerTblTs, polPbfKey)
+	policerTblVal, err = stateDbPtr.GetEntry(policerCtrTbl, polPbfKey)
 	log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
 	if err == nil {
 		if str_val, found := policerTblVal.Field["CIR"]; found {

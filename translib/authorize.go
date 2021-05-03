@@ -67,6 +67,8 @@ var OPER_ALLOW_RPC = map[string]bool{
 	"breakout_dependencies":           true,
 	"breakout_capabilities":           true,
 	"show-counters":                   true,
+	"sum":                             true,
+	"my-echo":                         true,
 }
 
 func init() {

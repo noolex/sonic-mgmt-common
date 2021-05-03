@@ -432,18 +432,17 @@ var DbToYang_pfm_components_transceiver_diag_xfmr SubTreeXfmrDbToYang = func (in
     }
 
     name := pathInfo.Var("name")
-    if utils.IsAliasModeEnabled(){
-        name = *(utils.GetNativeNameFromUIName(&name))
-    }
-
-    log.Infof("xcvrId: %v", name)
-
     pf_cpts := getPfmRootObject(inParams.ygRoot)
     xcvrCom := pf_cpts.Component[name]
     if xcvrCom == nil {
         log.Info("Invalid Component Name")
         return errors.New("Invalid component name")
     }
+
+    if utils.IsAliasModeEnabled(){
+        name = *(utils.GetNativeNameFromUIName(&name))
+    }
+    log.Infof("xcvrId: %v", name)
 
     tbl := db.TableSpec { Name: "TRANSCEIVER_DIAG" }
     key := db.Key { Comp : [] string { name } }

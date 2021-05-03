@@ -271,6 +271,12 @@ var rpc_default_port_config RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
     /* For a broken out port, keep the speed intact */
     if is_broken_port && port_entry.Has("speed") {
         portValue.Set("speed", port_entry.Field["speed"])
+        def_fec_mode := getDefFecMode(port_str,
+                                      strconv.Itoa(strings.Count(port_entry.Field["lanes"], ",") + 1),
+                                      port_entry.Field["speed"])
+        if len(def_fec_mode) > 1 {
+            portValue.Set("fec", def_fec_mode)
+        }
     } else {
         dflt_speed_int := getDefaultSpeed(configDB, port_str)
         if dflt_speed_int == 0 {

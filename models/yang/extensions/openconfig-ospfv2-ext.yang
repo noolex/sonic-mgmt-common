@@ -514,6 +514,30 @@ module openconfig-ospfv2-ext {
         "Max metric startup timeout in seconds";
     }
 
+    leaf router-lsa-all {
+      type ospf-cost-metric ;
+      description
+        "Advertise all Router LSA links with OSPF max-metric";
+    }
+
+    leaf router-lsa-stub {
+      type ospf-cost-metric ;
+      description
+        "Advertise all Router LSA stub links with OSPF max-metric";
+    }
+
+    leaf external-lsa-all {
+      type ospf-cost-metric ;
+      description
+        "Advertise all External LSA prefixes with OSPF max-metric";
+    }
+
+    leaf external-lsa-connected {
+      type ospf-cost-metric ;
+      description
+        "Advertise connected External LSA prefixes with OSPF max-metric";
+    }
+
     /*
     leaf on-shutdown {
       type uint32 {

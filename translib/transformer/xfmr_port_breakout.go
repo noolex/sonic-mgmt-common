@@ -87,14 +87,6 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
         members = append(members, member.name)
     }
     if len(brkout_mode) > 0 {
-        sort.SliceStable(members, func(i, j int) bool {
-            first,_ := strconv.Atoi(strings.ReplaceAll(members[i], "Ethernet", ""))
-            second,_ := strconv.Atoi(strings.ReplaceAll(members[j], "Ethernet", ""))
-            return first  < second
-        })
-        for j, name := range members {
-            members[j] = *(utils.GetUINameFromNativeName(&name))
-        }
         if !statusExist {
             status := "Completed"
             platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Status = &status
@@ -106,7 +98,17 @@ var DbToYang_port_breakout_state_xfmr SubTreeXfmrDbToYang = func (inParams XfmrP
         log.Info("No port breakout configurations for ", ifName)
         return tlerr.NotFound("No port breakout configurations")
     }
-
+    // Sort and convert the member names.
+    if len(members) > 0 {
+        sort.SliceStable(members, func(i, j int) bool {
+            first,_ := strconv.Atoi(strings.ReplaceAll(members[i], "Ethernet", ""))
+            second,_ := strconv.Atoi(strings.ReplaceAll(members[j], "Ethernet", ""))
+            return first  < second
+        })
+        for j, name := range members {
+            members[j] = *(utils.GetUINameFromNativeName(&name))
+        }
+    }
     platObj[pathInfo.Var("name")].Port.BreakoutMode.State.Members = members
     return err;
 
