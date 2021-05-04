@@ -79,7 +79,7 @@ module openconfig-tam-annot {
 
 
     // ------------------- SWITCH ID
-    deviation /oc-tam:tam/oc-tam:switch {
+    deviation /oc-tam:tam/oc-tam:switch/oc-tam:config {
       deviate add {
         sonic-ext:key-transformer "tam_switch_global_key_xfmr";
         sonic-ext:table-name "TAM_SWITCH_TABLE";
@@ -89,6 +89,7 @@ module openconfig-tam-annot {
     deviation /oc-tam:tam/oc-tam:switch/oc-tam:state {
       deviate add {
         sonic-ext:db-name "APPL_DB";
+        sonic-ext:key-transformer "tam_switch_global_key_xfmr";
         sonic-ext:table-name "TAM_APPL_SWITCH_TABLE";
       }
     }
@@ -385,30 +386,10 @@ module openconfig-tam-annot {
     deviation /oc-tam:tam/oc-tam:flowgroups {
       deviate add {
           sonic-ext:subtree-transformer "tam_flowgroups_xfmr";
+          sonic-ext:path-transformer "tam_flowgroups_xfmr";
       }
     }
 
-    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics {
-      deviate add {
-        sonic-ext:db-name "COUNTERS_DB";
-        sonic-ext:key-delim ":";
-        sonic-ext:table-name "COUNTERS:TAM";
-      }
-    }
-
-    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics/oc-tam:bytes {
-      deviate add {
-      	sonic-ext:field-name "Bytes";
-
-      }
-    }
-
-    deviation /oc-tam:tam/oc-tam:flowgroups/oc-tam:flowgroup/oc-tam:state/oc-tam:statistics/oc-tam:packets {
-      deviate add {
-        sonic-ext:field-name "Packets";
-      }
-    }
-    
     deviation /oc-tam:clear-flowgroup-counters {
       deviate add {
         sonic-ext:rpc-callback "rpc_clear_flowgroup_counters_cb";

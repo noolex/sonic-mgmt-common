@@ -22,7 +22,6 @@ package transformer
 import (
     "fmt"
     "bytes"
-    "errors"
     "strings"
     "strconv"
     "reflect"
@@ -36,14 +35,6 @@ import (
 )
 
 const (
-    SRC_MASK_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/l2/config/source-mac-mask"
-    DST_MASK_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/l2/config/destination-mac-mask"
-    SRC_MASK_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/l2/state/source-mac-mask"
-    DST_MASK_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/l2/state/destination-mac-mask"
-    IPV4_HOP_LIMIT_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv4/config/hop-limit"
-    IPV4_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv4/state/hop-limit"
-    IPV6_HOP_LIMIT_CONFIG_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/config/hop-limit"
-    IPV6_HOP_LIMIT_STATE_TEMPLATE = "/openconfig-tam:tam/flowgroups/flowgroup{name}/ipv6/state/hop-limit"
     SWITCH_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/switch-id"
     ENTERPRISE_ID_TEMPLATE = "/openconfig-tam:tam/switch/config/enterprise-id"
 
@@ -54,23 +45,14 @@ const (
     FEATURES_TEMPLATE = "/openconfig-tam:tam/features"
 )
 
-var URL_MAP = map[string]bool {
-    SRC_MASK_CONFIG_TEMPLATE: false,
-    DST_MASK_CONFIG_TEMPLATE: false,
-    SRC_MASK_STATE_TEMPLATE: false,
-    DST_MASK_STATE_TEMPLATE: false,
-    IPV4_HOP_LIMIT_CONFIG_TEMPLATE: false,
-    IPV4_HOP_LIMIT_STATE_TEMPLATE: false,
-    IPV6_HOP_LIMIT_CONFIG_TEMPLATE: false,
-    IPV6_HOP_LIMIT_STATE_TEMPLATE: false,
-}
-
-func isSupported(template string) (bool) {
-  if v, ok := URL_MAP[template]; ok {
-    return v
-  } else {
-    return true
-  }
+func isTamPathNotSupported(template string) (bool) {
+	//TODO fix the yang and get rid of this function
+	if strings.HasPrefix(template, FLOWGROUPS_TEMPLATE) {
+		return strings.HasSuffix(template, "/source-mac-mask") ||
+			strings.HasSuffix(template, "/destination-mac-mask") ||
+			strings.HasSuffix(template, "/hop-limit")
+	}
+	return true
 }
 
 var IP_PROTOCOL_MAP = map[ocbinds.E_OpenconfigPacketMatchTypes_IP_PROTOCOL]uint8{
@@ -188,6 +170,7 @@ func init () {
     XlateFuncBind("DbToYang_tam_flowgroups_xfmr", DbToYang_tam_flowgroups_xfmr)
     XlateFuncBind("YangToDb_tam_flowgroups_xfmr", YangToDb_tam_flowgroups_xfmr)
     XlateFuncBind("Subscribe_tam_flowgroups_xfmr", Subscribe_tam_flowgroups_xfmr)
+    XlateFuncBind("DbToYangPath_tam_flowgroups_xfmr", DbToYangPath_tam_flowgroups_xfmr)
 
     XlateFuncBind("tam_post_xfmr", tam_post_xfmr)
 
@@ -570,54 +553,41 @@ func getRecord(d *db.DB, cdb *db.DB, ruleEntry db.Value,  statEntry db.Value, la
 
 func getFlowGroupsFromDb(d *db.DB, cdb *db.DB, name string) (map[string]AclRule, error) {
     var ruleEntries = make(map[string]AclRule)
-    var err error
-    var configDbPtr, _ = db.NewDB(getDBOptions(db.ConfigDB))
-	defer configDbPtr.DeleteDB()
-    var ACL_RULE_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "ACL_RULE"}
-    aclRuleTable, _ := configDbPtr.GetTable(ACL_RULE_TABLE_TS)
+	var err error
+	var ruleKeys []db.Key
+	ruleTable := &db.TableSpec{Name: "ACL_RULE"}
+	if name == "" {
+		ruleKeys, err = d.GetKeysByPattern(ruleTable, "TAM|*")
+		if err != nil || len(ruleKeys) == 0 {
+			return ruleEntries, err
+		}
+	} else {
+		ruleKeys = append(ruleKeys, db.Key{Comp: []string{"TAM", name}})
+	}
 
-    var countersDbPtr, _ = db.NewDB(getDBOptions(db.CountersDB))
-	defer countersDbPtr.DeleteDB()
-    var ACL_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COUNTERS"}
-    
-    var ACL_LAST_COUNTERS_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "LAST_COUNTERS"}
+	countersTable := &db.TableSpec{Name: "COUNTERS"}
+	lastCountersTable := &db.TableSpec{Name: "LAST_COUNTERS"}
 
-    if name != "" {
-        aclKey := "TAM|"+name
-        ruleEntry, err := configDbPtr.GetEntry(ACL_RULE_TABLE_TS, db.Key{[]string{aclKey}})
-        if err != nil {
-            return ruleEntries, err
-        }
+	for _, k := range ruleKeys {
+		name =  k.Comp[1]
+		var ruleEntry, statEntry, lastStatEntry db.Value
+		ruleEntry, err = d.GetEntry(ruleTable, k)
+		if err != nil {
+			return ruleEntries, err
+		}
+		statEntry, err = cdb.GetEntry(countersTable, k)
+		if err == nil {
+			lastStatEntry, err = cdb.GetEntry(lastCountersTable, k)
+		}
+		if _, ok := err.(tlerr.TranslibRedisClientEntryNotExist); !ok && err != nil {
+			return ruleEntries, err
+		}
 
-        statKey := "TAM:"+name
-        statEntry, e2 := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
-        if e2 != nil {
-            return ruleEntries, e2
-        }
-        
-        lastStatKey := "TAM:"+name
-        lastStatEntry, e3 := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{lastStatKey}})
-        if e3 != nil {
-            return ruleEntries, e3
-        }
+		record, _ := getRecord(d, cdb, ruleEntry, statEntry, lastStatEntry, name)
+		ruleEntries[name] = record
+	}
 
-        record, _ := getRecord(d, cdb, ruleEntry, statEntry, lastStatEntry, name)
-        ruleEntries[name] = record
-    } else {
-        keys, _ := aclRuleTable.GetKeys()
-        for _, key := range keys {
-            rule := key.Get(1)
-            if (key.Get(0) == "TAM") {
-                entry, _ := aclRuleTable.GetEntry(key)
-                statKey := "TAM:"+rule
-                statEntry, _ := countersDbPtr.GetEntry(ACL_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
-                lastStatEntry, _ := countersDbPtr.GetEntry(ACL_LAST_COUNTERS_TABLE_TS, db.Key{[]string{statKey}})
-                record, _ := getRecord(d, cdb, entry, statEntry, lastStatEntry, rule)
-                ruleEntries[rule] = record
-            }
-        }
-    }
-    return ruleEntries, err
+    return ruleEntries, nil
 }
 
 func appendFlowGroupToYang(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, rule string, entry AclRule) (error) {
@@ -733,39 +703,110 @@ func fillFlowgroupInfo(flowGroups *ocbinds.OpenconfigTam_Tam_Flowgroups, name st
 
 func getFlowGroups(tamObj *ocbinds.OpenconfigTam_Tam, targetUriPath string, uri string, d *db.DB, cdb *db.DB) (error) {
     name := NewPathInfo(uri).Var("name")
-    ygot.BuildEmptyTree(tamObj)
-    ygot.BuildEmptyTree(tamObj.Flowgroups)
     return fillFlowgroupInfo(tamObj.Flowgroups, name, targetUriPath, uri, d, cdb)
 }
 
+// parseTamFlowgroupPath splits a flogroup path into flowgroup name and the
+// subpath w.r.t. "list flowgroup" node.
+func parseTamFlowgroupPath(p string) (name, subPath string) {
+	pathInfo := NewPathInfo(p)
+	name = pathInfo.Var("name")
+	if len(name) != 0 {
+		subPath = strings.TrimPrefix(pathInfo.Template, "/openconfig-tam:tam/flowgroups/flowgroup{}")
+		subPath = strings.TrimPrefix(subPath, "/")
+		subPath = strings.TrimPrefix(subPath, "openconfig-packet-match:")
+	}
+	return
+}
+
+var DbToYangPath_tam_flowgroups_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+	log.V(3).Infof("DbToYangPath_tam_flowgroups_xfmr: ygSchemaPath=%s, table=%s, key=%v",
+		params.ygSchemaPath, params.tblName, params.tblKeyComp)
+	fgNamePath := "/openconfig-tam:tam/flowgroups/flowgroup/name"
+	switch params.tblName {
+	case "TAM_FLOWGROUP_TABLE":
+		params.ygPathKeys[fgNamePath] = params.tblKeyComp[0]
+	case "ACL_RULE":
+		params.ygPathKeys[fgNamePath] = params.tblKeyComp[1]
+	case "COUNTERS":
+		params.ygPathKeys[fgNamePath] = params.tblKeyComp[1]
+	default:
+		return tlerr.New("Unknown db table %v", params.tblName)
+	}
+	return nil
+}
+
 var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    var err error
+	//TODO adjust annotations to avoid this special case for /tam/flowgroups container
+	if strings.HasSuffix(inParams.uri, "/flowgroups") {
+		return XfmrSubscOutParams{isVirtualTbl: true}, nil
+	}
+
+	keyName, subPath := parseTamFlowgroupPath(inParams.uri)
+	if len(keyName) == 0 {
+		keyName = "*"
+	}
+
+	log.Infof("Subscribe_tam_flowgroups_xfmr: keyName=%s, subPath=%s", keyName, subPath)
     var result XfmrSubscOutParams
-    result.dbDataMap = make(RedisDbSubscribeMap)
+	result.onChange = OnchangeEnable
 
-    pathInfo := NewPathInfo(inParams.uri)
-    keyName := pathInfo.Var("name")
+	switch subPath {
+	case "":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {}}}}
+	case "config", "state":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {
+			"PRIORITY": "priority",
+			"IN_PORTS": "interfaces",
+		}}}}
+		result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB: {"TAM_FLOWGROUP_TABLE":{keyName: map[string]string{
+			"id": "id",
+		}}}}
+	case "state/statistics":
+		//result.onChange = OnchangeDisable
+		result.dbDataMap = RedisDbSubscribeMap{db.CountersDB: {"COUNTERS": {"TAM:"+keyName: {
+			"Packets": "packets",
+			"Bytes":   "bytes",
+		}}}}
+	case "l2/config", "l2/state":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {
+			"SRC_MAC":    "source-mac",
+			"DST_MAC":    "destination-mac",
+			"ETHER_TYPE": "ethertype",
+		}}}}
+	case "ipv4/config", "ipv4/state":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {
+			"SRC_IP":      "source-address",
+			"DST_IP":      "destination-address",
+			"DSCP":        "dscp",
+			"IP_PROTOCOL": "protocol",
+		}}}}
+	case "ipv6/config", "ipv6/state":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {
+			"SRC_IPV6":    "source-address",
+			"DST_IPV6":    "destination-address",
+			"DSCP":        "dscp",
+			"IP_PROTOCOL": "protocol",
+		}}}}
+	case "transport/config", "transport/state":
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"ACL_RULE": {"TAM|"+keyName: {
+			"L4_SRC_PORT": "source-port",
+			"L4_DST_PORT": "destination-port",
+			"TCP_FLAGS":   "tcp-flags",
+		}}}}
+	}
 
-    if (keyName != "") {
-        result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"ACL_RULE":{"TAM|"+keyName:{}}}}
-    } else {
-        errStr := "Flow Group not present in request"
-        log.Info("Subscribe_tam_flowgroups_xfmr: " + errStr)
-        return result, errors.New(errStr)
-    }
-    result.isVirtualTbl = false
-    log.Info("Subscribe_tam_flowgroups_xfmr resultMap:", result.dbDataMap)
-    return result, err
+    return result, nil
 }
 
 var DbToYang_tam_flowgroups_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) (error) {
     tamObj := getTamRoot(inParams.ygRoot)
-    pathInfo := NewPathInfo(inParams.uri)
-    if (!isSupported(pathInfo.Template)) {
+	uri := inParams.uri
+    targetUriPath, _ := getYangPathFromUri(uri)
+
+    if isTamPathNotSupported(targetUriPath) {
         return tlerr.NotSupported("Operation Not Supported")
     } else {
-        targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-        uri := inParams.uri
         return getFlowGroups(tamObj, targetUriPath, uri, inParams.dbs[db.ConfigDB], inParams.dbs[db.CountersDB])
     }
 }
