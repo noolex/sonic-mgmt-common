@@ -364,6 +364,18 @@ func deleteFromCacheForPort(portKey *db.Key) {
     aliasIfNameMap.Delete(aliasName)
     log.V(3).Infof("Deleted %s <==> %s from alias cache", portName, aliasName)
 
+    vlanCacheKeys := getVlanCachekeys()
+    //Remove port from all the VLAN's tagged/untagged list
+    for _, vlan := range vlanCacheKeys {
+        member_list, ok := vlanMemberCache.Load(vlan)
+        if ok && member_list.(*vlan_member_list).untagged.SetContains(portName) {
+            member_list.(*vlan_member_list).untagged.SetDelItem(portName)
+        }
+        if ok && member_list.(*vlan_member_list).tagged.SetContains(portName) {
+            member_list.(*vlan_member_list).tagged.SetDelItem(portName)
+        }
+    }
+
 }
 
 func portNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) error {
