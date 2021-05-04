@@ -613,6 +613,7 @@ module sonic-interface {
 
                 leaf ip_prefix {
                     type inet:ip-prefix;
+		    sonic-ext:custom-validation ValidateIntfIp;
                 }
 
                 leaf secondary {
