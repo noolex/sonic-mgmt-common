@@ -333,7 +333,6 @@ func getQosCounters(entry *db.Value, attr string, counter_val **uint64 ) error {
         return nil
     }
 
-    log.Info("getQosCounters: ", "Attr " + attr + "doesn't exist in table Map!")
     return tlerr.NotFoundError{Format: "Not found"}
 }
 
