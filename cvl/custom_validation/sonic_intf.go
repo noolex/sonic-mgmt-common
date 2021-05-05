@@ -400,7 +400,7 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 
     if vc.CurCfg.VOp != OP_DELETE {
-        if strings.Contains(if_name, "Vlan") {
+        if strings.Contains(if_name, "Vlan") || strings.Contains(if_name, ".") {
             sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
 
             sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()

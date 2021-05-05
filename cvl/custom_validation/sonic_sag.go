@@ -97,6 +97,7 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 	keyName := vc.CurCfg.Key
 	keyNameSplit := strings.Split(keyName, "|")
 	ifName := keyNameSplit[1]
+	tblName := "VLAN_INTERFACE"
 
 	log.Info("ValidateSagIp op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
 
@@ -104,7 +105,11 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-	tblNameExt := "VLAN_INTERFACE" + "|" + ifName + "|" + "*"
+	if strings.Contains(ifName, ".") {
+		tblName = "VLAN_SUB_INTERFACE"
+	}
+
+	tblNameExt := tblName + "|" + ifName + "|" + "*"
 
 	tableKeys, err:= vc.RClient.Keys(tblNameExt).Result()
 
