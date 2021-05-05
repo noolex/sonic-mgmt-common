@@ -159,8 +159,8 @@ func startDBSubscribe(opt db.Options, nGroups map[db.TableSpec]*notificationGrou
 
 func notificationHandler(d *db.DB, sKey *db.SKey, key *db.Key, event db.SEvent) error {
 	nid := fmt.Sprintf("ne%d", dbNotificationCounter.Next())
-	log.Infof("[%v] notificationHandler: d=%p, sKey=%v, key=%v, event=%v",
-		nid, d, sKey, key, event)
+	log.Infof("[%v] notificationHandler: d=%v, table=%v, kayPattern=%v, key=%v, event=%v",
+		nid, dbInfo(d), tableInfo(sKey.Ts), keyInfo(sKey.Key), keyInfo(key), event)
 
 	sMutex.Lock()
 	defer sMutex.Unlock()
@@ -791,7 +791,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 	}
 
 	log.Infof("[%s] Call processSubscribe with dbno=%d, table=%s, key=%v",
-		ne.id, in.dbno, in.table.Name, in.key)
+		ne.id, in.dbno, tableInfo(in.table), keyInfo(in.key))
 
 	app := ne.getApp(nInfo)
 	out, err := app.processSubscribe(&in)

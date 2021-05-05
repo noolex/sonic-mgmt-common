@@ -322,7 +322,7 @@ func (reqXlator *subscribeReqXlator) Translate() (error) {
 		}
 
 		if err = reqXlator.translateChildNodePaths(ygXpathInfoTrgt); err != nil {
-			log.Errorf(reqXlator.subReq.reqLogId, "Error in translating the child node for the subscribe path: %v", err)
+			log.Error(reqXlator.subReq.reqLogId, "Error in translating the child node for the subscribe path: ", err)
 			return err
 		}
 
@@ -334,7 +334,7 @@ func (reqXlator *subscribeReqXlator) Translate() (error) {
 		}
 
 	} else {
-		log.Errorf(reqXlator.subReq.reqLogId, "Error in translating the target node subscribe path: %v", err)
+		log.Error(reqXlator.subReq.reqLogId, "Error in translating the target node subscribe path: ", err)
 	}
 
 	return err
@@ -918,7 +918,7 @@ func (reqXlator *subscribeReqXlator) translateChildNodePaths(ygXpathInfo *yangXp
 	var err error
 	ygNode := ygXpathInfo.yangEntry
 
-	log.Infof(reqXlator.subReq.reqLogId, "translateChildNodePaths: ygXpathInfo.yangEntry: %v for the request uri path: %v", ygNode, reqXlator.subReq.reqUri)
+	log.Infof("%v translateChildNodePaths: ygXpathInfo.yangEntry: %v for the request uri path: %v", reqXlator.subReq.reqLogId, ygNode, reqXlator.subReq.reqUri)
 
 	if (!ygNode.IsList() && !ygNode.IsContainer()) {
 		return nil
@@ -992,7 +992,8 @@ func (pathXlateInfo *XfmrSubscribePathXlateInfo) isDbTablePresentInParent(parent
 }
 
 func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpathNode, parentRelUri string, parentPathXlateInfo *XfmrSubscribePathXlateInfo) (error) {
-	log.Infof(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: ygXpNode path:%v; parentRelUri: %v; parentPathXlateInfo path: %v ", ygXpNode.ygPath, parentRelUri, parentPathXlateInfo.Path)
+	log.Infof("%v traverseYgXpathAndTranslate: ygXpNode path:%v; parentRelUri: %v; parentPathXlateInfo path: %v ",
+		reqXlator.subReq.reqLogId, ygXpNode.ygPath, parentRelUri, parentPathXlateInfo.Path)
 	var err error
 
 	if log.V(dbLgLvl) {
@@ -1001,7 +1002,8 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 
 	for _, chldNode := range ygXpNode.chldNodes {
 
-		log.Infof(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: child path: %v; isParentTbl: %v; relUriPath: %v ", chldNode.ygPath, chldNode.isParentTbl, chldNode.relUriPath)
+		log.Infof("%v traverseYgXpathAndTranslate: child path: %v; isParentTbl: %v; relUriPath: %v ",
+			reqXlator.subReq.reqLogId, chldNode.ygPath, chldNode.isParentTbl, chldNode.relUriPath)
 
 		var pathXlateInfo *XfmrSubscribePathXlateInfo
 		relUri := parentRelUri
@@ -1031,12 +1033,12 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 
 			pathXlator, err := reqXlator.getSubscribePathXlator(gPathCurr, uriPath, chldNode.ygXpathInfo, parentPathXlateInfo, chldNode)
 			if err != nil {
-				log.Errorf(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: Error in getSubscribePathXlator: %v for the path: %v", err, uriPath)
+				log.Errorf("%v traverseYgXpathAndTranslate: Error in getSubscribePathXlator: %v for the path: %v", reqXlator.subReq.reqLogId, err, uriPath)
 				return err
 			}
 
 			if err = pathXlator.translatePath(); err != nil {
-				log.Errorf(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: Error in translatePath: %v for the path %v", err, uriPath)
+				log.Errorf("%v traverseYgXpathAndTranslate: Error in translatePath: %v for the path %v", reqXlator.subReq.reqLogId, err, uriPath)
 				return err
 			} else {
 				chldNode.pathXlateInfo = pathXlator.pathXlateInfo
@@ -1044,7 +1046,7 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 
 			if chldNode.pathXlateInfo.isDbTablePresentInParent(parentPathXlateInfo.DbKeyXlateInfo) {
 				pathXlateInfo = parentPathXlateInfo
-				log.Infof(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: isDbTablePresentInParent is true for the path: %v for the parent path: %v", uriPath, parentPathXlateInfo.Path)
+				log.Infof("%v traverseYgXpathAndTranslate: isDbTablePresentInParent is true for the path: %v for the parent path: %v", reqXlator.subReq.reqLogId, uriPath, parentPathXlateInfo.Path)
 				parentPathXlateInfo.copyDbFldYgPathMap(relUri, chldNode)
 			} else {
 				pathXlateInfo = chldNode.pathXlateInfo
@@ -1053,7 +1055,7 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 				if len(chldNode.ygXpathInfo.xfmrFunc) == 0 {
 					// only for non sub tree - for subtree, got added by handleSubtreeNodeXlate
 					if err := chldNode.pathXlateInfo.addDbFldYgPathMap("", chldNode); err != nil {
-						log.Errorf(reqXlator.subReq.reqLogId, "traverseYgXpathAndTranslate: Error in addDbFldYgPathMap: error: %v and path is %v ", err, uriPath)
+						log.Errorf("%v traverseYgXpathAndTranslate: Error in addDbFldYgPathMap: error: %v and path is %v ", reqXlator.subReq.reqLogId, err, uriPath)
 						return err
 					}
 				}
@@ -1095,7 +1097,7 @@ func (reqXlator *subscribeReqXlator) traverseYgXpathAndTranslate(ygXpNode *ygXpa
 
 func (reqXlator *subscribeReqXlator) debugTrvsalCtxt(ygEntry *yang.Entry, ygPath string, rltvUriPath string, ygXpathInfo *yangXpathInfo) {
 	if log.V(dbLgLvl) {
-		log.Infof(reqXlator.subReq.reqLogId, "debugTrvsalCtxt ygPath: %v; rltvUriPath: %v; ygXpathInfo: %v; ygEntry: %v", ygPath, rltvUriPath, *ygXpathInfo, ygEntry)
+		log.Infof("%v debugTrvsalCtxt ygPath: %v; rltvUriPath: %v; ygXpathInfo: %v; ygEntry: %v", reqXlator.subReq.reqLogId, ygPath, rltvUriPath, *ygXpathInfo, ygEntry)
 	}
 }
 
@@ -1224,8 +1226,8 @@ func (reqXlator *subscribeReqXlator) validateYangPath(uriPath string, ygXpathInf
 func (reqXlator *subscribeReqXlator) collectChldYgXPathInfo(ygEntry *yang.Entry, ygPath string,
 rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 
-	log.Infof(reqXlator.subReq.reqLogId, "collectChldYgXPathInfo: ygEntry: %v, ygPath: %v, rltvUriPath: %v; table name: %v;" +
-		" parent node path: %v", ygEntry, ygPath, rltvUriPath, ygXpathInfo.tableName, ygXpNode.ygPath)
+	log.Infof("%v collectChldYgXPathInfo: ygEntry: %v, ygPath: %v, rltvUriPath: %v; table name: %v; parent node path: %v",
+		reqXlator.subReq.reqLogId, ygEntry, ygPath, rltvUriPath, ygXpathInfo.tableName, ygXpNode.ygPath)
 
 	reqXlator.debugTrvsalCtxt(ygEntry, ygPath, rltvUriPath, ygXpathInfo)
 
@@ -1257,12 +1259,14 @@ rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 					keyListMap[keyName] = true
 				}
 
-				log.Infof(reqXlator.subReq.reqLogId, "collectChldYgXPathInfo: keyListMap: %v, for the path: %v ", keyListMap, childYgPath)
+				log.Infof("%v collectChldYgXPathInfo: keyListMap: %v, for the path: %v ",
+					reqXlator.subReq.reqLogId, keyListMap, childYgPath)
 			}
 
 			chldPathUri := reqXlator.pathXlator.uriPath + rltvChldUriPath
 			if !reqXlator.validateYangPath(chldPathUri, chYgXpathInfo) {
-				log.Warningf(reqXlator.subReq.reqLogId, "URI path %v is not valid since validate callback function '%v' returned false for this path: ", chldPathUri, chYgXpathInfo.validateFunc)
+				log.Warningf("%v URI path %v is not valid since validate callback function '%v' returned false",
+					reqXlator.subReq.reqLogId, chldPathUri, chYgXpathInfo.validateFunc)
 				continue
 			}
 
@@ -1317,13 +1321,13 @@ rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 				isVirtualTbl := (chYgXpathInfo.virtualTbl != nil && *chYgXpathInfo.virtualTbl)
 
 				if len(chYgXpathInfo.xfmrFunc) > 0 {
-					log.Infof(reqXlator.subReq.reqLogId, "adding subtree xfmr func %v for the path %v ", chYgXpathInfo.xfmrFunc, childYgPath)
+					log.Infof("%v adding subtree xfmr func %v for the path %v ", reqXlator.subReq.reqLogId, chYgXpathInfo.xfmrFunc, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 				} else if tblName != "" {
-					log.Infof(reqXlator.subReq.reqLogId, "adding table name %v for the path %v ", tblName, childYgPath)
+					log.Infof("%v adding table name %v for the path %v ", reqXlator.subReq.reqLogId, tblName, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 				} else if (chYgXpathInfo.xfmrTbl != nil && !isVirtualTbl) {
-					log.Infof(reqXlator.subReq.reqLogId, "adding table transformer %v for the path %v ", *chYgXpathInfo.xfmrTbl, childYgPath)
+					log.Infof("%v adding table transformer %v for the path %v ", reqXlator.subReq.reqLogId, *chYgXpathInfo.xfmrTbl, childYgPath)
 					chldNode = ygXpNode.addChildNode(rltvChldUriPath, chYgXpathInfo)
 				} else {
 					if childYgEntry.IsList() && !isVirtualTbl {
@@ -1341,7 +1345,7 @@ rltvUriPath string, ygXpathInfo *yangXpathInfo, ygXpNode *ygXpathNode) (error) {
 
 				chldNode.ygPath = childYgPath
 				if err := reqXlator.collectChldYgXPathInfo(childYgEntry, childYgPath, rltvChldUriPath, chYgXpathInfo, chldNode); err != nil {
-					log.Errorf(reqXlator.subReq.reqLogId, "Error in collecting the ygXpath Info for the yang path: %v and the error: %v", childYgPath, err)
+					log.Error(reqXlator.subReq.reqLogId, "Error in collecting the ygXpath Info for the yang path: ", childYgPath, " and the error: ", err)
 					return err
 				}
 			}
