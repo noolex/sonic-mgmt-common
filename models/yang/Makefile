@@ -54,6 +54,7 @@ all: allyangs.tree allyangs_tree.html yang_tree.md $(YANG_ANNOTS_CHK) $(YANG_VAL
 annot: $(YANG_ANNOTS_CHK)
 
 $(YANG_ANNOTS_CHK): $(YANG_ANNOTATIONS_FILES) $(YANG_MOD_FILES) $(YANG_MOD_EXTENSION_FILES) $(YANG_COMMON_FILES)
+	$(RM) $@
 	$(PYANG) --strict -f tree \
 		-p $(YANGDIR_COMMON):$(YANGDIR_SONIC):$(YANGDIR_ANNOTATIONS):$(YANGDIR):$(YANGDIR_EXTENSIONS_DIR) \
 		$(YANG_ANNOTATIONS_FILES) > /dev/null
@@ -110,15 +111,18 @@ $(OC_COMMUNITY_LINTER_PATCH): $(OC_COMMUNITY_LINTER)
 	touch $@
 
 $(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH) $(YANG_PATCH_FILES)
+	$(RM) $@
 	$(LINTER) 
 	touch $@
 
 $(SYNC_STD_YANGS_TO_BUILD): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(YANG_PATCH_FILES)
+	$(RM) $@
 	mkdir -p $(@D)
 	rsync -avh --exclude-from=$(YANGDIR)/copy_to_build_dir.exclude $(YANGDIR) $(YANG_BUILD_DIR)
 	touch $@
 
 $(PATCH_STD_YANGS): $(SYNC_STD_YANGS_TO_BUILD)
+	$(RM) $@
 	for file in $(YANG_PATCH_FILES) ; do \
 		patch -d $(YANG_BUILD_DIR) -p3 < $${file} ; \
 	done
