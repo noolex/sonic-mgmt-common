@@ -152,6 +152,10 @@ module sonic-vlan {
                 leaf description {
                     type string;
                 }
+                leaf autostate {
+                    type scommon:mode-enable;
+                    default enable;
+                }
 	    }
         }
 
