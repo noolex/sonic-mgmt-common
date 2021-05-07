@@ -105,6 +105,7 @@ type notificationEvent struct {
 	id    string             // Unique id for logging
 	event db.SEvent          // DB notification type, if any
 	key   *db.Key            // DB key, if any
+	entry *db.Value          // DB entry
 	db    *db.DB             // DB object on which this event was received
 	nGrup *notificationGroup // Target notificationGroup for the event
 	sInfo *subscribeInfo
@@ -488,8 +489,16 @@ func sendInitialUpdate(sInfo *subscribeInfo, nInfo *notificationInfo) error {
 			ne.key = &k
 			if ddk := ne.getDdupKey(); len(ddk) != 0 && ddup[ddk] {
 				log.Infof("[%s] skip init sync for key %v; another key with matching comps %v has been processed",
-					ne.id, k, ne.keyGroupComps)
+					ne.id, k.Comp, ne.keyGroupComps)
 				continue
+			}
+
+			if v, err := d.GetEntry(nInfo.table, k); err != nil {
+				log.Infof("[%v] Table %s key %v not found; skip initial sync",
+					ne.id, nInfo.table.Name, k.Comp)
+				continue
+			} else {
+				ne.entry = &v
 			}
 
 			ne.sendNotification(nInfo, topNode)
@@ -526,7 +535,7 @@ func (ne *notificationEvent) getDdupKey() string {
 	for i, v := range ne.keyGroupComps {
 		if v < 0 || v >= kLen {
 			log.Warningf("[%s] app returned invalid component index %d; key=%v",
-				ne.id, i, ne.key)
+				ne.id, i, ne.key.Comp)
 			return ""
 		}
 		uniq[i] = ne.key.Get(v)
@@ -548,12 +557,13 @@ func (ne *notificationEvent) process() {
 	for _, nInfos := range ne.nGrup.nInfos {
 		keyPattern := nInfos[0].key
 		if !ne.key.Matches(keyPattern) {
-			log.V(3).Infof("[%s] Key %v does not match pattern %v", ne.id, ne.key, keyPattern)
+			log.V(3).Infof("[%s] Key %v does not match pattern %v",
+				ne.id, ne.key.Comp, keyPattern.Comp)
 			continue
 		}
 
 		log.Infof("[%s] Key %v matches registered pattern %v; has %d nInfos",
-			ne.id, ne.key, keyPattern, len(nInfos))
+			ne.id, ne.key.Comp, keyPattern.Comp, len(nInfos))
 
 		for _, nInfo := range nInfos {
 			ne.sInfo = nInfo.sInfo
@@ -571,7 +581,6 @@ func (ne *notificationEvent) process() {
 }
 
 type onchangeCacheDiff struct {
-	UpdatedEntry  *db.Value
 	EntryCreated  bool
 	EntryDeleted  bool
 	UpdatedFields []string
@@ -584,13 +593,6 @@ func (c *onchangeCacheDiff) String() string {
 	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
 	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
 	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
-	if c.UpdatedEntry != nil {
-		fmt.Fprintf(&b, "Entry->")
-		for k, v := range c.UpdatedEntry.Field {
-			fmt.Fprintf(&b, "%s[%s]  ", k, v)
-		}
-	}
-
 	return b.String()
 }
 
@@ -624,10 +626,9 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 				cacheEntryDiff.DeletedFields = append(
 					cacheEntryDiff.DeletedFields, fldName)
 			}
+			ne.entry = &cachedEntry
 			return cacheEntryDiff, nil
 		}
-
-		cacheEntryDiff.UpdatedEntry = &val
 
 		for fldName := range cachedEntry.Field {
 			if fldName == "NULL" {
@@ -654,11 +655,11 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 	} else if !entryDeleted {
 		// Not exists in cache
 		cacheEntryDiff.EntryCreated = true
-		cacheEntryDiff.UpdatedEntry = &val
 	}
 
 	log.Infof("[%s] DiffAndMergeOnChangeCache: %v", ne.id, cacheEntryDiff)
 
+	ne.entry = &val
 	return cacheEntryDiff, nil
 }
 
@@ -785,6 +786,7 @@ func (ne *notificationEvent) dbkeyToYangPath(nInfo *notificationInfo) *gnmi.Path
 		dbno:   nInfo.dbno,
 		table:  nInfo.table,
 		key:    ne.key,
+		entry:  ne.entry,
 		dbs:    ne.sInfo.dbs,
 		opaque: nInfo.opaque,
 		path:   path.Clone(nInfo.path),

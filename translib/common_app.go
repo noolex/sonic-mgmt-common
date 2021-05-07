@@ -420,7 +420,7 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 func (app *CommonApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
 	var resp processSubResponse
 
-	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.ctxID, param.path, param.dbno, param.table, param.key, param.dbs, param.opaque); err != nil {
+	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.ctxID, param.path, param.dbno, param.table, param.key, param.entry, param.dbs, param.opaque); err != nil {
 		log.Error("processSubscribe: Error in getting the GetSubscribeNotfRespXlator; error: ", err)
 		return resp, err
 	} else {
