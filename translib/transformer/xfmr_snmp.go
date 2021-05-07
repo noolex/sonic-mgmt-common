@@ -45,6 +45,7 @@ func init() {
   XlateFuncBind("DbToYang_snmp_tag_name_xfmr",      DbToYang_snmp_tag_name_xfmr)
   XlateFuncBind("rpcShowCounters", rpcShowCounters)
   XlateFuncBind("rpcClearCounters", rpcClearCounters)
+  XlateFuncBind("DbToYangPath_snmp_listen_path_xfmr", DbToYangPath_snmp_listen_path_xfmr)
 }
 
 var rpcClearCounters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
@@ -395,14 +396,27 @@ func getEngineRoot (s *ygot.GoStruct) *ocbinds.IETFSnmp_Snmp_Engine {
 }
 
 var Subscribe_snmp_listen_subtree_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    var err error
     var result XfmrSubscOutParams
 
+    log.Info("Subscribe_snmp_listen_subtree_xfmr  inParams: ", inParams)
     log.Info("Subscribe_snmp_listen_subtree_xfmr  uri: ", inParams.uri)
+    if inParams.subscProc != TRANSLATE_SUBSCRIBE {
+        result.isVirtualTbl = true
+        log.Info("Subscribe_snmp_listen_subtree_xfmr:- result.isVirtualTbl: ", result.isVirtualTbl)
+        return result, nil
+    }
+    agent_addr_key := "*|*|*"
 
-    /* no need to verify dB data */
-    result.isVirtualTbl = true
-    return result, err
+    result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {SNMP_AGENT_TABLE_NAME: {agent_addr_key:{}}}}
+    /* The below lines will be used only for subscription on a terminal node */
+    result.needCache = true
+    result.onChange = OnchangeEnable
+    result.nOpts = new(notificationOpts)
+	result.isVirtualTbl = false
+    result.nOpts.mInterval = 0
+    result.nOpts.pType = OnChange
+    return result, nil
+
 }
 
 var YangToDb_snmp_listen_subtree_xfmr  SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -664,4 +678,30 @@ func snmp_alias_value_xfmr(inParams XfmrDbParams) (string, error) {
         uiName += *convertedName
     }
     return uiName, err
+}
+
+var DbToYangPath_snmp_listen_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+    snmpRoot := "/ietf-snmp:snmp/engine/listen"
+    var name  string
+
+    log.Info("DbToYangPath_snmp_listen_path_xfmr: params: ", params)
+    dataBase := params.db
+    entry, err := dataBase.GetEntry(&db.TableSpec{Name: SNMP_AGENT_TABLE_NAME}, db.Key{Comp: params.tblKeyComp})
+
+    if err != nil {
+        log.Infof("Failed to get value: %v", err)
+        return err
+    }
+
+    if entry.Has("name") {
+        name = entry.Get("name")
+    } else {
+        name = params.tblKeyComp[0]
+    }
+
+	params.ygPathKeys[snmpRoot + "/name"] = name
+
+	log.Info("DbToYangPath_snmp_listen_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+
+	return nil
 }
