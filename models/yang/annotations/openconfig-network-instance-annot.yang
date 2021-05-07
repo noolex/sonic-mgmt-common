@@ -1197,6 +1197,12 @@ module openconfig-network-instance-annot {
       }
     }
 
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:config/oc-bgp-ext:ebgp-requires-policy {
+      deviate add {
+            sonic-ext:field-name "ebgp_requires_policy";
+      }
+    }
+
 
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-bgp-ext:disable-ebgp-connected-route-check {
       deviate add {
@@ -1262,6 +1268,12 @@ module openconfig-network-instance-annot {
     deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-bgp-ext:deterministic-med {
       deviate add {
             sonic-ext:field-name "deterministic_med";
+      }
+    }
+
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-bgp-ext:ebgp-requires-policy {
+      deviate add {
+            sonic-ext:field-name "ebgp_requires_policy";
       }
     }
 

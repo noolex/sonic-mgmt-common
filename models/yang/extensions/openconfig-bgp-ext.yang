@@ -405,6 +405,13 @@ module openconfig-bgp-ext {
               messages to the neighbor.  Typically set to 1/3 the
               hold-time.";
       }
+
+      leaf ebgp-requires-policy {
+          type boolean;
+          default false;
+          description
+              "This causes bgp to make in and out policy mandatory for eBGP peers (RFC8212).";
+      }
   }
 
   grouping bgp-ext-global-route-flap-damping-top {
