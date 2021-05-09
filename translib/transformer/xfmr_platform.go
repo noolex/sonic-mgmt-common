@@ -877,6 +877,10 @@ func getSoftwareVersionComponent (pfComp *ocbinds.OpenconfigPlatform_Components_
         if err != nil {
             return err
         }
+        if !strings.EqualFold(deviceMetadata.PLATFORM, eepromInfo.Platform_Name) && 
+                 len(eepromInfo.Platform_Name) > 0 {
+            deviceMetadata.PLATFORM = eepromInfo.Platform_Name
+        }
     }
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
