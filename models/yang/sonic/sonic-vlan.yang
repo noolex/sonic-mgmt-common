@@ -154,6 +154,8 @@ module sonic-vlan {
                 }
                 leaf autostate {
                     type scommon:mode-enable;
+                    description
+                        "When enabled the operstatus of the vlan will be controlled by its members. When disabled the operstatus is the same as the admin status";
                     default enable;
                 }
 	    }
@@ -223,6 +225,9 @@ module sonic-vlan {
 
                 leaf oper_status {
                     type scommon:oper-status;
+                }
+                leaf autostate {
+                    type scommon:mode-enable;
                 }
             }
         }

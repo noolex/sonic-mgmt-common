@@ -85,6 +85,13 @@ const (
     PREFIX_IPv6  = 1
     PREFIX_STATE_IPv6 = 2
     PREFIX_STATE_LLv6 = 3
+    
+)
+
+const (
+    NBR_TYPE_OTHER = 1
+    NBR_TYPE_STATIC = 1
+    NBR_TYPE_DYNAMIC = 2
 )
 
 var YangToDb_neigh_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
@@ -946,6 +953,9 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
         }
 
         linkAddr := entry.Field["neigh"]
+        nbrType := entry.Field["type"]
+        remoteFlag := entry.Field["remote"]
+        log.Info("remoteFlag: ", remoteFlag, ", nbrType: ", nbrType)
 
         if msgType == PREFIX_STATE_LL {
             if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -957,6 +967,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
             break
         } else if msgType == PREFIX_STATE_IP {
             if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -968,6 +994,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
             break
         } else if msgType == PREFIX_IP {
             if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -980,6 +1022,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
         } else if msgType == PREFIX {
             if neighObj, ok = routedVlanObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = routedVlanObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
@@ -991,6 +1049,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func 
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
         }
     }
     return err
@@ -1088,6 +1162,9 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
         }
 
         linkAddr := entry.Field["neigh"]
+        nbrType := entry.Field["type"]
+        remoteFlag := entry.Field["remote"]
+        log.Info("remoteFlag: ", remoteFlag, ", nbrType: ", nbrType)
 
         if msgType == PREFIX_STATE_LL {
             if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1099,6 +1176,21 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
             break
         } else if msgType == PREFIX_STATE_IP {
             if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1110,6 +1202,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
             break
         } else if msgType == PREFIX_IP {
             if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1122,6 +1230,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
         } else if msgType == PREFIX {
             if neighObj, ok = routedVlanObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = routedVlanObj.Ipv6.Neighbors.NewNeighbor(ipAddr)
@@ -1133,6 +1257,22 @@ var DbToYang_routed_vlan_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func 
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
+
+
         }
     }
     return err
@@ -1233,6 +1373,9 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         linkAddr := entry.Field["neigh"]
+        nbrType := entry.Field["type"]
+        remoteFlag := entry.Field["remote"]
+        log.Info("remoteFlag: ", remoteFlag, ", nbrType: ", nbrType)
 
         if msgType == PREFIX_STATE_LL {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1244,6 +1387,20 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
             break
         } else if msgType == PREFIX_STATE_IP {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1255,6 +1412,19 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
             break
         } else if msgType == PREFIX_IP {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1267,6 +1437,20 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
         } else if msgType == PREFIX {
             if neighObj, ok = subIntfObj.Ipv4.Neighbors.Neighbor[ipAddr]; !ok {
                 neighObj, err = subIntfObj.Ipv4.Neighbors.NewNeighbor(ipAddr)
@@ -1278,6 +1462,20 @@ var DbToYang_neigh_tbl_get_all_ipv4_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
         }
     }
     return err
@@ -1383,6 +1581,10 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         }
 
         linkAddr := entry.Field["neigh"]
+        nbrType := entry.Field["type"]
+        remoteFlag := entry.Field["remote"]
+        log.Info("remoteFlag: ", remoteFlag, ", nbrType: ", nbrType)
+
 
         if msgType == PREFIX_STATE_LLv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1394,6 +1596,19 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
             break
         } else if msgType == PREFIX_STATE_IPv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1405,6 +1620,19 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             }
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
             break
         } else if msgType == PREFIX_IPv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1417,6 +1645,20 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
             break
         } else if msgType == PREFIXv6 {
             if neighObj, ok = subIntfObj.Ipv6.Neighbors.Neighbor[ipAddr]; !ok {
@@ -1429,6 +1671,20 @@ var DbToYang_neigh_tbl_get_all_ipv6_xfmr SubTreeXfmrDbToYang = func (inParams Xf
             ygot.BuildEmptyTree(neighObj)
             neighObj.State.Ip = &ipAddr
             neighObj.State.LinkLayerAddress = &linkAddr
+            remoteFlagVal, err := strconv.ParseUint(remoteFlag, 10, 8)
+            if err == nil {
+                remoteFlagVal_conv := uint8(remoteFlagVal)
+                neighObj.State.Remote = &remoteFlagVal_conv
+            }
+            nbrTypeVal, err := strconv.ParseUint(nbrType, 10, 16)
+            if err == nil {
+                if nbrTypeVal == NBR_TYPE_STATIC { 
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_STATIC
+                } else if nbrTypeVal == NBR_TYPE_DYNAMIC {
+                    neighObj.State.Origin = ocbinds.OpenconfigIfIp_NeighborOrigin_DYNAMIC
+                }
+            }
+
         }
     }
     return err

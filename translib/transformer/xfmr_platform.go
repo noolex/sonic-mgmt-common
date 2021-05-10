@@ -877,6 +877,10 @@ func getSoftwareVersionComponent (pfComp *ocbinds.OpenconfigPlatform_Components_
         if err != nil {
             return err
         }
+        if !strings.EqualFold(deviceMetadata.PLATFORM, eepromInfo.Platform_Name) && 
+                 len(eepromInfo.Platform_Name) > 0 {
+            deviceMetadata.PLATFORM = eepromInfo.Platform_Name
+        }
     }
 
     if allAttr || targetUriPath == SW_COMP || targetUriPath == SW_DOCKER_VER {
@@ -2416,11 +2420,11 @@ func getSysXcvrFromDb(name string, d *db.DB) (Xcvr, error) {
     xcvrInfo.Module_Lane_Count = xcvrEntry.Get("module_lane_count")
     xcvrInfo.Qsa_Adapter_Type = xcvrEntry.Get("qsa_adapter")
 
-    xcvrInfo.Vendor_Name = xcvrEntry.Get("vendor_name")
-    xcvrInfo.Vendor_Part_Number = xcvrEntry.Get("vendor_part_number")
-    xcvrInfo.Vendor_Serial_Number = xcvrEntry.Get("vendor_serial_number")
-    xcvrInfo.Vendor_Revision = xcvrEntry.Get("vendor_revision")
-    xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date_code")
+    xcvrInfo.Vendor_Name = xcvrEntry.Get("manufacturename")
+    xcvrInfo.Vendor_Part_Number = xcvrEntry.Get("modelname")
+    xcvrInfo.Vendor_Serial_Number = xcvrEntry.Get("serialnum")
+    xcvrInfo.Vendor_Revision = xcvrEntry.Get("hardwarerev")
+    xcvrInfo.Vendor_Date_Code = xcvrEntry.Get("vendor_date")
     xcvrInfo.Vendor_OUI = xcvrEntry.Get("vendor_oui")
     xcvrInfo.Revision_Compliance = xcvrEntry.Get("revision_compliance")
 
