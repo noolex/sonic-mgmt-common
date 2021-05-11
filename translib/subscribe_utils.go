@@ -90,12 +90,24 @@ func getYgotAtPath(parent ygot.ValidatedGoStruct, childPath *gnmi.Path) (ygot.Va
 // isEmptyYgotStruct returns true if none of the fields of ygot struct y are set.
 func isEmptyYgotStruct(y ygot.ValidatedGoStruct) bool {
 	yv := reflect.ValueOf(y).Elem()
+	return isEmptyYgotStructVal(yv)
+}
+
+// isEmptyYgotStructVal returns true if the reflect.Value yv represents
+// a nil or empty ygot struct. Can panic if it is not a ygot struct value.
+func isEmptyYgotStructVal(yv reflect.Value) bool {
 	for i := yv.NumField() - 1; i >= 0; i-- {
 		fv := yv.Field(i)
 		// ygot struct's fields will always be one of ptr, map, slice or an int (for enum & identity).
 		// Value.IsZero() should handle all cases.
 		if fv.IsValid() && !fv.IsZero() {
-			return false
+			ft := fv.Type()
+			if ft.Kind() != reflect.Ptr || ft.Elem().Kind() != reflect.Struct {
+				return false
+			}
+			if !isEmptyYgotStructVal(fv.Elem()) {
+				return false
+			}
 		}
 	}
 	return true
