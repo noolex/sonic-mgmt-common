@@ -122,6 +122,7 @@ type processSubRequest struct {
 	dbno  db.DBNum
 	table *db.TableSpec
 	key   *db.Key
+	entry *db.Value // updated or deleted db entry. DO NOT MODIFY
 
 	// List of all DB objects. Apps should only use these DB objects
 	// to query db if they need additional data for translation.

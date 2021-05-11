@@ -116,6 +116,7 @@ type XfmrDbToYgPathParams struct {
 	ygSchemaPath  string           //current yg schema path
 	tblName       string           //table name
 	tblKeyComp    []string          //table key comp
+	tblEntry      *db.Value   // updated or deleted db entry value. DO NOT MODIFY
 	dbNum         db.DBNum
 	dbs           [db.MaxDB]*db.DB
 	db            *db.DB
