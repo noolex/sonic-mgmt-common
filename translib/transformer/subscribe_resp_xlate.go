@@ -44,6 +44,7 @@ type subscribeNotfXlateReq struct {
 	dbNum    db.DBNum
 	table    *db.TableSpec
 	key      *db.Key
+	entry    *db.Value
 	dbs      [db.MaxDB]*db.DB
 	opaque   interface{}
 	reqLogId string
@@ -59,7 +60,7 @@ type DbYgXlateInfo struct {
 }
 
 func GetSubscribeNotfRespXlator(ctxID interface{}, gPath *gnmi.Path, dbNum db.DBNum, table *db.TableSpec, key *db.Key,
-dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
+entry *db.Value, dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
 	reqLogId := "subNotfReq Id:[" + fmt.Sprintf("%v", ctxID) + "] : "
 
 	log.Infof(reqLogId + "GetSubscribeNotfRespXlator: table: %v, key: %v, " +
@@ -69,7 +70,7 @@ dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
 		opaque = new(sync.Map)
 	}
 
-	xlateReq := subscribeNotfXlateReq{gPath, dbNum, table, key, dbs, opaque, reqLogId}
+	xlateReq := subscribeNotfXlateReq{gPath, dbNum, table, key, entry, dbs, opaque, reqLogId}
 	return &subscribeNotfRespXlator{ntfXlateReq: &xlateReq}, nil
 }
 
@@ -168,6 +169,7 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 		ygSchemaPath:  ygSchemPath,
 		tblName:       respXlator.ntfXlateReq.table.Name,
 		tblKeyComp:    respXlator.ntfXlateReq.key.Comp,
+		tblEntry:      respXlator.ntfXlateReq.entry,
 		dbNum:         respXlator.ntfXlateReq.dbNum,
 		dbs:           respXlator.ntfXlateReq.dbs,
 		db:            respXlator.ntfXlateReq.dbs[respXlator.ntfXlateReq.dbNum],
