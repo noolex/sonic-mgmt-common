@@ -56,7 +56,7 @@ int lyd_data_validate(struct lyd_node **node, int options, struct ly_ctx *ctx)
 	//Check mandatory elements as it is skipped for LYD_OPT_EDIT
 	ret = lyd_check_mandatory_tree(*node, ctx, NULL, 0, LYD_OPT_CONFIG | LYD_OPT_NOEXTDEPS);
 
-	if (ret != 0) 
+	if (ret != 0)
 	{
 		return ret;
 	}
@@ -69,7 +69,7 @@ struct leaf_value {
 	const char *value;
 };
 
-int lyd_multi_new_leaf(struct lyd_node *parent, const struct lys_module *module, 
+int lyd_multi_new_leaf(struct lyd_node *parent, const struct lys_module *module,
 	struct leaf_value *leafValArr, int size)
 {
         const char *name, *val;
@@ -80,14 +80,14 @@ int lyd_multi_new_leaf(struct lyd_node *parent, const struct lys_module *module,
 
 	for (idx = 0; idx < size; idx++)
 	{
-		if ((leafValArr[idx].name == NULL) || (leafValArr[idx].value == NULL)) 
+		if ((leafValArr[idx].name == NULL) || (leafValArr[idx].value == NULL))
 		{
 			continue;
 		}
 
 		name = leafValArr[idx].name;
 		val = leafValArr[idx].value;
-		
+
 		if (NULL == (leaf = lyd_new_leaf(parent, module, name, val)))
 		{
 			return -1;
@@ -117,7 +117,7 @@ int lyd_multi_new_leaf(struct lyd_node *parent, const struct lys_module *module,
 	return 0;
 }
 
-struct lyd_node *lyd_find_node(struct lyd_node *root, const char *xpath) 
+struct lyd_node *lyd_find_node(struct lyd_node *root, const char *xpath)
 {
 	struct ly_set *set = NULL;
 	struct lyd_node *node = NULL;
@@ -138,7 +138,7 @@ struct lyd_node *lyd_find_node(struct lyd_node *root, const char *xpath)
 	return node;
 }
 
-int lyd_node_leafref_match_in_union(struct lys_module *module, const char *xpath, const char *value) 
+int lyd_node_leafref_match_in_union(struct lys_module *module, const char *xpath, const char *value)
 {
 	struct ly_set *set = NULL;
 	struct lys_node *node = NULL;
@@ -161,9 +161,9 @@ int lyd_node_leafref_match_in_union(struct lys_module *module, const char *xpath
 	//Now check if it matches with any leafref node
 	lNode = (struct lys_node_leaflist*)node;
 
-	for (idx = 0; idx < lNode->type.info.uni.count; idx++) 
+	for (idx = 0; idx < lNode->type.info.uni.count; idx++)
 	{
-		if (lNode->type.info.uni.types[idx].base != LY_TYPE_LEAFREF)  
+		if (lNode->type.info.uni.types[idx].base != LY_TYPE_LEAFREF)
 		{
 			//Look for leafref type only
 			continue;
@@ -243,7 +243,7 @@ type YParserModule C.struct_lys_module
 var ypCtx *YParserCtx
 var ypOpModule *YParserModule
 var ypOpRoot *YParserNode  //Operation root
-var ypOpNode *YParserNode  //Operation node 
+var ypOpNode *YParserNode  //Operation node
 
 type XpathExpression struct {
 	Expr string
@@ -268,8 +268,8 @@ type YParserListInfo struct {
 	RedisKeyPattern string
 	RedisTableSize int
 	MapLeaf []string //for 'mapping  list'
-	LeafRef map[string][]string //for storing all leafrefs for a leaf in a table, 
-				//multiple leafref possible for union 
+	LeafRef map[string][]string //for storing all leafrefs for a leaf in a table,
+				//multiple leafref possible for union
 	DfltLeafVal map[string]string //Default value for leaf/leaf-list
 	XpathExpr map[string][]*XpathExpression
 	CustValidation map[string][]string
@@ -343,7 +343,7 @@ func CVL_LOG(level CVLLogLevel, fmtStr string, args ...interface{}) {
 	CVL_LEVEL_LOG(level, fmtStr, args...)
 }
 
-//package init function 
+//package init function
 func init() {
 	if (os.Getenv("CVL_DEBUG") != "") {
 		Debug(true)
@@ -497,7 +497,7 @@ func (yp *YParser) DestroyCache() YParserError {
 	return YParserError {ErrCode : YP_SUCCESS,}
 }
 
-//SetOperation Set operation 
+//SetOperation Set operation
 func (yp *YParser) SetOperation(op string) YParserError {
 	if (ypOpNode == nil) {
 		return YParserError {ErrCode : YP_INTERNAL_UNKNOWN,}
@@ -600,7 +600,7 @@ func getErrorDetails() YParserError {
 	var errText string
 	var msg string
 	var ypErrCode YParserRetCode =  YP_INTERNAL_UNKNOWN
-	var errMsg, errPath, errAppTag string 
+	var errMsg, errPath, errAppTag string
 
 	ctx := (*C.struct_ly_ctx)(ypCtx)
 	ypErrFirst := C.ly_err_first(ctx);
@@ -633,13 +633,13 @@ func getErrorDetails() YParserError {
 	}
 
 
-	/* Example error messages. 	
-	1. Leafref "/sonic-port:sonic-port/sonic-port:PORT/sonic-port:ifname" of value "Ethernet668" points to a non-existing leaf. 
+	/* Example error messages.
+	1. Leafref "/sonic-port:sonic-port/sonic-port:PORT/sonic-port:ifname" of value "Ethernet668" points to a non-existing leaf.
 	(path: /sonic-interface:sonic-interface/INTERFACE[portname='Ethernet668'][ip_prefix='10.0.0.0/31']/portname)
 	2. A vlan interface member cannot be part of portchannel which is already a vlan member
 	(path: /sonic-vlan:sonic-vlan/VLAN[name='Vlan1001']/members[.='Ethernet8'])
-	3. Value "ch1" does not satisfy the constraint "Ethernet([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9])" (range, length, or pattern). 
-	(path: /sonic-vlan:sonic-vlan/VLAN[name='Vlan1001']/members[.='ch1'])*/ 
+	3. Value "ch1" does not satisfy the constraint "Ethernet([1-3][0-9]{3}|[1-9][0-9]{2}|[1-9][0-9]|[0-9])" (range, length, or pattern).
+	(path: /sonic-vlan:sonic-vlan/VLAN[name='Vlan1001']/members[.='ch1'])*/
 
 
 	/* Fetch the TABLE Name which are in CAPS. */
@@ -668,13 +668,13 @@ func getErrorDetails() YParserError {
 			}
 		}
 	} else if (len(result) == 1) {
-		/* Custom contraint error message like in must statement. 
+		/* Custom contraint error message like in must statement.
 		This can be used by App to display to user.
 		*/
 		errText = errMsg
 	}
 
-	// Find key elements 
+	// Find key elements
 	resultKey := strings.Split(errPath, "=")
 	for i := range resultKey {
 		if (strings.Contains(resultKey[i], "]")) {
@@ -703,7 +703,7 @@ func getErrorDetails() YParserError {
 
 	if (C.ly_errno == C.LY_EVALID) {  //Validation failure
 		ypErrCode =  translateLYErrToYParserErr(int(ypErrFirst.prev.vecode))
-		
+
 	} else {
 		switch (C.ly_errno) {
 		case C.LY_EMEM:
@@ -754,6 +754,13 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 
 	for sChild := node.child; sChild != nil; sChild = sChild.next {
 		switch sChild.nodetype {
+		case C.LYS_LIST:
+			nodeInnerList := (*C.struct_lys_node_list)(unsafe.Pointer(sChild))
+			innerListkeys := (*[10]*C.struct_lys_node_leaf)(unsafe.Pointer(nodeInnerList.keys))
+			for idx := 0; idx < int(nodeInnerList.keys_size); idx++ {
+				keyName := C.GoString(innerListkeys[idx].name)
+				l.MapLeaf = append(l.MapLeaf, keyName)
+			}
 		case C.LYS_USES:
 			nodeUses := (*C.struct_lys_node_uses)(unsafe.Pointer(sChild))
 			if (nodeUses.when != nil) {
@@ -830,7 +837,7 @@ func getModelChildInfo(l *YParserListInfo, node *C.struct_lys_node,
 				}
 			}
 
-			//If parent has when expression, 
+			//If parent has when expression,
 			//just add leaf to when expression node list
 			if underWhen {
 				whenExpr.NodeNames = append(whenExpr.NodeNames, leafName)
@@ -987,8 +994,6 @@ func GetModelListInfo(module *YParserModule) []*YParserListInfo {
 						l.RedisKeyDelim = argVal
 					case "key-pattern":
 						l.RedisKeyPattern = argVal
-					case "map-leaf":
-						l.MapLeaf = strings.Split(argVal, " ")
 					case "dependent-on":
 						l.DependentOnTable = argVal
 					}

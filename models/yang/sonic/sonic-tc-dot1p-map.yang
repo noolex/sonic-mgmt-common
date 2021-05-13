@@ -3,10 +3,6 @@ module sonic-tc-dot1p-map {
 	prefix tcdot1pm;
     yang-version 1.1;
 
-	import sonic-extension {
-		prefix sonic-ext;
-	}
-
 	organization
 		"SONiC";
 
@@ -27,8 +23,6 @@ module sonic-tc-dot1p-map {
 
 			list TC_TO_DOT1P_MAP_LIST {
 				key "name";
-				sonic-ext:map-list true; //special conversion for map tables
-				sonic-ext:map-leaf "tc dot1p"; //every key:value pair is mapped to list keys, e.g. "1":"7" ==> tc=1, dot1p=7
 
 				leaf name {
                     type string {
