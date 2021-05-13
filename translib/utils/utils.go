@@ -241,10 +241,8 @@ func updateCacheForPortchannel(portKey *db.Key, d *db.DB) {
     updateVlanCache(portEntry, portName)
 }
 
-func deleteFromCacheForPortchannel(portKey *db.Key) {
-    portName := portKey.Get(0)
+func deletePortFromVlanCache(portName string){
     vlanCacheKeys := getVlanCachekeys()
-    //Remove portchannel from all the VLAN's tagged/untagged list
     for _, vlan := range vlanCacheKeys {
         member_list, ok := vlanMemberCache.Load(vlan)
         if ok && member_list.(*vlan_member_list).untagged.SetContains(portName) {
@@ -254,6 +252,12 @@ func deleteFromCacheForPortchannel(portKey *db.Key) {
             member_list.(*vlan_member_list).tagged.SetDelItem(portName)
         }
     }
+}
+
+func deleteFromCacheForPortchannel(portKey *db.Key) {
+    portName := portKey.Get(0)
+    //Remove portchannel from all the VLAN's tagged/untagged list
+    deletePortFromVlanCache(portName)
 }
 
 func getVlanCachekeys() []string {
@@ -363,6 +367,8 @@ func deleteFromCacheForPort(portKey *db.Key) {
     }
     aliasIfNameMap.Delete(aliasName)
     log.V(3).Infof("Deleted %s <==> %s from alias cache", portName, aliasName)
+    //Remove port from all the VLAN's tagged/untagged list
+    deletePortFromVlanCache(portName)
 
 }
 
