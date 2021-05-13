@@ -398,7 +398,6 @@ func getEngineRoot (s *ygot.GoStruct) *ocbinds.IETFSnmp_Snmp_Engine {
 var Subscribe_snmp_listen_subtree_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
     var result XfmrSubscOutParams
 
-    log.Info("Subscribe_snmp_listen_subtree_xfmr  inParams: ", inParams)
     log.Info("Subscribe_snmp_listen_subtree_xfmr  uri: ", inParams.uri)
     if inParams.subscProc != TRANSLATE_SUBSCRIBE {
         result.isVirtualTbl = true
@@ -684,15 +683,9 @@ var DbToYangPath_snmp_listen_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDb
     snmpRoot := "/ietf-snmp:snmp/engine/listen"
     var name  string
 
-    log.Info("DbToYangPath_snmp_listen_path_xfmr: params: ", params)
-    dataBase := params.db
-    entry, err := dataBase.GetEntry(&db.TableSpec{Name: SNMP_AGENT_TABLE_NAME}, db.Key{Comp: params.tblKeyComp})
+    log.Info("DbToYangPath_snmp_listen_path_xfmr: params tblEntry: ", params.tblEntry)
 
-    if err != nil {
-        log.Infof("Failed to get value: %v", err)
-        return err
-    }
-
+    entry := params.tblEntry
     if entry.Has("name") {
         name = entry.Get("name")
     } else {
