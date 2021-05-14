@@ -1276,8 +1276,13 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             ifMode = swVlanConfig.swPortChannelMember.Config.InterfaceMode
         }
     }
-
-    portVlanListMap[*ifName] = db.Value{Field:make(map[string]string)}
+    var uiName *string
+    if utils.IsAliasModeEnabled(){
+	uiName = utils.GetUINameFromNativeName(ifName)
+    }else{
+	uiName = ifName
+    }
+    portVlanListMap[*uiName] = db.Value{Field:make(map[string]string)}
     /* Update the DS based on access-vlan/trunk-vlans config */
     if accessVlanFound {
         accessVlan := "Vlan" + strconv.Itoa(int(accessVlanId))
@@ -1307,7 +1312,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             vlanMembersListMap[accessVlan][*ifName].Field["tagging_mode"] = "untagged"
         }
         //Update port's or portchannel's access_vlan field
-        portVlanListMap[*ifName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
+        portVlanListMap[*uiName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
     }
 
     TRUNKCONFIG:
@@ -1348,7 +1353,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
 	portVlanSlice := utils.VlanDifference(trunkVlanSlice, cfgdTagdVlanSlice)
         //VlanSlice compress to range format
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
-        portVlanListMap[*ifName].Field["tagged_vlans@"] = strings.Join(portVlanSlice, ",")
+        portVlanListMap[*uiName].Field["tagged_vlans@"] = strings.Join(portVlanSlice, ",")
     }
 
     if accessVlanFound || trunkVlanFound {
