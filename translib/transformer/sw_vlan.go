@@ -1276,12 +1276,8 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             ifMode = swVlanConfig.swPortChannelMember.Config.InterfaceMode
         }
     }
-    var uiName *string
-    if utils.IsAliasModeEnabled(){
-	uiName = utils.GetUINameFromNativeName(ifName)
-    }else{
-	uiName = ifName
-    }
+    // retrieving standard name to fill port map when alias mode is enabled. 
+    uiName := utils.GetUINameFromNativeName(ifName)
     portVlanListMap[*uiName] = db.Value{Field:make(map[string]string)}
     /* Update the DS based on access-vlan/trunk-vlans config */
     if accessVlanFound {
