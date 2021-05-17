@@ -110,7 +110,7 @@ $(OC_COMMUNITY_LINTER_PATCH): $(OC_COMMUNITY_LINTER)
 	git apply $(TOOLS_DIR)/pyang/patches/openconfig_validator.patch
 	touch $@
 
-$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH) $(YANG_PATCH_FILES)
+$(YANG_VALIDATE_CHK): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EXTENSION_FILES) $(OC_COMMUNITY_LINTER_PATCH) $(YANG_PATCH_FILES) $(PATCH_STD_YANGS)
 	$(RM) $@
 	$(LINTER) 
 	touch $@
@@ -123,7 +123,13 @@ $(SYNC_STD_YANGS_TO_BUILD): $(YANG_MOD_FILES) $(YANG_COMMON_FILES) $(YANG_MOD_EX
 
 $(PATCH_STD_YANGS): $(SYNC_STD_YANGS_TO_BUILD)
 	$(RM) $@
-	for file in $(YANG_PATCH_FILES) ; do \
-		patch -d $(YANG_BUILD_DIR) -p3 < $${file} ; \
-	done
+
+	cd $(YANG_BUILD_DIR); \
+	git init ;\
+	git add -f "."; \
+	git commit -m "Original files" ; \
+	git tag ORIG; \
+	stg init; \
+	stg import -s ../../models/yang/patches/series
+
 	touch $@

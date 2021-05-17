@@ -58,11 +58,14 @@ def prepare_ignore_list(ctx,ignore_file_dict):
                 ignore_file_dict[mod_name].add(int(line_num.strip()))
 
 def prepare_patched_mods_list(ctx,patched_mods):
-    patch_dir = ctx.opts.patch_dir
-    for patch_file in os.listdir(patch_dir):
-        if patch_file.endswith('.patch'):
-            mod_name = patch_file.replace('.patch','').replace('.yang','')
-            patched_mods.add(mod_name)
+    patch_listfile = ctx.opts.patch_listfile
+    with open(patch_listfile) as fp:
+        lines = fp.readlines()
+        for patch_file in lines:
+            patch_file = patch_file.strip()
+            if patch_file.endswith('.yang'):
+                mod_name = patch_file.replace('.yang','')
+                patched_mods.add(mod_name)
 
 def get_error_flags(elevel,error_seen):
     kind = "warning"
@@ -82,10 +85,10 @@ class CheckStrictLintPlugin(plugin.PyangPlugin):
 
     def add_opts(self, optparser):
         optlist = [
-            optparse.make_option("--patchdir",
+            optparse.make_option("--patchlistfile",
                                  type="string",
-                                 dest="patch_dir",
-                                 help="YANG Patch files directory"),
+                                 dest="patch_listfile",
+                                 help="File path containing list of patched yangs"),
             optparse.make_option("--ignorefile",
                                  type="string",
                                  dest="ignore_file",
