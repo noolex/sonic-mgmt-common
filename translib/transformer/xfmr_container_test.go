@@ -1191,6 +1191,52 @@ func Test_Ygot_Merge_Xfmr_Infra_Get(t *testing.T) {
 
 }
 
+func Test_PyLdWithPathKeyVal_Create(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"DIALOUT_SENSOR_GROUP":map[string]interface{}{"sg1":""},
+	                                     "DIALOUT_SENSOR_PATH":map[string]interface{}{"sg1|/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config":""}}
+        prereq := map[string]interface{}{"DIALOUT_SENSOR_GROUP":map[string]interface{}{"sg1":map[string]interface{}{"NULL":"NULL"}}}
+
+        url := "/openconfig-telemetry:telemetry-system/sensor-groups"
+
+        fmt.Println("++++++++++++++  CREATE Test_PyLdWithPathKeyVal_Create +++++++++++++")
+
+        // Setup - Prerequisite
+        unloadConfigDB(rclient, cleanuptbl)
+        loadConfigDB(rclient, prereq)
+
+        post_payload := "{\"openconfig-telemetry:sensor-group\":[{\"sensor-group-id\":\"sg1\",\"config\":{\"sensor-group-id\":\"sg1\"},\"sensor-paths\":{\"sensor-path\":[{\"path\":\"/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config\",\"config\":{\"path\":\"/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config\"}}]}}]}"
+        post_expected := map[string]interface{}{"DIALOUT_SENSOR_PATH":map[string]interface{}{"sg1|/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config":map[string]interface{}{"NULL":"NULL"}}}
+
+        t.Run("CREATE on Container with payload having path in key value", processSetRequest(url, post_payload, "POST", false))
+        time.Sleep(1 * time.Second)
+        t.Run("Verify create on container with payload having path in key value", verifyDbResult(rclient, "DIALOUT_SENSOR_PATH|sg1|/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config", post_expected, false))
+        // Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+}
+
+func Test_PyLdWithPathKeyVal_Get(t *testing.T) {
+	cleanuptbl := map[string]interface{}{"DIALOUT_SENSOR_GROUP":map[string]interface{}{"sg1":""},
+	                                     "DIALOUT_SENSOR_PATH":map[string]interface{}{"sg1|/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config":""}}
+        prereq := map[string]interface{}{"DIALOUT_SENSOR_GROUP":map[string]interface{}{"sg1":map[string]interface{}{"NULL":"NULL"}},
+                                         "DIALOUT_SENSOR_PATH":map[string]interface{}{"sg1|/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config":map[string]interface{}{"NULL":"NULL"}}}
+
+        url := "/openconfig-telemetry:telemetry-system/sensor-groups"
+
+
+        fmt.Println("++++++++++++++  Get Test_PyLdWithPathKeyVal +++++++++++++")
+
+	// Setup - Prerequisite
+        loadConfigDB(rclient, prereq)
+
+	get_expected := "{\"openconfig-telemetry:sensor-groups\":{\"sensor-group\":[{\"config\":{\"sensor-group-id\":\"sg1\"},\"sensor-group-id\":\"sg1\",\"sensor-paths\":{\"sensor-path\":[{\"config\":{\"path\":\"/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config\"},\"path\":\"/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config\",\"state\":{\"path\":\"/openconfig-interfaces:interfaces/interface[name=Ethernet0]/config\"}}]},\"state\":{\"sensor-group-id\":\"sg1\"}}]}}"
+
+        t.Run("GET on container having path as key value element", processGetRequest(url, get_expected, false))
+
+	// Teardown
+        unloadConfigDB(rclient, cleanuptbl)
+
+}
+
 /* test leafref datatype resolution for leafref with absoulte path and having leafref to leafref reference */
 // TODO: Enable when ip-helper/interface-ref yang is added to modela/yang
 /*
