@@ -28,8 +28,8 @@ import (
 
 	// "github.com/Azure/sonic-mgmt-common/cvl"
 	// "github.com/go-redis/redis/v7"
-	"github.com/golang/glog"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/golang/glog"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,7 @@ func (d *DB) GetMAP(ts *TableSpec) (MAP, error) {
 
 	v, e := d.GetMapAll(ts)
 	if e == nil {
-		mapObj = MAP {
+		mapObj = MAP{
 			ts:       ts,
 			complete: true,
 			mapMap:   v.Field,
@@ -65,19 +65,19 @@ func (d *DB) GetMAP(ts *TableSpec) (MAP, error) {
 		}
 	}
 
-/*
-	v, e := d.client.HGetAll(ts.Name).Result()
+	/*
+		v, e := d.client.HGetAll(ts.Name).Result()
 
-	if len(v) != 0 {
-		mapObj.mapMap = v
-	} else {
-		if glog.V(1) {
-			glog.Info("GetMAP: HGetAll(): empty map")
+		if len(v) != 0 {
+			mapObj.mapMap = v
+		} else {
+			if glog.V(1) {
+				glog.Info("GetMAP: HGetAll(): empty map")
+			}
+			mapObj = MAP{}
+			e = tlerr.TranslibRedisClientEntryNotExist { Entry: ts.Name }
 		}
-		mapObj = MAP{}
-		e = tlerr.TranslibRedisClientEntryNotExist { Entry: ts.Name }
-	}
-*/
+	*/
 
 	if glog.V(3) {
 		glog.Info("GetMAP: End: MAP: ", mapObj)
@@ -86,7 +86,7 @@ func (d *DB) GetMAP(ts *TableSpec) (MAP, error) {
 	return mapObj, e
 }
 
-func (m * MAP) GetMap(mapKey string) (string, error) {
+func (m *MAP) GetMap(mapKey string) (string, error) {
 	if glog.V(3) {
 		glog.Info("MAP.GetMap: Begin: ", " mapKey: ", mapKey)
 	}
@@ -94,7 +94,7 @@ func (m * MAP) GetMap(mapKey string) (string, error) {
 	var e error
 	res, ok := m.mapMap[mapKey]
 	if !ok {
-		e = tlerr.TranslibRedisClientEntryNotExist { Entry: m.ts.Name }
+		e = tlerr.TranslibRedisClientEntryNotExist{Entry: m.ts.Name}
 	}
 
 	if glog.V(3) {
@@ -104,13 +104,13 @@ func (m * MAP) GetMap(mapKey string) (string, error) {
 	return res, e
 }
 
-func (m * MAP) GetMapAll() (Value, error) {
+func (m *MAP) GetMapAll() (Value, error) {
 
 	if glog.V(3) {
 		glog.Info("MAP.GetMapAll: Begin: ")
 	}
 
-	v := Value { Field: m.mapMap}   // TBD: This is a reference
+	v := Value{Field: m.mapMap} // TBD: This is a reference
 
 	if glog.V(3) {
 		glog.Info("MAP.GetMapAll: End: ", "v: ", v)
@@ -129,6 +129,3 @@ func init() {
 }
 
 */
-
-
-

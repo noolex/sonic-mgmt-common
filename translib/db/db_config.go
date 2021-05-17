@@ -120,18 +120,18 @@ func getDbTcpAddr(dbName string) string {
 	return hostname + ":" + strconv.Itoa(port)
 }
 
-func getDbPassword(dbName string)(string) {
+func getDbPassword(dbName string) string {
 	inst := getDbInst(dbName)
-	password :=""
+	password := ""
 	password_path, ok := inst["password_path"]
 	if !ok {
 		return password
-	} 
-	data,er := io.ReadFile(password_path.(string))
+	}
+	data, er := io.ReadFile(password_path.(string))
 	if er != nil {
 		//
 	} else {
-		password =(string(data))
+		password = (string(data))
 	}
 	return password
 }

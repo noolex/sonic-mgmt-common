@@ -4,36 +4,36 @@ package custom_validation
 // Path : /sonic-system-ntp/NTP/NTP_LIST/vrf
 // Returns - CVL Error object
 func (t *CustomValidation) ValidateNtpVrf(
-        vc *CustValidationCtxt) CVLErrorInfo {
+	vc *CustValidationCtxt) CVLErrorInfo {
 
-        if (vc.CurCfg.VOp == OP_DELETE) {
-                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-        if (vc.YNodeVal != "mgmt")  {
-                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
+	if vc.YNodeVal != "mgmt" {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-        entry, err := vc.RClient.HGetAll("MGMT_VRF_CONFIG|vrf_global").Result()
-        if ((len(entry) == 0) || (entry["mgmtVrfEnabled"] == "") || (err != nil)) {
-                return CVLErrorInfo {
-                       ErrCode :         CVL_SEMANTIC_ERROR,
-                       TableName:        "NTP",
-                       Keys:             []string{"global"},
-                       ConstraintErrMsg: "Management VRF not configured",
-                }
-        }
+	entry, err := vc.RClient.HGetAll("MGMT_VRF_CONFIG|vrf_global").Result()
+	if (len(entry) == 0) || (entry["mgmtVrfEnabled"] == "") || (err != nil) {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "NTP",
+			Keys:             []string{"global"},
+			ConstraintErrMsg: "Management VRF not configured",
+		}
+	}
 
-        enabled := entry["mgmtVrfEnabled"];
+	enabled := entry["mgmtVrfEnabled"]
 
-        if enabled != "true" {
-                return CVLErrorInfo {
-                        ErrCode :         CVL_SEMANTIC_ERROR,
-                        TableName:        "NTP",
-                        Keys:             []string{"global"},
-                        ConstraintErrMsg: "Management VRF not enabled",
-                }
-        }
+	if enabled != "true" {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "NTP",
+			Keys:             []string{"global"},
+			ConstraintErrMsg: "Management VRF not enabled",
+		}
+	}
 
-        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

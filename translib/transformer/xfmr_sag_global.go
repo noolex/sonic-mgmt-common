@@ -19,142 +19,142 @@
 package transformer
 
 import (
-    "errors"
-    log "github.com/golang/glog"
+	"errors"
+
+	log "github.com/golang/glog"
 )
 
-func init () {
-    XlateFuncBind("YangToDb_sag_global_key_xfmr", YangToDb_sag_global_key_xfmr)
-    XlateFuncBind("DbToYang_sag_global_key_xfmr", DbToYang_sag_global_key_xfmr)	
-    XlateFuncBind("YangToDb_sag_ipv4_enable_xfmr", YangToDb_sag_ipv4_enable_xfmr)
-    XlateFuncBind("DbToYang_sag_ipv4_enable_xfmr", DbToYang_sag_ipv4_enable_xfmr)
-    XlateFuncBind("YangToDb_sag_ipv6_enable_xfmr", YangToDb_sag_ipv6_enable_xfmr)
-    XlateFuncBind("DbToYang_sag_ipv6_enable_xfmr", DbToYang_sag_ipv6_enable_xfmr)		
+func init() {
+	XlateFuncBind("YangToDb_sag_global_key_xfmr", YangToDb_sag_global_key_xfmr)
+	XlateFuncBind("DbToYang_sag_global_key_xfmr", DbToYang_sag_global_key_xfmr)
+	XlateFuncBind("YangToDb_sag_ipv4_enable_xfmr", YangToDb_sag_ipv4_enable_xfmr)
+	XlateFuncBind("DbToYang_sag_ipv4_enable_xfmr", DbToYang_sag_ipv4_enable_xfmr)
+	XlateFuncBind("YangToDb_sag_ipv6_enable_xfmr", YangToDb_sag_ipv6_enable_xfmr)
+	XlateFuncBind("DbToYang_sag_ipv6_enable_xfmr", DbToYang_sag_ipv6_enable_xfmr)
 }
-
 
 var YangToDb_sag_global_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
 
-    log.Info("YangToDb_sag_global_key_xfmr ***", inParams.uri)
+	log.Info("YangToDb_sag_global_key_xfmr ***", inParams.uri)
 
-    sagTableKey := "IP"
+	sagTableKey := "IP"
 
-    log.Info("YangToDb_sag_global_key_xfmr: sagTableKey:", sagTableKey)
-    return sagTableKey, nil
+	log.Info("YangToDb_sag_global_key_xfmr: sagTableKey:", sagTableKey)
+	return sagTableKey, nil
 }
 
 var DbToYang_sag_global_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    log.Info("DbToYang_sag_global_key_xfmr: ", entry_key)
+	rmap := make(map[string]interface{})
+	entry_key := inParams.key
+	log.Info("DbToYang_sag_global_key_xfmr: ", entry_key)
 
-    rmap["name"] = "default"
+	rmap["name"] = "default"
 
-    log.Info("DbToYang_sag_global_key_xfmr")
+	log.Info("DbToYang_sag_global_key_xfmr")
 
-    return rmap, nil
+	return rmap, nil
 }
 
 var YangToDb_sag_ipv4_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
+	res_map := make(map[string]string)
 
-    if inParams.oper == DELETE {
-        res_map["IPv4"] = "enable"
-        return res_map, nil
-    }
+	if inParams.oper == DELETE {
+		res_map["IPv4"] = "enable"
+		return res_map, nil
+	}
 
-    enabled, _ := inParams.param.(*bool)
-    var enStr string
-    if *enabled {
-        enStr = "enable"
-    } else {
-        enStr = "disable"
-    }
-    res_map["IPv4"] = enStr
+	enabled, _ := inParams.param.(*bool)
+	var enStr string
+	if *enabled {
+		enStr = "enable"
+	} else {
+		enStr = "disable"
+	}
+	res_map["IPv4"] = enStr
 
-    return res_map, nil
+	return res_map, nil
 }
 
 var YangToDb_sag_ipv6_enable_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    res_map := make(map[string]string)
+	res_map := make(map[string]string)
 
-    if inParams.oper == DELETE {
-        res_map["IPv6"] = "enable"
-        return res_map, nil
-    }
+	if inParams.oper == DELETE {
+		res_map["IPv6"] = "enable"
+		return res_map, nil
+	}
 
-    enabled, _ := inParams.param.(*bool)
-    var enStr string
-    if *enabled {
-        enStr = "enable"
-    } else {
-        enStr = "disable"
-    }
-    res_map["IPv6"] = enStr
+	enabled, _ := inParams.param.(*bool)
+	var enStr string
+	if *enabled {
+		enStr = "enable"
+	} else {
+		enStr = "disable"
+	}
+	res_map["IPv6"] = enStr
 
-    return res_map, nil
+	return res_map, nil
 }
 
 var DbToYang_sag_ipv4_enable_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
+	var err error
+	result := make(map[string]interface{})
 
-    data := (*inParams.dbDataMap)[inParams.curDb]
+	data := (*inParams.dbDataMap)[inParams.curDb]
 
-    tblName := "SAG_GLOBAL"
-    if _, ok := data[tblName]; !ok {
-        log.Info("DbToYang_sag_ipv4_enable_xfmr table not found : ", tblName)
-        return result, errors.New("table not found : " + tblName)
-    }
-	
-    pTbl := data[tblName]
-    if _, ok := pTbl[inParams.key]; !ok {
-        log.Info("DbToYang_sag_ipv4_enable_xfmr SAG not found : ", inParams.key)
-        return result, errors.New("SAG not found : " + inParams.key)
-    }
-    prtInst := pTbl["IP"]
-    adminStatus, ok := prtInst.Field["IPv4"]
-    if ok {
-        if adminStatus == "enable" {
-            result["ipv4-enable"] = true
-        } else {
-            result["ipv4-enable"] = false
-        }
-    } else {
-        log.Info("return default value")
-        result["ipv4-enable"] = true
-    }
-    return result, err
+	tblName := "SAG_GLOBAL"
+	if _, ok := data[tblName]; !ok {
+		log.Info("DbToYang_sag_ipv4_enable_xfmr table not found : ", tblName)
+		return result, errors.New("table not found : " + tblName)
+	}
+
+	pTbl := data[tblName]
+	if _, ok := pTbl[inParams.key]; !ok {
+		log.Info("DbToYang_sag_ipv4_enable_xfmr SAG not found : ", inParams.key)
+		return result, errors.New("SAG not found : " + inParams.key)
+	}
+	prtInst := pTbl["IP"]
+	adminStatus, ok := prtInst.Field["IPv4"]
+	if ok {
+		if adminStatus == "enable" {
+			result["ipv4-enable"] = true
+		} else {
+			result["ipv4-enable"] = false
+		}
+	} else {
+		log.Info("return default value")
+		result["ipv4-enable"] = true
+	}
+	return result, err
 }
 
 var DbToYang_sag_ipv6_enable_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    var err error
-    result := make(map[string]interface{})
+	var err error
+	result := make(map[string]interface{})
 
-    data := (*inParams.dbDataMap)[inParams.curDb]
+	data := (*inParams.dbDataMap)[inParams.curDb]
 
-    tblName := "SAG_GLOBAL"
-    if _, ok := data[tblName]; !ok {
-        log.Info("DbToYang_sag_ipv6_enable_xfmr table not found : ", tblName)
-        return result, errors.New("table not found : " + tblName)
-    }
+	tblName := "SAG_GLOBAL"
+	if _, ok := data[tblName]; !ok {
+		log.Info("DbToYang_sag_ipv6_enable_xfmr table not found : ", tblName)
+		return result, errors.New("table not found : " + tblName)
+	}
 
-    pTbl := data[tblName]
-    if _, ok := pTbl[inParams.key]; !ok {
-        log.Info("DbToYang_sag_ipv6_enable_xfmr SAG not found : ", inParams.key)
-        return result, errors.New("SAG not found : " + inParams.key)
-    }
-    prtInst := pTbl[inParams.key]
-    adminStatus, ok := prtInst.Field["IPv6"]
-    if ok {
-        if adminStatus == "enable" {
-            result["ipv6-enable"] = true
-        } else {
-            result["ipv6-enable"] = false
-        }
-    } else {
-        log.Info("return default value")
-        result["ipv6-enable"] = true
-    }
-    return result, err
+	pTbl := data[tblName]
+	if _, ok := pTbl[inParams.key]; !ok {
+		log.Info("DbToYang_sag_ipv6_enable_xfmr SAG not found : ", inParams.key)
+		return result, errors.New("SAG not found : " + inParams.key)
+	}
+	prtInst := pTbl[inParams.key]
+	adminStatus, ok := prtInst.Field["IPv6"]
+	if ok {
+		if adminStatus == "enable" {
+			result["ipv6-enable"] = true
+		} else {
+			result["ipv6-enable"] = false
+		}
+	} else {
+		log.Info("return default value")
+		result["ipv6-enable"] = true
+	}
+	return result, err
 }

@@ -24,13 +24,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 func init() {
 	fmt.Println("+++++  Init acl_app_test  +++++")
 }
-
 
 // This will test GET on /openconfig-acl:acl
 func Test_AclApp_TopLevelPath(t *testing.T) {
@@ -328,7 +328,6 @@ func Test_AclApp_NegativeTests(t *testing.T) {
 	t.Run("Verify_Top_Level_Delete", processGetRequest(topLevelUrl, emptyJson, false))
 }
 
-
 // THis will delete ACL table and Rules Table from DB
 func clearAclDataFromDb() error {
 	var err error
@@ -350,7 +349,6 @@ func clearAclDataFromDb() error {
 	}
 	return err
 }
-
 
 func Test_AclApp_Subscribe(t *testing.T) {
 	app := new(AclApp)
@@ -415,8 +413,8 @@ func testSubs(app appInterface, path string, expKeyInfo ...string) func(*testing
 	return func(t *testing.T) {
 		req := translateSubRequest{
 			ctxID: t.Name(),
-			path: path,
-			dbs: [db.MaxDB]*db.DB{},
+			path:  path,
+			dbs:   [db.MaxDB]*db.DB{},
 		}
 		ntfAppInfo, err := app.translateSubscribe(&req)
 		if err != nil {
@@ -466,8 +464,8 @@ func testSubsError(app appInterface, path string) func(*testing.T) {
 	return func(t *testing.T) {
 		req := translateSubRequest{
 			ctxID: t.Name(),
-			path: path,
-			dbs: [db.MaxDB]*db.DB{},
+			path:  path,
+			dbs:   [db.MaxDB]*db.DB{},
 		}
 		_, err := app.translateSubscribe(&req)
 		if err == nil {

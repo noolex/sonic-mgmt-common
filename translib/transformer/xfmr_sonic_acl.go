@@ -22,12 +22,13 @@ package transformer
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	"github.com/go-redis/redis/v7"
 	log "github.com/golang/glog"
-	"strings"
 )
 
 func init() {

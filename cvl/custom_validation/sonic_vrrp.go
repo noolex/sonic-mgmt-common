@@ -20,10 +20,11 @@
 package custom_validation
 
 import (
-	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	"strings"
-	log "github.com/golang/glog"
 	"net"
+	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	log "github.com/golang/glog"
 )
 
 func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInfo {
@@ -44,7 +45,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 
 	log.Info("keyName:", keyName, " vrrpTable:", vrrpTable, " ifName:", ifName, " vipData:", vipData)
 
-  if strings.HasPrefix(ifName, "Ethernet") {
+	if strings.HasPrefix(ifName, "Ethernet") {
 		tblName = "INTERFACE"
 	} else if strings.HasPrefix(ifName, "Vlan") {
 		tblName = "VLAN_INTERFACE"
@@ -58,9 +59,9 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "VIP not allowed on this type of interface")
 		errStr := "VIP not allowed on this type of interface"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: vrrpTable,
-			CVLErrDetails: errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        vrrpTable,
+			CVLErrDetails:    errStr,
 			ConstraintErrMsg: errStr,
 		}
 	}
@@ -75,15 +76,15 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 
 	tblNameExt := tblName + "|" + ifName + "|" + "*"
 
-	tableKeys, err:= vc.RClient.Keys(tblNameExt).Result()
+	tableKeys, err := vc.RClient.Keys(tblNameExt).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		log.Info("ValidateVipSubnet interface IP is empty")
 		errStr := "Interface does not have IP"
-		return CVLErrorInfo {
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: vrrpTable,
-			CVLErrDetails: errStr,
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        vrrpTable,
+			CVLErrDetails:    errStr,
 			ConstraintErrMsg: errStr,
 		}
 	}
@@ -92,7 +93,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 	_, ipNetLL, _ := net.ParseCIDR(ipLLStr)
 
 	vips := strings.Split(vipData, ",")
-	for _, vip := range(vips)	{
+	for _, vip := range vips {
 
 		vip = vip + vipSuffix
 		ipB, _, perr := net.ParseCIDR(vip)
@@ -105,7 +106,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 			continue
 		}
 
-	  var found bool = false
+		var found bool = false
 
 		for _, dbKey := range tableKeys {
 			ifKeySplit := strings.Split(dbKey, "|")
@@ -113,7 +114,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 			ipA, ipNetA, perr := net.ParseCIDR(ifKeySplit[2])
 
 			if ipA == nil || perr != nil {
-					continue
+				continue
 			}
 
 			if ipB.Equal(ipA) {
@@ -130,10 +131,10 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 		if !found {
 			log.Info("ValidateVipSubnet interface overlap IP is empty")
 			errStr := "Virtual IP does not belong to interface IP subnet"
-			return CVLErrorInfo {
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -143,10 +144,10 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 		ret, errStr := vrrp_is_valid_owner(vc, vrrpTable, ifName, keyNameSplit[2])
 
 		if !ret {
-			return CVLErrorInfo {
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -158,8 +159,7 @@ func (t *CustomValidation) ValidateVipSubnet(vc *CustValidationCtxt) CVLErrorInf
 func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name string, vrid string) bool {
 	var if_tbl string
 
-
-  if strings.HasPrefix(vrrp_if_name, "Ethernet") {
+	if strings.HasPrefix(vrrp_if_name, "Ethernet") {
 		if_tbl = "INTERFACE"
 	} else if strings.HasPrefix(vrrp_if_name, "Vlan") {
 		if_tbl = "VLAN_INTERFACE"
@@ -175,7 +175,7 @@ func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name s
 
 	if_tbl_ext := if_tbl + "|" + vrrp_if_name + "|" + "*"
 
-	table_keys, err:= vc.RClient.Keys(if_tbl_ext).Result()
+	table_keys, err := vc.RClient.Keys(if_tbl_ext).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		return false
@@ -189,7 +189,7 @@ func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name s
 		vip_suffix = "/128"
 	}
 
-  vrrp_key := vrrp_table + "|" + vrrp_if_name + "|" + vrid
+	vrrp_key := vrrp_table + "|" + vrrp_if_name + "|" + vrid
 
 	vrrp_data, err := vc.RClient.HGetAll(vrrp_key).Result()
 	if (err != nil) || (vc.SessCache == nil) {
@@ -199,7 +199,7 @@ func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name s
 	vip_data := vrrp_data["vip@"]
 
 	vips := strings.Split(vip_data, ",")
-	for _, vip := range(vips)	{
+	for _, vip := range vips {
 
 		vip = vip + vip_suffix
 
@@ -215,7 +215,7 @@ func vrrp_is_vip_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name s
 			ipB, _, perr := net.ParseCIDR(if_key_split[2])
 
 			if ipB == nil || perr != nil {
-					continue
+				continue
 			}
 
 			if ipA.Equal(ipB) {
@@ -232,7 +232,6 @@ func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name
 	var vrrp_track_table string
 	vrrp_key := vrrp_table + "|" + vrrp_if_name + "|" + vrid
 
-
 	vrrp_data, err := vc.RClient.HGetAll(vrrp_key).Result()
 	if (err != nil) || (vc.SessCache == nil) {
 		return true, ret
@@ -247,7 +246,7 @@ func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name
 
 	data, has_data := vrrp_data["pre_empt"]
 
-	if has_data && data == "False"{
+	if has_data && data == "False" {
 		ret = "Enable preempt before configuring VIP as owner"
 		return false, ret
 	}
@@ -259,7 +258,6 @@ func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name
 		return false, ret
 	}
 
-
 	if vrrp_table == "VRRP" {
 		vrrp_track_table = "VRRP_TRACK"
 	} else {
@@ -268,7 +266,7 @@ func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name
 
 	track_table_ext := vrrp_track_table + "|" + vrrp_if_name + "|" + vrid + "|" + "*"
 
-	track_table_keys, err:= vc.RClient.Keys(track_table_ext).Result()
+	track_table_keys, err := vc.RClient.Keys(track_table_ext).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		return true, ret
@@ -284,7 +282,7 @@ func vrrp_is_valid_owner(vc *CustValidationCtxt, vrrp_table string, vrrp_if_name
 }
 
 func (t *CustomValidation) ValidatePreempt(vc *CustValidationCtxt) CVLErrorInfo {
-	preempt_val :=  vc.CurCfg.Data["pre_empt"]
+	preempt_val := vc.CurCfg.Data["pre_empt"]
 	key := vc.CurCfg.Key
 	key_split := strings.Split(key, "|")
 
@@ -292,19 +290,19 @@ func (t *CustomValidation) ValidatePreempt(vc *CustValidationCtxt) CVLErrorInfo 
 
 	var owner bool = false
 
-	if ((len(preempt_val) == 0) || ((vc.CurCfg.VOp != OP_DELETE) && (preempt_val == "True"))) {
+	if (len(preempt_val) == 0) || ((vc.CurCfg.VOp != OP_DELETE) && (preempt_val == "True")) {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-  owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
+	owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
 
 	if owner {
 		log.Info("ValidatePreempt owner ip exist")
 		errStr := "Preempt cannot be disabled for owner case"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "VRRP",
-			CVLErrDetails: errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "VRRP",
+			CVLErrDetails:    errStr,
 			ConstraintErrMsg: errStr,
 		}
 	}
@@ -338,9 +336,9 @@ func (t *CustomValidation) ValidateTrack(vc *CustValidationCtxt) CVLErrorInfo {
 		log.Info("ValidateTrack owner ip exist")
 		errStr := "Track interface cannot be configured for owner case"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: vrrp_table,
-			CVLErrDetails: errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        vrrp_table,
+			CVLErrDetails:    errStr,
 			ConstraintErrMsg: errStr,
 		}
 	}
@@ -350,7 +348,7 @@ func (t *CustomValidation) ValidateTrack(vc *CustValidationCtxt) CVLErrorInfo {
 }
 
 func (t *CustomValidation) ValidatePriority(vc *CustValidationCtxt) CVLErrorInfo {
-	priority_val :=  vc.CurCfg.Data["priority"]
+	priority_val := vc.CurCfg.Data["priority"]
 	key := vc.CurCfg.Key
 	key_split := strings.Split(key, "|")
 
@@ -358,19 +356,19 @@ func (t *CustomValidation) ValidatePriority(vc *CustValidationCtxt) CVLErrorInfo
 
 	var owner bool = false
 
-	if vc.CurCfg.VOp == OP_DELETE || len(priority_val) == 0{
+	if vc.CurCfg.VOp == OP_DELETE || len(priority_val) == 0 {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-  owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
+	owner = vrrp_is_vip_owner(vc, key_split[0], key_split[1], key_split[2])
 
 	if owner {
 		log.Info("ValidatePreempt owner ip exist")
 		errStr := "Priority cannot be configured for owner case"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "VRRP",
-			CVLErrDetails: errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "VRRP",
+			CVLErrDetails:    errStr,
 			ConstraintErrMsg: errStr,
 		}
 	}
@@ -398,9 +396,9 @@ func (t *CustomValidation) ValidateVrrp(vc *CustValidationCtxt) CVLErrorInfo {
 		if (err != nil) || (vc.SessCache == nil) {
 			errStr := "Configure interface IP before configuring VRRP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -408,9 +406,9 @@ func (t *CustomValidation) ValidateVrrp(vc *CustValidationCtxt) CVLErrorInfo {
 		if len(vlan_subif_ips) <= 0 {
 			errStr := "Configure interface IP before configuring VRRP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -421,9 +419,9 @@ func (t *CustomValidation) ValidateVrrp(vc *CustValidationCtxt) CVLErrorInfo {
 		if (err != nil) || (vc.SessCache == nil) {
 			errStr := "Configure subinterface and vlan id before configuring VRRP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -435,13 +433,13 @@ func (t *CustomValidation) ValidateVrrp(vc *CustValidationCtxt) CVLErrorInfo {
 		} else {
 			errStr := "Configure  vlan id on interface before configuring VRRP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRRP",
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRRP",
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
-	}else {
+	} else {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 }

@@ -14,6 +14,7 @@ export GO
 TRANSLIB_BLD = $(BUILD_DIR)/translib
 TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
 STATIC_CHECK = $(TRANSLIB_BLD)/.staticcheck
+FORMAT_CHECK = $(TRANSLIB_BLD)/.formatcheck
 
 TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test\|transformer/')
 TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
@@ -34,7 +35,7 @@ YANG_FILES = $(shell find $(YANG_DIR) -name '*.yang')
 YANG_PATCH_FILES = $(shell find $(YANG_PATCH_DIR) -name '*.patch')
 YGOT_BINDS = ocbinds/ocbinds.go
 
-DEFAULT_TARGETS = $(YGOT_BINDS) $(STATIC_CHECK)
+DEFAULT_TARGETS = $(YGOT_BINDS) $(STATIC_CHECK) $(FORMAT_CHECK)
 ifeq ($(NO_TEST_BINS),)
 DEFAULT_TARGETS += $(TRANSLIB_TEST_BIN) $(TRANSL_DB_TEST_BIN) $(TRANSFORMER_TEST_BIN)
 endif
@@ -66,6 +67,12 @@ $(YGOT_BINDS): $(YANG_FILES) $(YANG_PATCH_FILES) | $(PATCH_YANG)
 $(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
 	$(TOPDIR)/tools/test/static-check.sh \
 		--log=$(TRANSLIB_BLD)/staticcheck.log \
+		--exclude=ocbinds
+	touch $@
+
+$(FORMAT_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) $(TRANSLIB_TEST_SRCS) | $(YGOT_BINDS)
+	$(TOPDIR)/tools/test/format-check.sh \
+		--log=$(TRANSLIB_BLD)/formatcheck.log \
 		--exclude=ocbinds
 	touch $@
 

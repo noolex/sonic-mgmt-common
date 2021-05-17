@@ -39,7 +39,7 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 
 type dbOnChangeReg struct {
-	CacheTables   map[string]bool // Only cache these tables.
+	CacheTables map[string]bool // Only cache these tables.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,27 +73,25 @@ func (d *DB) OnChangeCacheUpdate(ts *TableSpec, key Key) (Value, Value, error) {
 	}
 
 	var valueOrig Value
-	if _, ok := d.cache.Tables[ts.Name] ; ok {
-			valueOrig = d.cache.Tables[ts.Name].entry[d.key2redis(ts, key)]
+	if _, ok := d.cache.Tables[ts.Name]; ok {
+		valueOrig = d.cache.Tables[ts.Name].entry[d.key2redis(ts, key)]
 	}
 
 	// Get New Value from the DB
-	value, e := d.getEntry(ts,key,true)
+	value, e := d.getEntry(ts, key, true)
 
 	if e != nil {
 		if glog.V(1) {
 			glog.Info("OnChangeCacheUpdate: Delete ts:", ts, " key: ", key)
 		}
-		if _, ok := d.cache.Tables[ts.Name] ; ok {
-			delete(d.cache.Tables[ts.Name].entry,d.key2redis(ts, key))
+		if _, ok := d.cache.Tables[ts.Name]; ok {
+			delete(d.cache.Tables[ts.Name].entry, d.key2redis(ts, key))
 		}
 		e = nil
 	}
 
 	return valueOrig, value, e
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Internal Functions                                                        //
@@ -105,4 +103,3 @@ func init() {
 func (reg *dbOnChangeReg) isCacheTable(name string) bool {
 	return reg.CacheTables[name]
 }
-

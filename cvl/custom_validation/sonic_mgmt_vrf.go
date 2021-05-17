@@ -50,9 +50,9 @@ func (t *CustomValidation) ValidateBeforeMgmtVrfDelete(ctx *CustValidationCtxt) 
 		if err.ErrCode == CVL_SUCCESS {
 			err = verifyMgmtVrfNotReferred("STATIC_ROUTE|mgmt|*", "vrf_name|prefix", "vrf_name", "1", ctx)
 		}
-                if err.ErrCode == CVL_SUCCESS {
-                        err = verifyMgmtVrfNotReferred("NTP|*", "global", "vrf", "1", ctx)
-                }
+		if err.ErrCode == CVL_SUCCESS {
+			err = verifyMgmtVrfNotReferred("NTP|*", "global", "vrf", "1", ctx)
+		}
 	}
 
 	return err

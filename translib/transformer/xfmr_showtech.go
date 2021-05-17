@@ -19,67 +19,68 @@
 package transformer
 
 import (
-    "encoding/json"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    "github.com/golang/glog"
-    "regexp"
+	"encoding/json"
+	"regexp"
+
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/golang/glog"
 )
 
 func init() {
-    XlateFuncBind("rpc_showtech_cb", rpc_showtech_cb)
+	XlateFuncBind("rpc_showtech_cb", rpc_showtech_cb)
 }
 
 var rpc_showtech_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    var err error
-    var matched bool
-    var output string
-    var operand struct {
-        Input struct {
-            Date string `json:"date"`
-        } `json:"sonic-show-techsupport:input"`
-    }
+	var err error
+	var matched bool
+	var output string
+	var operand struct {
+		Input struct {
+			Date string `json:"date"`
+		} `json:"sonic-show-techsupport:input"`
+	}
 
-    err = json.Unmarshal(body, &operand)
-    if err != nil {
-        glog.Errorf("%Error: Failed to parse rpc input; err=%v", err)
-        return nil,tlerr.InvalidArgs("Invalid rpc input")
-    }
+	err = json.Unmarshal(body, &operand)
+	if err != nil {
+		glog.Errorf("%Error: Failed to parse rpc input; err=%v", err)
+		return nil, tlerr.InvalidArgs("Invalid rpc input")
+	}
 
-    if operand.Input.Date == "" {
-        matched = true
-    } else {
-        matched, _ = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
-                                           `(Z|[\+\-]\d{2}:\d{2})`), operand.Input.Date)
-        if err != nil {
-            glog.Errorf("%Error: Failed to match regex pattern for parsesd rpc input; err=%v", err)
-        }
+	if operand.Input.Date == "" {
+		matched = true
+	} else {
+		matched, _ = regexp.MatchString((`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?` +
+			`(Z|[\+\-]\d{2}:\d{2})`), operand.Input.Date)
+		if err != nil {
+			glog.Errorf("%Error: Failed to match regex pattern for parsesd rpc input; err=%v", err)
+		}
 
-    }
+	}
 
-    var showtech struct {
-        Output struct {
-        Result string `json:"output-filename"`
-        } `json:"sonic-show-techsupport:output"`
-    }
+	var showtech struct {
+		Output struct {
+			Result string `json:"output-filename"`
+		} `json:"sonic-show-techsupport:output"`
+	}
 
-    if !(matched) {
-        showtech.Output.Result = "Invalid input: Incorrect DateTime format"
-        result, _ := json.Marshal(&showtech)
-        return result, nil
-    }
+	if !(matched) {
+		showtech.Output.Result = "Invalid input: Incorrect DateTime format"
+		result, _ := json.Marshal(&showtech)
+		return result, nil
+	}
 
-    host_output := HostQuery("showtech.info", operand.Input.Date)
-    if host_output.Err != nil {
-        glog.Errorf("%Error: Showtech host Query failed: err=%v", host_output.Err)
-        glog.Flush()
-        return nil, host_output.Err
-    }
+	host_output := HostQuery("showtech.info", operand.Input.Date)
+	if host_output.Err != nil {
+		glog.Errorf("%Error: Showtech host Query failed: err=%v", host_output.Err)
+		glog.Flush()
+		return nil, host_output.Err
+	}
 
-    output, _ = host_output.Body[1].(string)
-    showtech.Output.Result = output
+	output, _ = host_output.Body[1].(string)
+	showtech.Output.Result = output
 
-    result, _ := json.Marshal(&showtech)
+	result, _ := json.Marshal(&showtech)
 
-    return result, nil
+	return result, nil
 }

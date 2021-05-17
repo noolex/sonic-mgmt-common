@@ -19,17 +19,18 @@
 package transformer
 
 import (
-	"fmt"
 	"encoding/json"
 	"errors"
-	log "github.com/golang/glog"
-	"github.com/openconfig/ygot/ygot"
+	"fmt"
 	"reflect"
-	"strings"
 	"sort"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 )
 
 const (
@@ -39,7 +40,7 @@ const (
 	UPDATE
 	DELETE
 	SUBSCRIBE
-    MAXOPER
+	MAXOPER
 )
 
 var XlateFuncs = make(map[string]reflect.Value)
@@ -65,11 +66,11 @@ func XlateFuncBind(name string, fn interface{}) (err error) {
 	return
 }
 func IsXlateFuncBinded(name string) bool {
-    if _, ok := XlateFuncs[name]; !ok {
-        return false
-    } else  {
-        return true
-    }
+	if _, ok := XlateFuncs[name]; !ok {
+		return false
+	} else {
+		return true
+	}
 }
 func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, err error) {
 	if _, ok := XlateFuncs[name]; !ok {
@@ -77,7 +78,7 @@ func XlateFuncCall(name string, params ...interface{}) (result []reflect.Value, 
 		return nil, nil
 	}
 	if len(params) != XlateFuncs[name].Type().NumIn() {
-                log.Warning("Error parameters not adapted")
+		log.Warning("Error parameters not adapted")
 		return nil, nil
 	}
 	in := make([]reflect.Value, len(params))
@@ -170,16 +171,16 @@ func traverseDbHelper(dbs [db.MaxDB]*db.DB, spec KeySpec, result *map[db.DBNum]m
 					}
 				}
 				spec.Key = keys[i]
-                                err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
-                                if err != nil {
-                                        xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
-                                }
+				err = traverseDbHelper(dbs, spec, result, parentKey, dbTblKeyGetCache)
+				if err != nil {
+					xfmrLogInfoAll("Traversal didn't fetch for : %v", err)
+				}
 			}
 		} else if len(spec.Child) > 0 {
-                        for _, ch := range spec.Child {
-                                err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
-                        }
-                }
+			for _, ch := range spec.Child {
+				err = traverseDbHelper(dbs, ch, result, &spec.Key, dbTblKeyGetCache)
+			}
+		}
 	}
 	return err
 }
@@ -212,7 +213,7 @@ func XlateUriToKeySpec(uri string, requestUri string, ygRoot *ygot.GoStruct, t *
 	return &retdbFormat, err
 }
 
-func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]KeySpec){
+func FillKeySpecs(yangXpath string, keyStr string, retdbFormat *[]KeySpec) []KeySpec {
 	var err error
 	if xYangSpecMap == nil {
 		return *retdbFormat
@@ -275,17 +276,17 @@ func FillKeySpecs(yangXpath string , keyStr string, retdbFormat *[]KeySpec) ([]K
 	return *retdbFormat
 }
 
-func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpec ) {
+func fillSonicKeySpec(xpath string, tableName string, keyStr string) []KeySpec {
 
 	var retdbFormat = make([]KeySpec, 0)
 
 	if tableName != "" {
 		dbFormat := KeySpec{}
 		dbFormat.Ts.Name = tableName
-                cdb := db.ConfigDB
-                if _, ok := xDbSpecMap[tableName]; ok {
+		cdb := db.ConfigDB
+		if _, ok := xDbSpecMap[tableName]; ok {
 			cdb = xDbSpecMap[tableName].dbIndex
-                }
+		}
 		dbFormat.DbNum = cdb
 		if keyStr != "" {
 			dbFormat.Key.Comp = append(dbFormat.Key.Comp, keyStr)
@@ -301,11 +302,11 @@ func fillSonicKeySpec(xpath string , tableName string, keyStr string) ( []KeySpe
 					for dir := range dbInfo.dbEntry.Dir {
 						_, ok := xDbSpecMap[dir]
 						if ok && xDbSpecMap[dir].dbEntry.Node.Statement().Keyword == "container" {
-						cdb := xDbSpecMap[dir].dbIndex
-						dbFormat := KeySpec{}
-						dbFormat.Ts.Name = dir
-						dbFormat.DbNum = cdb
-						retdbFormat = append(retdbFormat, dbFormat)
+							cdb := xDbSpecMap[dir].dbIndex
+							dbFormat := KeySpec{}
+							dbFormat.Ts.Name = dir
+							dbFormat.DbNum = cdb
+							retdbFormat = append(retdbFormat, dbFormat)
 						}
 					}
 				}
@@ -382,8 +383,8 @@ func GetAndXlateFromDB(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, 
 	requestUri := uri
 	keySpec, _ := XlateUriToKeySpec(uri, requestUri, ygRoot, nil, txCache)
 	var dbresult = make(RedisDbMap)
-        for i := db.ApplDB; i < db.MaxDB; i++ {
-                dbresult[i] = make(map[string]map[string]db.Value)
+	for i := db.ApplDB; i < db.MaxDB; i++ {
+		dbresult[i] = make(map[string]map[string]db.Value)
 	}
 
 	inParamsForGet.dbTblKeyGetCache = make(map[db.DBNum]map[string]map[string]bool)
@@ -415,30 +416,30 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 	dbData = data
 	requestUri := uri
 	/* Check if the parent table exists for RFC compliance */
-        var exists bool
+	var exists bool
 	subOpMapDiscard := make(map[int]*RedisDbMap)
-        exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache, subOpMapDiscard)
-        xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
-        if err != nil {
+	exists, err = verifyParentTable(nil, dbs, ygRoot, GET, uri, dbData, txCache, subOpMapDiscard)
+	xfmrLogInfoAll("verifyParentTable() returned - exists - %v, err - %v", exists, err)
+	if err != nil {
 		log.Warningf("Cannot perform GET Operation on uri %v due to - %v", uri, err)
 		return []byte(""), true, err
-        }
-        if !exists {
-                err = tlerr.NotFoundError{Format:"Resource Not found"}
-                return []byte(""), true, err
-        }
+	}
+	if !exists {
+		err = tlerr.NotFoundError{Format: "Resource Not found"}
+		return []byte(""), true, err
+	}
 
 	if isSonicYang(uri) {
 		lxpath, keyStr, tableName := sonicXpathKeyExtract(uri)
 		xpath = lxpath
-		if (tableName != "") {
+		if tableName != "" {
 			dbInfo, ok := xDbSpecMap[tableName]
 			if !ok {
 				log.Warningf("No entry in xDbSpecMap for xpath %v", tableName)
 			} else {
-				cdb =  dbInfo.dbIndex
+				cdb = dbInfo.dbIndex
 			}
-			tokens:= strings.Split(xpath, "/")
+			tokens := strings.Split(xpath, "/")
 			// Format /module:container/tableName/listname[key]/fieldName
 			if tokens[SONIC_TABLE_INDEX] == tableName {
 				fieldName := ""
@@ -446,18 +447,18 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 					fieldName = tokens[SONIC_FIELD_INDEX]
 					dbSpecField := tableName + "/" + fieldName
 					dbSpecFieldInfo, ok := xDbSpecMap[dbSpecField]
-					if ok  && fieldName != "" {
+					if ok && fieldName != "" {
 						yangNodeType := yangTypeGet(xDbSpecMap[dbSpecField].dbEntry)
 						if yangNodeType == YANG_LEAF_LIST {
 							fieldName = fieldName + "@"
 						}
-						if ((yangNodeType == YANG_LEAF_LIST) || (yangNodeType == YANG_LEAF)) {
+						if (yangNodeType == YANG_LEAF_LIST) || (yangNodeType == YANG_LEAF) {
 							dbData[cdb], err = extractFieldFromDb(tableName, keyStr, fieldName, data[cdb])
-							// return resource not found when the leaf/leaf-list instance(not entire leaf-list GET) not found 
-							if ((err != nil) && ((yangNodeType == YANG_LEAF) || ((yangNodeType == YANG_LEAF_LIST) && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/"))))) {
+							// return resource not found when the leaf/leaf-list instance(not entire leaf-list GET) not found
+							if (err != nil) && ((yangNodeType == YANG_LEAF) || ((yangNodeType == YANG_LEAF_LIST) && (strings.HasSuffix(uri, "]") || strings.HasSuffix(uri, "]/")))) {
 								return []byte(""), true, err
 							}
-							if ((yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+							if (yangNodeType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
 								leafListInstVal, valErr := extractLeafListInstFromUri(uri)
 								if valErr != nil {
 									return []byte(""), true, valErr
@@ -476,12 +477,12 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 									/* Since translib already fills in ygRoot with queried leaf-list instance, do not
 									   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
 									   app layer will create duplicate instances in result.
-									 */
-									 log.Info("Queried leaf-list instance exists.")
-									 return []byte("{}"), false, nil
+									*/
+									log.Info("Queried leaf-list instance exists.")
+									return []byte("{}"), false, nil
 								} else {
 									xfmrLogInfoAll("Queried leaf-list instance does not exist - %v", uri)
-									return []byte(""), true, tlerr.NotFoundError{Format:"Resource not found"}
+									return []byte(""), true, tlerr.NotFoundError{Format: "Resource not found"}
 								}
 							}
 						}
@@ -490,7 +491,7 @@ func XlateFromDb(uri string, ygRoot *ygot.GoStruct, dbs [db.MaxDB]*db.DB, data R
 			}
 		}
 	} else {
-	        lxpath, _, _ := XfmrRemoveXPATHPredicates(uri)
+		lxpath, _, _ := XfmrRemoveXPATHPredicates(uri)
 		xpath = lxpath
 		if _, ok := xYangSpecMap[xpath]; ok {
 			cdb = xYangSpecMap[xpath].dbIndex
@@ -544,43 +545,43 @@ func GetModuleNmFromPath(uri string) (string, error) {
 }
 
 func GetOrdDBTblList(ygModuleNm string) ([]string, error) {
-        var result []string
+	var result []string
 	var err error
-        if dbTblList, ok := xDbSpecOrdTblMap[ygModuleNm]; ok {
-                result = dbTblList
+	if dbTblList, ok := xDbSpecOrdTblMap[ygModuleNm]; ok {
+		result = dbTblList
 		if len(dbTblList) == 0 {
 			log.Warning("Ordered DB Table list is empty for module name = ", ygModuleNm)
 			err = fmt.Errorf("Ordered DB Table list is empty for module name %v", ygModuleNm)
 
 		}
-        } else {
-                log.Warning("No entry found in the map of module names to ordered list of DB Tables for module = ", ygModuleNm)
-                err = fmt.Errorf("No entry found in the map of module names to ordered list of DB Tables for module = %v", ygModuleNm)
-        }
-        return result, err
+	} else {
+		log.Warning("No entry found in the map of module names to ordered list of DB Tables for module = ", ygModuleNm)
+		err = fmt.Errorf("No entry found in the map of module names to ordered list of DB Tables for module = %v", ygModuleNm)
+	}
+	return result, err
 }
 
 func GetOrdTblList(xfmrTbl string, uriModuleNm string) []string {
-        var ordTblList []string
-        processedTbl := false
-        var sncMdlList []string = getYangMdlToSonicMdlList(uriModuleNm)
+	var ordTblList []string
+	processedTbl := false
+	var sncMdlList []string = getYangMdlToSonicMdlList(uriModuleNm)
 
-        for _, sonicMdlNm := range(sncMdlList) {
-                sonicMdlTblInfo := xDbSpecTblSeqnMap[sonicMdlNm]
-                for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
-                                if xfmrTbl == ordTblNm {
-                                        xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
-                                        processedTbl = true
-                                        break
-                                }
-                }
-                if processedTbl {
-                        break
-                }
-        }
-		return ordTblList
+	for _, sonicMdlNm := range sncMdlList {
+		sonicMdlTblInfo := xDbSpecTblSeqnMap[sonicMdlNm]
+		for _, ordTblNm := range sonicMdlTblInfo.OrdTbl {
+			if xfmrTbl == ordTblNm {
+				xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
+				ordTblList = sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblWithinMdl
+				processedTbl = true
+				break
+			}
+		}
+		if processedTbl {
+			break
+		}
 	}
+	return ordTblList
+}
 
 func GetXfmrOrdTblList(xfmrTbl string) []string {
 	/* get the table hierarchy read from json file */
@@ -592,9 +593,9 @@ func GetXfmrOrdTblList(xfmrTbl string) []string {
 }
 
 func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
-        var depTblList []string
-        depTblMap := make(map[string]bool) //create to avoid duplicates in depTblList, serves as a Set
-        processedTbl := false
+	var depTblList []string
+	depTblMap := make(map[string]bool) //create to avoid duplicates in depTblList, serves as a Set
+	processedTbl := false
 	var sncMdlList []string
 	var lXfmrTblList []string
 
@@ -602,41 +603,41 @@ func GetTablesToWatch(xfmrTblList []string, uriModuleNm string) []string {
 
 	// remove duplicates from incoming list of tables
 	xfmrTblMap := make(map[string]bool) //create to avoid duplicates in xfmrTblList
-	for _, xfmrTblNm :=range(xfmrTblList) {
+	for _, xfmrTblNm := range xfmrTblList {
 		xfmrTblMap[xfmrTblNm] = true
 	}
-	for xfmrTblNm := range(xfmrTblMap) {
+	for xfmrTblNm := range xfmrTblMap {
 		lXfmrTblList = append(lXfmrTblList, xfmrTblNm)
 	}
 
-        for _, xfmrTbl := range(lXfmrTblList) {
+	for _, xfmrTbl := range lXfmrTblList {
 		processedTbl = false
-                //can be optimized if there is a way to know all sonic modules, a given OC-Yang spans over
-                for _, sonicMdlNm := range(sncMdlList) {
-                        sonicMdlTblInfo := xDbSpecTblSeqnMap[sonicMdlNm]
-                        for _, ordTblNm := range(sonicMdlTblInfo.OrdTbl) {
-                                if xfmrTbl == ordTblNm {
-                                        xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
-                                        ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
-                                        for _, depTblNm := range(ldepTblList) {
-                                                depTblMap[depTblNm] = true
-                                        }
-                                        //assumption that a table belongs to only one sonic module
-                                        processedTbl = true
-                                        break
-                                }
-                        }
-                        if processedTbl {
-                                break
-                        }
-                }
+		//can be optimized if there is a way to know all sonic modules, a given OC-Yang spans over
+		for _, sonicMdlNm := range sncMdlList {
+			sonicMdlTblInfo := xDbSpecTblSeqnMap[sonicMdlNm]
+			for _, ordTblNm := range sonicMdlTblInfo.OrdTbl {
+				if xfmrTbl == ordTblNm {
+					xfmrLogInfo("Found sonic module(%v) whose ordered table list contains table %v", sonicMdlNm, xfmrTbl)
+					ldepTblList := sonicMdlTblInfo.DepTbl[xfmrTbl].DepTblAcrossMdl
+					for _, depTblNm := range ldepTblList {
+						depTblMap[depTblNm] = true
+					}
+					//assumption that a table belongs to only one sonic module
+					processedTbl = true
+					break
+				}
+			}
+			if processedTbl {
+				break
+			}
+		}
 		if !processedTbl {
 			depTblMap[xfmrTbl] = false
 		}
-        }
-        for depTbl := range(depTblMap) {
-                depTblList = append(depTblList, depTbl)
-        }
+	}
+	for depTbl := range depTblMap {
+		depTblList = append(depTblList, depTbl)
+	}
 	return depTblList
 }
 
@@ -680,147 +681,147 @@ func AddModelCpbltInfo() map[string]*mdlInfo {
 }
 
 func xfmrSubscSubtreeHandler(inParams XfmrSubscInParams, xfmrFuncNm string) (XfmrSubscOutParams, error) {
-    var retVal XfmrSubscOutParams
-    retVal.dbDataMap = nil
-    retVal.needCache = false
-    retVal.onChange = OnchangeDisable
-    retVal.nOpts = nil
-    retVal.isVirtualTbl = false
+	var retVal XfmrSubscOutParams
+	retVal.dbDataMap = nil
+	retVal.needCache = false
+	retVal.onChange = OnchangeDisable
+	retVal.nOpts = nil
+	retVal.isVirtualTbl = false
 
-    xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
-    ret, err := XlateFuncCall("Subscribe_"  + xfmrFuncNm, inParams)
-    if err != nil {
-        return retVal, err
-    }
+	xfmrLogInfo("Received inParams %v Subscribe Subtree function name %v", inParams, xfmrFuncNm)
+	ret, err := XlateFuncCall("Subscribe_"+xfmrFuncNm, inParams)
+	if err != nil {
+		return retVal, err
+	}
 
-    if ((ret != nil) && (len(ret)>0)) {
-        if len(ret) == SUBSC_SBT_XFMR_RET_ARGS {
-            // subtree xfmr returns err as second value in return data list from <xfmr_func>.Call()
-            if ret[SUBSC_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
-                err = ret[SUBSC_SBT_XFMR_RET_ERR_INDX].Interface().(error)
-                if err != nil {
-                    log.Warningf("Subscribe Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
-                    return retVal, err
-                }
-            }
-        }
-        if ret[SUBSC_SBT_XFMR_RET_VAL_INDX].Interface() != nil {
-            retVal = ret[SUBSC_SBT_XFMR_RET_VAL_INDX].Interface().(XfmrSubscOutParams)
-        }
-    }
-    return retVal, err
+	if (ret != nil) && (len(ret) > 0) {
+		if len(ret) == SUBSC_SBT_XFMR_RET_ARGS {
+			// subtree xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[SUBSC_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[SUBSC_SBT_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Subscribe Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
+					return retVal, err
+				}
+			}
+		}
+		if ret[SUBSC_SBT_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal = ret[SUBSC_SBT_XFMR_RET_VAL_INDX].Interface().(XfmrSubscOutParams)
+		}
+	}
+	return retVal, err
 }
 
 func XlateTranslateSubscribe(path string, dbs [db.MaxDB]*db.DB, txCache interface{}) (XfmrTranslateSubscribeInfo, error) {
-       xfmrLogInfo("Received subcription path : %v", path)
-       var err error
-       var subscribe_result XfmrTranslateSubscribeInfo
-       subscribe_result.DbDataMap = make(RedisDbMap)
-       subscribe_result.PType = Sample
-       subscribe_result.MinInterval = 0
-       subscribe_result.OnChange = false
-       subscribe_result.NeedCache = true
+	xfmrLogInfo("Received subcription path : %v", path)
+	var err error
+	var subscribe_result XfmrTranslateSubscribeInfo
+	subscribe_result.DbDataMap = make(RedisDbMap)
+	subscribe_result.PType = Sample
+	subscribe_result.MinInterval = 0
+	subscribe_result.OnChange = false
+	subscribe_result.NeedCache = true
 
-       for {
-           done := true
-           xpath, _, predc_err := XfmrRemoveXPATHPredicates(path)
-           if predc_err != nil {
-               log.Warningf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
-               err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-               break
-           }
-           xpathData, ok := xYangSpecMap[xpath]
-           if ((!ok) || (xpathData == nil)) {
-               log.Warningf("xYangSpecMap data not found for xpath : %v", xpath)
-               err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-               break
-           }
+	for {
+		done := true
+		xpath, _, predc_err := XfmrRemoveXPATHPredicates(path)
+		if predc_err != nil {
+			log.Warningf("cannot convert request Uri to yang xpath - %v, %v", path, predc_err)
+			err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+			break
+		}
+		xpathData, ok := xYangSpecMap[xpath]
+		if (!ok) || (xpathData == nil) {
+			log.Warningf("xYangSpecMap data not found for xpath : %v", xpath)
+			err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+			break
+		}
 
-           if (xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) &&(len(strings.TrimSpace(*xpathData.subscribePref)) == 0))) {
-               subscribe_result.PType = OnChange
-           } else {
-               if *xpathData.subscribePref == "onchange" {
-                   subscribe_result.PType = OnChange
-               } else {
-		   subscribe_result.PType = Sample
-               }
-           }
-           subscribe_result.MinInterval = xpathData.subscribeMinIntvl
+		if xpathData.subscribePref == nil || ((xpathData.subscribePref != nil) && (len(strings.TrimSpace(*xpathData.subscribePref)) == 0)) {
+			subscribe_result.PType = OnChange
+		} else {
+			if *xpathData.subscribePref == "onchange" {
+				subscribe_result.PType = OnChange
+			} else {
+				subscribe_result.PType = Sample
+			}
+		}
+		subscribe_result.MinInterval = xpathData.subscribeMinIntvl
 
-           if xpathData.subscribeOnChg == XFMR_DISABLE {
-               xfmrLogInfo("Susbcribe OnChange disabled for request Uri - %v", path)
-               subscribe_result.PType = Sample
-               subscribe_result.DbDataMap = nil
-               //err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-               break
-           }
+		if xpathData.subscribeOnChg == XFMR_DISABLE {
+			xfmrLogInfo("Susbcribe OnChange disabled for request Uri - %v", path)
+			subscribe_result.PType = Sample
+			subscribe_result.DbDataMap = nil
+			//err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+			break
+		}
 
-           //request uri should be terminal yang object for onChange to be supported
-           if xpathData.hasNonTerminalNode {
-               xfmrLogInfo("Susbcribe request Uri is not a terminal yang object - %v", path)
-               err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-               break
-           }
+		//request uri should be terminal yang object for onChange to be supported
+		if xpathData.hasNonTerminalNode {
+			xfmrLogInfo("Susbcribe request Uri is not a terminal yang object - %v", path)
+			err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+			break
+		}
 
-	   /*request uri is a key-leaf directly under the list
-             eg. /openconfig-xyz:xyz/listA[key=value]/key
-	         /openconfig-xyz:xyz/listA[key_1=value][key_2=value]/key_1
-           */
-	   if xpathData.isKey {
-               xfmrLogInfo("Susbcribe request Uri is not a terminal yang object - %v", path)
-               err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
-               break
-	   }
+		/*request uri is a key-leaf directly under the list
+		             eg. /openconfig-xyz:xyz/listA[key=value]/key
+			         /openconfig-xyz:xyz/listA[key_1=value][key_2=value]/key_1
+		*/
+		if xpathData.isKey {
+			xfmrLogInfo("Susbcribe request Uri is not a terminal yang object - %v", path)
+			err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+			break
+		}
 
-           xpath_dbno := xpathData.dbIndex
-           retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, nil, txCache, nil)
-           if ((len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0)))) {
-               log.Warning("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
-               err = xPathKeyExtractErr
-               break
-           }
-           if (len(xpathData.xfmrFunc) > 0) { //subtree
-               var inParams XfmrSubscInParams
-               inParams.uri = path
-               inParams.dbDataMap = subscribe_result.DbDataMap
-               inParams.dbs = dbs
-               inParams.subscProc = TRANSLATE_SUBSCRIBE
-               st_result, st_err := xfmrSubscSubtreeHandler(inParams, xpathData.xfmrFunc)
-               if st_err != nil {
-                   err = st_err
-                   break
-               }
-               if st_result.onChange == OnchangeEnable {
-		       subscribe_result.OnChange = true
-	       }
-	       xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
-	       if subscribe_result.OnChange {
-		       if st_result.dbDataMap != nil {
-			       subscribe_result.DbDataMap = processKeyValueXfmr(st_result.dbDataMap)
-			       xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
-		       }
-		       subscribe_result.NeedCache = st_result.needCache
-		       xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
-	       } else {
-		       subscribe_result.DbDataMap = nil
-	       }
-               if st_result.nOpts != nil {
-                   subscribe_result.PType = st_result.nOpts.pType
-                   xfmrLogInfo("Subtree subcribe pType %v", subscribe_result.PType)
-                   subscribe_result.MinInterval = st_result.nOpts.mInterval
-                   xfmrLogInfo("Subtree subcribe min interval %v", subscribe_result.MinInterval)
-               }
-           } else {
-		   subscribe_result.OnChange = true
-		   inValXfmrMap := RedisDbSubscribeMap{xpath_dbno:{retData.tableName:{retData.dbKey:{}}}}
-		   subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
-	   }
-           if done {
-                   break
-           }
-       } // end of infinite for
+		xpath_dbno := xpathData.dbIndex
+		retData, xPathKeyExtractErr := xpathKeyExtract(dbs[xpath_dbno], nil, SUBSCRIBE, path, path, nil, nil, txCache, nil)
+		if (len(xpathData.xfmrFunc) == 0) && ((xPathKeyExtractErr != nil) || ((len(strings.TrimSpace(retData.dbKey)) == 0) || (len(strings.TrimSpace(retData.tableName)) == 0))) {
+			log.Warning("Error while extracting DB table/key for uri", path, "error - ", xPathKeyExtractErr)
+			err = xPathKeyExtractErr
+			break
+		}
+		if len(xpathData.xfmrFunc) > 0 { //subtree
+			var inParams XfmrSubscInParams
+			inParams.uri = path
+			inParams.dbDataMap = subscribe_result.DbDataMap
+			inParams.dbs = dbs
+			inParams.subscProc = TRANSLATE_SUBSCRIBE
+			st_result, st_err := xfmrSubscSubtreeHandler(inParams, xpathData.xfmrFunc)
+			if st_err != nil {
+				err = st_err
+				break
+			}
+			if st_result.onChange == OnchangeEnable {
+				subscribe_result.OnChange = true
+			}
+			xfmrLogInfo("Subtree subcribe on change %v", subscribe_result.OnChange)
+			if subscribe_result.OnChange {
+				if st_result.dbDataMap != nil {
+					subscribe_result.DbDataMap = processKeyValueXfmr(st_result.dbDataMap)
+					xfmrLogInfo("Subtree subcribe dbData %v", subscribe_result.DbDataMap)
+				}
+				subscribe_result.NeedCache = st_result.needCache
+				xfmrLogInfo("Subtree subcribe need Cache %v", subscribe_result.NeedCache)
+			} else {
+				subscribe_result.DbDataMap = nil
+			}
+			if st_result.nOpts != nil {
+				subscribe_result.PType = st_result.nOpts.pType
+				xfmrLogInfo("Subtree subcribe pType %v", subscribe_result.PType)
+				subscribe_result.MinInterval = st_result.nOpts.mInterval
+				xfmrLogInfo("Subtree subcribe min interval %v", subscribe_result.MinInterval)
+			}
+		} else {
+			subscribe_result.OnChange = true
+			inValXfmrMap := RedisDbSubscribeMap{xpath_dbno: {retData.tableName: {retData.dbKey: {}}}}
+			subscribe_result.DbDataMap = processKeyValueXfmr(inValXfmrMap)
+		}
+		if done {
+			break
+		}
+	} // end of infinite for
 
-       return subscribe_result, err
+	return subscribe_result, err
 
 }
 
@@ -849,16 +850,15 @@ func IsLeafNode(uri string) bool {
 }
 
 func IsLeafListNode(uri string) bool {
-        result := false
-        yngNdType, err := getYangNodeTypeFromUri(uri)
-        if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
-                result = true
-        }
-        return result
+	result := false
+	yngNdType, err := getYangNodeTypeFromUri(uri)
+	if (err == nil) && (yngNdType == YANG_LEAF_LIST) {
+		result = true
+	}
+	return result
 }
 
-
-func  tableKeysToBeSorted(tblNm string) bool {
+func tableKeysToBeSorted(tblNm string) bool {
 	/* function to decide whether to sort table keys.
 	Required when a sonic table has more than 1 lists
 	with keys having leaf-refs to each other, i.e table has primary and secondary keys
@@ -876,10 +876,10 @@ func  tableKeysToBeSorted(tblNm string) bool {
 	return areTblKeysToBeSorted
 }
 
-func SortSncTableDbKeys (tableName string, dbKeyMap map[string]db.Value) []string {
+func SortSncTableDbKeys(tableName string, dbKeyMap map[string]db.Value) []string {
 	var ordDbKey []string
 
-	if tableKeysToBeSorted(tableName ) {
+	if tableKeysToBeSorted(tableName) {
 
 		m := make(map[string]int)
 		for tblKey := range dbKeyMap {

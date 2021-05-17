@@ -19,35 +19,34 @@
 package transformer
 
 import (
-    "github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 type XfmrDbTblCbkParams struct {
-    d                       *db.DB        //Config DB handler
-    oper                    int
-    delDepRefKey            string
-    tblName                 string
-    dbKey                   string
-    delDepEntry             map[string]string 
-    dbDataMap               map[db.DBNum]map[string]map[string]db.Value
-    delDepDataMap           map[int]*RedisDbMap   // Call back methods can add the data  
+	d             *db.DB //Config DB handler
+	oper          int
+	delDepRefKey  string
+	tblName       string
+	dbKey         string
+	delDepEntry   map[string]string
+	dbDataMap     map[db.DBNum]map[string]map[string]db.Value
+	delDepDataMap map[int]*RedisDbMap // Call back methods can add the data
 }
 
-func formXfmrDbTblCbkParams (d *db.DB, oper int, delDepRefKey string, tblName string, dbKey string, delDepEntry map[string]string, dbDataMap RedisDbMap) XfmrDbTblCbkParams {
+func formXfmrDbTblCbkParams(d *db.DB, oper int, delDepRefKey string, tblName string, dbKey string, delDepEntry map[string]string, dbDataMap RedisDbMap) XfmrDbTblCbkParams {
 
-    var inParams XfmrDbTblCbkParams
+	var inParams XfmrDbTblCbkParams
 
-    inParams.d = d
-    inParams.oper = oper
-    inParams.delDepRefKey = delDepRefKey
-    inParams.tblName = tblName
-    inParams.dbKey = dbKey
-    inParams.delDepEntry = delDepEntry
-    inParams.dbDataMap = dbDataMap
-    inParams.delDepDataMap =  make(map[int]*RedisDbMap)
+	inParams.d = d
+	inParams.oper = oper
+	inParams.delDepRefKey = delDepRefKey
+	inParams.tblName = tblName
+	inParams.dbKey = dbKey
+	inParams.delDepEntry = delDepEntry
+	inParams.dbDataMap = dbDataMap
+	inParams.delDepDataMap = make(map[int]*RedisDbMap)
 
-    return inParams
+	return inParams
 }
 
-type  XfmrDbTblCbkMethod func (inParams XfmrDbTblCbkParams) error 
-
+type XfmrDbTblCbkMethod func(inParams XfmrDbTblCbkParams) error
