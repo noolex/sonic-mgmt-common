@@ -1064,7 +1064,6 @@ var Subscribe_route_map_bgp_action_set_community SubTreeXfmrSubscribe = func(inP
 
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"ROUTE_MAP_SET": {rtPolicyName:{}}}} 
 
-        // FIXME: any modification of "set community" cli will crash the telemetry docker when subscriber of statement {*, 1} is running, check /var/log/telemetry/std_err.log
         result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB:{"ROUTE_MAP":{ rm_key: map[string]string{"set_community_ref":"reference/config/community-set-ref", "set_community_inline": "inline/config/communities"}}}} 
 
     }
