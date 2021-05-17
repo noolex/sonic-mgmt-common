@@ -216,7 +216,7 @@ func addIntfMemberOnVlanCreation(inParams *XfmrParams, vlanName *string, taggedL
 	resMap := make(map[string]map[string]db.Value)
 	vlanMemberMap := make(map[string]db.Value)
 	vlanMap := make(map[string]db.Value)
-
+	stpPortMap := make(map[string]db.Value)
 	// adding to VLAN_MEMBER table
 	for _,ifName := range ifList {
 		vlanMemberKey := *vlanName + "|" + ifName
@@ -233,12 +233,16 @@ func addIntfMemberOnVlanCreation(inParams *XfmrParams, vlanName *string, taggedL
 	vlanMap[*vlanName] = db.Value{Field:make(map[string]string)}
         vlanMap[*vlanName].Field["members@"] = ifListStr
 
+	enableStpOnInterfaceVlanMembership(inParams.d,vlanName,fullIfList,stpPortMap)
 	if len(vlanMemberMap) != 0 {
         resMap[VLAN_MEMBER_TN] = vlanMemberMap
     }
 	if len(vlanMap) != 0 {
         resMap[VLAN_TN] = vlanMap
     }
+        if len(stpPortMap) != 0{
+            resMap[STP_PORT_TABLE] = stpPortMap
+        }
 
     if inParams.subOpDataMap[inParams.oper] != nil && (*inParams.subOpDataMap[inParams.oper])[db.ConfigDB] != nil{
         mapCopy((*inParams.subOpDataMap[inParams.oper])[db.ConfigDB], resMap)

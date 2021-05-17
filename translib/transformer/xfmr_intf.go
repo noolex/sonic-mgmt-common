@@ -5492,6 +5492,14 @@ var YangToDb_ipv6_enabled_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (ma
 
     ifName := utils.GetNativeNameFromUIName(&ifUIName)
 
+    /* Validate whether the Interface is configured as member-port of any vlan */
+    if intfType == IntfTypeEthernet || intfType == IntfTypePortChannel {
+        err = validateIntfAssociatedWithVlan(inParams.d, ifName)
+        if err != nil {
+            return res_map, err
+        }
+    }
+
     intTbl := IntfTypeTblMap[intfType]
     tblName := intTbl.cfgDb.intfTN
     if i32 > 0 {
