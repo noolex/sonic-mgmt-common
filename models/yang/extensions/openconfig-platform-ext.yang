@@ -8,6 +8,7 @@ module openconfig-platform-ext {
     prefix "oc-pf-ext";
 
     import openconfig-extensions { prefix "oc-ext"; }
+    import openconfig-types { prefix oc-types; }
     import openconfig-platform { prefix oc-pf; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
     import openconfig-platform-types {prefix oc-pf-types; }
@@ -355,6 +356,12 @@ module openconfig-platform-ext {
                 }
             }
             description "Type of power (AC/DC).";
+        }
+
+        leaf input-power {
+            type oc-types:ieeefloat32;
+            units watts;
+            description "Input power supplied to the power supply.";
         }
     }
 
