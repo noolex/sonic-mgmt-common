@@ -25,6 +25,7 @@ function print_help_and_exit() {
     echo "OPTIONS:"
     echo " -exclude=DIR  Directory to exclude for static checks. It can be repeated"
     echo " -log=FILE     Write static checker logs to a file (and to stdout)."
+    echo " -format       Executes goimports and fixes the formatting."
     echo ""
     echo "SRC_PATH selects source directories for format analysis."
     echo "If SRC_PATH is not specified, whole current directory tree is included."
@@ -35,6 +36,7 @@ function print_help_and_exit() {
 
 # Format checker options
 EXCLUDE=( build patches ocbinds )
+FORMAT=false
 
 while [[ $# -gt 0 ]]; do
 case "$1" in
@@ -43,6 +45,9 @@ case "$1" in
         shift ;;
     -log=*|--log=*)
         LOGFILE="$(echo $1 | cut -d= -f2-)"
+        shift ;;
+    -format|--format)
+        FORMAT=true
         shift ;;
     -*) print_help_and_exit ;;
     *)  break ;;
@@ -104,7 +109,11 @@ fi
 echo "Running Go format checks at ${PWD}"
 echo "Package = [${PACKAGES[@]}], files = ${FILES}"
 echo ""
-${GOBIN}/goimports -l ${SRC_PATH[@]} | tee ${LOGFILE}
+if [ "$FORMAT" = true ] ; then
+	${GOBIN}/goimports -w ${SRC_PATH[@]} | tee ${LOGFILE}
+else
+	${GOBIN}/goimports -l ${SRC_PATH[@]} | tee ${LOGFILE}
+fi
 
 NUM_ERROR=$(< "$LOGFILE" wc -l)
 [[ ${NUM_ERROR} == 0  ]] || echo -e "\n${NUM_ERROR} files have formatting errors.\nPlease find list of files in a log file at ${LOGFILE}\nExecute ${GOBIN}/goimports -w <file> to fix issues.\nExecute ${GOBIN}/goimports -h for more information on formatter tool."

@@ -17,7 +17,7 @@ STATIC_CHECK = $(TRANSLIB_BLD)/.staticcheck
 FORMAT_CHECK = $(TRANSLIB_BLD)/.formatcheck
 
 TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test\|transformer/')
-TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
+TRANSLIB_TEST_SRCS = $(shell find . -name '*_test.go' -not -path '*/transformer/*' -not -path '*/db/*')
 TRANSL_DB_ALL_SRCS = $(shell find db/ -name '*.go' | grep -v '/test/')
 
 TRANSLIB_TEST_DIR  = $(BUILD_DIR)/tests/translib
@@ -70,7 +70,7 @@ $(STATIC_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) | $(YGOT_BINDS)
 		--exclude=ocbinds
 	touch $@
 
-$(FORMAT_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) $(TRANSLIB_TEST_SRCS) | $(YGOT_BINDS)
+$(FORMAT_CHECK): $(TRANSLIB_MAIN_SRCS) $(TRANSFORMER_SRCS) $(TRANSLIB_TEST_SRCS) $(TRANSFORMER_TEST_FILES) $(TRANSL_DB_ALL_SRCS) | $(YGOT_BINDS)
 	$(TOPDIR)/tools/test/format-check.sh \
 		--log=$(TRANSLIB_BLD)/formatcheck.log \
 		--exclude=ocbinds
