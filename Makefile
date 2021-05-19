@@ -83,7 +83,9 @@ models-clean:
 annotgen: $(GOYANG_BIN)
 
 $(GOYANG_BIN): $(GO_DEPS)
-	cd vendor/github.com/openconfig/goyang && \
+	cd $$(mktemp -d) && \
+		$(GO) mod init github.com/openconfig/goyang && \
+		ln -s $(TOPDIR)/vendor/github.com/openconfig/goyang/* . && \
 		$(GO) build -o $@ *.go
 
 clean: models-clean translib-clean cvl-clean go-deps-clean
