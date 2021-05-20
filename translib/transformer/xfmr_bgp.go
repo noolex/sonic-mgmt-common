@@ -177,17 +177,14 @@ func utl_bgp_fetch_and_cache_frr_json (inParams *XfmrParams, niName string) {
 var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
 
     oper_err := errors.New("wrong config DB table sent")
-
     niRoot := "/openconfig-network-instance:network-instances/network-instance"
-    bgp_glb_dyn_neig :=  niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix" 
+    bgp_glb_dyn_neig :=  niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix"
     bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
     bgp_glb_aggr_addr := bgp_glb_afi_safi + "/openconfig-bgp-ext:aggregate-address-config/aggregate-address"
     bgp_glb_af_network :=  bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
 
-
     log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
-
-    if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||  
+    if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||
         params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX") {
         params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
     } else {
@@ -197,17 +194,14 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
     params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
     params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
 
-    if (params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" || 
+    if (params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" ||
         params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
 
-        log.Errorf ("address family key %s", params.tblKeyComp[1])
-        afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[1]) 
+        afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[1])
         if (afi == "") {
             log.Errorf ("Unknown address family key %s", params.tblKeyComp[1])
             return oper_err
-        } else {
-            log.Errorf ("passed  address family key %s", afi)
-        } 
+        }
         params.ygPathKeys[bgp_glb_afi_safi + "/afi-safi-name"]  = afi
     }
 
@@ -1038,7 +1032,6 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
         afi = "l2vpn_evpn"
     } else if strings.Contains(afName, "*") {
         afi = "*"
-        log.Info("Wildcard set  AFI type " + afName)
     } else {
         log.Info("Unsupported AFI type " + afName)
         return afi, errors.New("Unsupported AFI type " + afName)

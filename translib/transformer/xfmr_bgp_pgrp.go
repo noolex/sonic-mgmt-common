@@ -27,14 +27,11 @@ func init () {
 var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
 
     oper_err := errors.New("wrong config DB table sent")
-
     niRoot := "/openconfig-network-instance:network-instances/network-instance"
     bgp_peer_grp := niRoot + "/protocols/protocol/bgp/peer-groups/peer-group"
     bgp_peer_grp_af := bgp_peer_grp + "/afi-safis/afi-safi"
 
-
     log.Info("DbToYangPath_bgp_peer_group_path_Xfmr: params: ", params)
-
     if (params.tblName == "BGP_PEER_GROUP" || params.tblName ==  "BGP_PEER_GROUP_AF") {
         params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
     } else {
@@ -51,13 +48,10 @@ var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params Xfm
         if (afi == "") {
             log.Errorf ("Unknown address family key %s", params.tblKeyComp[2])
             return oper_err
-        } else {
-            log.Errorf ("passed  address family key %s", afi)
         }
         params.ygPathKeys[bgp_peer_grp_af + "/afi-safi-name"]  = afi
 
     }
-
     log.Info("DbToYangPath_bgp_peer_group_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
     return nil
 }
@@ -334,15 +328,11 @@ var DbToYang_bgp_peer_group_mbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams 
 var Subscribe_bgp_pgrp_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 
     var result XfmrSubscOutParams
-    
     log.Info("Subscribe_bgp_pgrp_auth_password_xfmr: inParams.subscProc: ",inParams.subscProc)
     pathInfo := NewPathInfo(inParams.uri)
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
     var vrf_name = "*"
     var pgrp_name = "*"
 
-    log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr:- URI: %s ;; pathinfo: %s ", inParams.uri, pathInfo.Path)
-    log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr:- Target URI path: %s", targetUriPath)
     if inParams.subscProc == TRANSLATE_SUBSCRIBE {
 
         if  pathInfo.HasVar("name") {
@@ -352,15 +342,12 @@ var Subscribe_bgp_pgrp_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams X
             pgrp_name = pathInfo.Var("peer-group-name")
         }
         pgrp_key := vrf_name + "|" + pgrp_name
-        log.Infof("Subscribe_bgp_pgrp_auth_password_xfmr: key %s", pgrp_key)
         result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_PEER_GROUP": {pgrp_key:{"auth_password":"password"}}}}
-
         result.onChange = OnchangeEnable
         result.nOpts = &notificationOpts{}
         result.nOpts.pType = OnChange
     } else {
         result.isVirtualTbl = true
-        log.Info("Subscribe_bgp_pgrp_auth_password_xfmr NON-Subscribe- result.isVirtualTbl: ", result.isVirtualTbl)
     }
     return result, nil
 }
