@@ -1176,7 +1176,8 @@ func vlanIdstoRng(vlanIdsLst []string) ([]string, error) {
 /* Function performs VLAN Member addition to Interface */
 func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
                        inParams *XfmrParams, ifName *string,
-                       vlanMap map[string]db.Value,
+                       uriIfName *string,
+		       vlanMap map[string]db.Value,
                        vlanMemberMap map[string]db.Value,
                        stpPortMap map[string]db.Value,
                        portVlanListMap map[string]db.Value, intfType E_InterfaceType) error {
@@ -1276,9 +1277,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             ifMode = swVlanConfig.swPortChannelMember.Config.InterfaceMode
         }
     }
-    // retrieving standard name to fill port map when alias mode is enabled. 
-    uiName := utils.GetUINameFromNativeName(ifName)
-    portVlanListMap[*uiName] = db.Value{Field:make(map[string]string)}
+    portVlanListMap[*uriIfName] = db.Value{Field:make(map[string]string)}
     /* Update the DS based on access-vlan/trunk-vlans config */
     if accessVlanFound {
         accessVlan := "Vlan" + strconv.Itoa(int(accessVlanId))
@@ -1308,7 +1307,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
             vlanMembersListMap[accessVlan][*ifName].Field["tagging_mode"] = "untagged"
         }
         //Update port's or portchannel's access_vlan field
-        portVlanListMap[*uiName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
+        portVlanListMap[*uriIfName].Field["access_vlan"] = strings.TrimPrefix(accessVlan,"Vlan")
     }
 
     TRUNKCONFIG:
@@ -1349,7 +1348,7 @@ func intfVlanMemberAdd(swVlanConfig *swVlanMemberPort_t,
 	portVlanSlice := utils.VlanDifference(trunkVlanSlice, cfgdTagdVlanSlice)
         //VlanSlice compress to range format
         portVlanSlice, _ = vlanIdstoRng(portVlanSlice)
-        portVlanListMap[*uiName].Field["tagged_vlans@"] = strings.Join(portVlanSlice, ",")
+        portVlanListMap[*uriIfName].Field["tagged_vlans@"] = strings.Join(portVlanSlice, ",")
     }
 
     if accessVlanFound || trunkVlanFound {
@@ -1804,7 +1803,7 @@ var YangToDb_sw_vlans_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[
     case CREATE:
         fallthrough
     case UPDATE:
-        err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, vlanMap, vlanMemberMap, stpPortMap, portVlanListMap, intfType)
+        err = intfVlanMemberAdd(&swVlanConfig, &inParams, &ifName, &uriIfName, vlanMap, vlanMemberMap, stpPortMap, portVlanListMap, intfType)
         if err != nil {
             log.Errorf("Interface VLAN member port addition failed for Interface: %s!", ifName)
             return nil, err
