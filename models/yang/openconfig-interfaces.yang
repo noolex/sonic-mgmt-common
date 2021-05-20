@@ -461,6 +461,12 @@ module openconfig-interfaces {
       oc-ext:telemetry-on-change;
     }
 
+    leaf mac-address {
+      type oc-yang:mac-address;
+      description
+	"MAC address for interface.";
+    }
+
     leaf admin-status {
       type enumeration {
         enum UP {

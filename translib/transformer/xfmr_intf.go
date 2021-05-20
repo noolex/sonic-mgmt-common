@@ -53,6 +53,7 @@ func init () {
     XlateFuncBind("DbToYang_intf_type_xfmr", DbToYang_intf_type_xfmr)
     XlateFuncBind("DbToYang_intf_admin_status_xfmr", DbToYang_intf_admin_status_xfmr)
     XlateFuncBind("DbToYang_intf_oper_status_xfmr", DbToYang_intf_oper_status_xfmr)
+    XlateFuncBind("DbToYang_intf_mac_address_xfmr", DbToYang_intf_mac_address_xfmr)
     XlateFuncBind("DbToYang_intf_eth_auto_neg_xfmr", DbToYang_intf_eth_auto_neg_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
     XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
@@ -1981,6 +1982,13 @@ var DbToYang_intf_oper_status_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams)
     }
 
     return result, err
+}
+
+var DbToYang_intf_mac_address_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{},error) {
+    result := make(map[string]interface{})
+    macAddress := utils.GetMacAddress()
+    result["mac-address"] = macAddress
+    return result,nil
 }
 
 var DbToYang_intf_eth_auto_neg_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {

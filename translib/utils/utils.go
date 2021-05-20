@@ -49,6 +49,9 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
+/* MAC address from localhost entry */
+var macAddress string
+
 /* VLAN to tagged & untagged member sets map */
 var vlanMemberCache *sync.Map
 
@@ -463,6 +466,14 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
         log.Errorf("Retrieval of entry for %s failed from port table", key0)
         return
     }
+
+    mac,ok := entry.Field["mac"]
+    if !ok {
+        log.Info("couldn't retrieve MAC address")
+        return
+    }
+    macAddress = mac
+
     aliasVal, ok := entry.Field["intf_naming_mode"]
     if !ok {
         // don't return error, keep populating data structures
@@ -628,6 +639,11 @@ func GetFromCacheVlanMemberList(vlanName string) (Set, Set) {
         return memberlist.(*vlan_member_list).tagged, memberlist.(*vlan_member_list).untagged
     }
     return Set{},Set{}
+}
+
+// GetMacAddress gets MAC address in localhost entry from DEVICE_METADATA table
+func GetMacAddress() string {
+    return macAddress
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations
