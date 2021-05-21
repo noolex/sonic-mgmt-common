@@ -20,9 +20,10 @@
 package custom_validation
 
 import (
-	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	"strconv"
 	"strings"
-    "strconv"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 
 func (t *CustomValidation) ValidateAtLeastOneColorEnabled(
@@ -40,47 +41,47 @@ func (t *CustomValidation) ValidateAtLeastOneColorEnabled(
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled YCur: %v", vc.YCur)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled Data: %v", vc.CurCfg.Data)
 
-    var color_attr_present bool = false
-    for _, attrib := range color_attributes {
-        if _, ok := vc.CurCfg.Data[attrib]; ok {
-            color_attr_present = true
-            break
-        }
-    }
+	var color_attr_present bool = false
+	for _, attrib := range color_attributes {
+		if _, ok := vc.CurCfg.Data[attrib]; ok {
+			color_attr_present = true
+			break
+		}
+	}
 
-    if !color_attr_present {
-        util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled no color attr present, Skip validate")
+	if !color_attr_present {
+		util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled no color attr present, Skip validate")
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
+	}
 
-    var disable_all_color bool = true
-    var color_enable bool = false
+	var disable_all_color bool = true
+	var color_enable bool = false
 
-    entry, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
-    for _, attrib := range color_attributes {
-        color_enable = false
-        if err == nil {
-            /* check if WRED_PROFILE attribute is present */
-            if enable, found_field := entry[attrib]; found_field {
-                color_enable, _ = strconv.ParseBool(enable)
-            }
-        }
+	entry, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+	for _, attrib := range color_attributes {
+		color_enable = false
+		if err == nil {
+			/* check if WRED_PROFILE attribute is present */
+			if enable, found_field := entry[attrib]; found_field {
+				color_enable, _ = strconv.ParseBool(enable)
+			}
+		}
 
-        if val, ok := vc.CurCfg.Data[attrib]; ok {
-            if vc.CurCfg.VOp != OP_DELETE {
-                color_enable, _ = strconv.ParseBool(val)
-            }  else {
-                color_enable = false
-            }
-        }
-        if color_enable {
-            disable_all_color = false
-            break
-        }
-    }
+		if val, ok := vc.CurCfg.Data[attrib]; ok {
+			if vc.CurCfg.VOp != OP_DELETE {
+				color_enable, _ = strconv.ParseBool(val)
+			} else {
+				color_enable = false
+			}
+		}
+		if color_enable {
+			disable_all_color = false
+			break
+		}
+	}
 
-    if !disable_all_color {
-        util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled one color enable, Skip validate")
+	if !disable_all_color {
+		util.CVL_LEVEL_LOG(util.INFO, "ValidateAtLeastOneColorEnabled one color enable, Skip validate")
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -94,18 +95,18 @@ func (t *CustomValidation) ValidateAtLeastOneColorEnabled(
 			if err == nil {
 				/* check if wred_profile attribute is present */
 				if wred_profile_name, found_field := entry["wred_profile"]; found_field {
-                    /* if wred_profile matches name */
-                    wred_name := strings.Trim(wred_profile_name, "[]")
-                    wred_name = strings.TrimPrefix(wred_name, "WRED_PROFILE|")
-                    if strings.Split(vc.CurCfg.Key, "|")[1] == wred_name {
-                        err_str := "Atleast one of the colors(GREEN/YELLOW/RED) must be present in WRED policy"
-                        return CVLErrorInfo{
-                            ErrCode:          CVL_SEMANTIC_ERROR,
-                            TableName:        keys[0],
-                            Keys:             keys,
-                            ConstraintErrMsg: err_str,
-                            ErrAppTag:        "del-not-allowed",
-                        }
+					/* if wred_profile matches name */
+					wred_name := strings.Trim(wred_profile_name, "[]")
+					wred_name = strings.TrimPrefix(wred_name, "WRED_PROFILE|")
+					if strings.Split(vc.CurCfg.Key, "|")[1] == wred_name {
+						err_str := "Atleast one of the colors(GREEN/YELLOW/RED) must be present in WRED policy"
+						return CVLErrorInfo{
+							ErrCode:          CVL_SEMANTIC_ERROR,
+							TableName:        keys[0],
+							Keys:             keys,
+							ConstraintErrMsg: err_str,
+							ErrAppTag:        "del-not-allowed",
+						}
 					}
 				}
 			}

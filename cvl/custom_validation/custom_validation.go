@@ -20,20 +20,21 @@
 package custom_validation
 
 import (
-	"github.com/go-redis/redis/v7"
-	"strings"
-	log "github.com/golang/glog"
-	"net"
-	"reflect"
-	"os"
 	"bufio"
-	)
+	"net"
+	"os"
+	"reflect"
+	"strings"
+
+	"github.com/go-redis/redis/v7"
+	log "github.com/golang/glog"
+)
 
 func (t *CustomValidation) ValidateSflowAgentId(
 	vc *CustValidationCtxt) CVLErrorInfo {
 
 	log.Info("ValidateSflowAgentId operation: ", vc.CurCfg.VOp)
-	if (vc.CurCfg.VOp == OP_DELETE) {
+	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
@@ -44,23 +45,23 @@ func (t *CustomValidation) ValidateSflowAgentId(
 	}
 
 	/* check if input passed is found in ConfigDB PORT|* */
-	tableKeys, err:= vc.RClient.Keys("PORT|*").Result()
+	tableKeys, err := vc.RClient.Keys("PORT|*").Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		log.Info("ValidateSflowAgentId PORT is empty or invalid argument")
 		errStr := "ConfigDB PORT list is empty"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "SFLOW",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "SFLOW",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 
 	for _, dbKey := range tableKeys {
 		tmp := strings.Replace(dbKey, "PORT|", "", 1)
 		log.Info("ValidateSflowAgentId dbKey ", tmp)
-		if (tmp == vc.YNodeVal) {
+		if tmp == vc.YNodeVal {
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
@@ -71,25 +72,25 @@ func (t *CustomValidation) ValidateSflowAgentId(
 		log.Info("ValidateSflowAgentId Error getting network interfaces")
 		errStr := "Error getting network interfaces"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "SFLOW",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "SFLOW",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 	for _, i := range ifaces {
 		log.Info("ValidateSflowAgentId i.Name ", i.Name)
-		if (i.Name == vc.YNodeVal) {
+		if i.Name == vc.YNodeVal {
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
 
 	errStr := "Invalid interface name"
 	return CVLErrorInfo{
-		ErrCode: CVL_SEMANTIC_ERROR,
-		TableName: "SFLOW",
-		CVLErrDetails : errStr,
-		ConstraintErrMsg : errStr,
+		ErrCode:          CVL_SEMANTIC_ERROR,
+		TableName:        "SFLOW",
+		CVLErrDetails:    errStr,
+		ConstraintErrMsg: errStr,
 	}
 }
 
@@ -97,30 +98,30 @@ func (t *CustomValidation) ValidatePtpUnderlyingInterface(
 	vc *CustValidationCtxt) CVLErrorInfo {
 
 	log.Info("ValidatePtpUnderlyingInterface operation: ", vc.CurCfg.VOp)
-	if (vc.CurCfg.VOp == OP_DELETE) {
+	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	log.Info("ValidatePtpUnderlyingInterface YNodeVal: ", vc.YNodeVal)
 
 	/* check if input passed is found in ConfigDB PORT|* */
-	tableKeys, err:= vc.RClient.Keys("PORT|*").Result()
+	tableKeys, err := vc.RClient.Keys("PORT|*").Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		log.Info("ValidatePtpUnderlyingInterface PORT is empty or invalid argument")
 		errStr := "ConfigDB PORT list is empty"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "SFLOW",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "SFLOW",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 
 	for _, dbKey := range tableKeys {
 		tmp := strings.Replace(dbKey, "PORT|", "", 1)
 		log.Info("ValidatePtpUnderlyingInterface dbKey ", tmp)
-		if (tmp == vc.YNodeVal) {
+		if tmp == vc.YNodeVal {
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
@@ -131,31 +132,31 @@ func (t *CustomValidation) ValidatePtpUnderlyingInterface(
 		log.Info("ValidatePtpUnderlyingInterface Error getting network interfaces")
 		errStr := "Error getting network interfaces"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "SFLOW",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "SFLOW",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 	for _, i := range ifaces {
 		log.Info("ValidatePtpUnderlyingInterface i.Name ", i.Name)
-		if (i.Name == vc.YNodeVal) {
+		if i.Name == vc.YNodeVal {
 			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 		}
 	}
 
 	errStr := "Invalid interface name"
 	return CVLErrorInfo{
-		ErrCode: CVL_SEMANTIC_ERROR,
-		TableName: "SFLOW",
-		CVLErrDetails : errStr,
-		ConstraintErrMsg : errStr,
+		ErrCode:          CVL_SEMANTIC_ERROR,
+		TableName:        "SFLOW",
+		CVLErrDetails:    errStr,
+		ConstraintErrMsg: errStr,
 	}
 }
 
 func (t *CustomValidation) ValidatePtp(
 	vc *CustValidationCtxt) CVLErrorInfo {
-		
+
 	log.Info("ValidatePtp operation: ", vc.CurCfg.VOp)
 
 	/* validate software build version */
@@ -170,10 +171,10 @@ func (t *CustomValidation) ValidatePtp(
 					!strings.Contains(scanner.Text(), "Cloud Advanced") {
 					errStr := "This object is not supported in this build"
 					return CVLErrorInfo{
-						ErrCode: CVL_SEMANTIC_ERROR,
-						TableName: "PTP_CLOCK",
-						CVLErrDetails : errStr,
-						ConstraintErrMsg : errStr,
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "PTP_CLOCK",
+						CVLErrDetails:    errStr,
+						ConstraintErrMsg: errStr,
 					}
 				}
 			}
@@ -188,19 +189,19 @@ func (t *CustomValidation) ValidatePtp(
 	if err != nil {
 		errStr := "Cannot retrieve platform information"
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "PTP_CLOCK",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "PTP_CLOCK",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 
 	s := reflect.ValueOf(redisEntries)
 	log.Info("ValidatePtp length(redisEntries) : ", s.Len())
-	for i := 0; i < s.Len(); i+=2 {
+	for i := 0; i < s.Len(); i += 2 {
 		log.Info("ValidatePtp index(", i, ") : ", s.Index(i).Interface().(string))
-		if  s.Index(i).Interface().(string) == "platform" {
-			platform := s.Index(i+1).Interface().(string)
+		if s.Index(i).Interface().(string) == "platform" {
+			platform := s.Index(i + 1).Interface().(string)
 			log.Info("ValidatePtp platform : ", platform)
 
 			if !strings.Contains(platform, "x86_64-accton_as7712_32x") &&
@@ -208,10 +209,10 @@ func (t *CustomValidation) ValidatePtp(
 				!strings.Contains(platform, "VDI") {
 				errStr := "This object is not supported in this platform"
 				return CVLErrorInfo{
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: "PTP_CLOCK",
-					CVLErrDetails : errStr,
-					ConstraintErrMsg : errStr,
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        "PTP_CLOCK",
+					CVLErrDetails:    errStr,
+					ConstraintErrMsg: errStr,
 				}
 			}
 			break
@@ -220,4 +221,3 @@ func (t *CustomValidation) ValidatePtp(
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
-

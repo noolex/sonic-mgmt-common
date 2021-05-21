@@ -20,8 +20,8 @@ package transformer_test
 
 import (
 	"fmt"
-	"time"
 	"testing"
+	"time"
 )
 
 func Test_SetOcTable(t *testing.T) {
@@ -30,11 +30,11 @@ func Test_SetOcTable(t *testing.T) {
 
 	url := "/openconfig-tests:tests/TABLE_A/TABLE_A_LIST[id=15628525]"
 
-        //Add entry
+	//Add entry
 	t.Run("Add oc entry", processSetRequest(url, addOcEntryJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        // Verify entry
+	// Verify entry
 	t.Run("Verify oc entry", processGetRequest(url, addOcEntryJson, false))
 
 }
@@ -44,4 +44,3 @@ func Test_SetOcTable(t *testing.T) {
 /***************************************************************************/
 
 var addOcEntryJson string = "{\"openconfig-tests:TABLE_A_LIST\":[{\"id\":15628525,\"ifname\":\"Ethernet0\",\"index\":14628526,\"indices\":[10,20,14628510,14628220],\"speed\":\"4444\"}]}"
-

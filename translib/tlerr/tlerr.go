@@ -103,8 +103,8 @@ func (e TranslibSyntaxValidationError) Error() string {
 }
 
 type TranslibUnsupportedClientVersion struct {
-	ClientVersion string
-	ServerVersion string
+	ClientVersion     string
+	ServerVersion     string
 	ServerBaseVersion string
 }
 
@@ -113,9 +113,9 @@ func (e TranslibUnsupportedClientVersion) Error() string {
 }
 
 type TranslibXfmrRetError struct {
-     XlateFailDelReq bool
+	XlateFailDelReq bool
 }
 
 func (e TranslibXfmrRetError) Error() string {
-     return p.Sprintf("Translib transformer return %s", e.XlateFailDelReq)
+	return p.Sprintf("Translib transformer return %s", e.XlateFailDelReq)
 }

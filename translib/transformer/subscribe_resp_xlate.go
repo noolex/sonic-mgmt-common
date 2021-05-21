@@ -20,17 +20,18 @@
 package transformer
 
 import (
-	"github.com/openconfig/goyang/pkg/yang"
+	"fmt"
+	"reflect"
+	"strings"
+	"sync"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	log "github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
-	"strings"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
-	"sync"
+	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/openconfig/ygot/ygot"
-	"reflect"
-	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-	"fmt"
 )
 
 type subscribeNotfRespXlator struct {
@@ -60,10 +61,10 @@ type DbYgXlateInfo struct {
 }
 
 func GetSubscribeNotfRespXlator(ctxID interface{}, gPath *gnmi.Path, dbNum db.DBNum, table *db.TableSpec, key *db.Key,
-entry *db.Value, dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
+	entry *db.Value, dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXlator, error) {
 	reqLogId := "subNotfReq Id:[" + fmt.Sprintf("%v", ctxID) + "] : "
 
-	log.Infof(reqLogId + "GetSubscribeNotfRespXlator: table: %v, key: %v, " +
+	log.Infof(reqLogId+"GetSubscribeNotfRespXlator: table: %v, key: %v, "+
 		"dbno: %v, path: %v", table, key, dbNum, gPath)
 
 	if opaque == nil || (reflect.ValueOf(opaque).Kind() == reflect.Ptr && reflect.ValueOf(opaque).IsNil()) {
@@ -77,7 +78,7 @@ entry *db.Value, dbs [db.MaxDB]*db.DB, opaque interface{}) (*subscribeNotfRespXl
 func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 	ntfXlateReq := respXlator.ntfXlateReq
 
-	log.Info(ntfXlateReq.reqLogId + "subscribeNotfRespXlator:Translate: path: ", ntfXlateReq.path)
+	log.Info(ntfXlateReq.reqLogId+"subscribeNotfRespXlator:Translate: path: ", ntfXlateReq.path)
 
 	pathElem := respXlator.ntfXlateReq.path.Elem
 
@@ -86,7 +87,7 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 		ygPath := respXlator.getYangListPath(idx)
 		log.Info("subscribeNotfRespXlator:Translate: ygPath: ", ygPath)
 		if log.V(dbLgLvl) {
-			log.Info(ntfXlateReq.reqLogId + "subscribeNotfRespXlator:Translate:ygPath: ", ygPath)
+			log.Info(ntfXlateReq.reqLogId+"subscribeNotfRespXlator:Translate:ygPath: ", ygPath)
 		}
 
 		ygXpathInfo, err := respXlator.getYangXpathInfo(ygPath)
@@ -95,7 +96,7 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 		}
 
 		if log.V(dbLgLvl) {
-			log.Info(ntfXlateReq.reqLogId + "subscribeNotfRespXlator:Translate: ygXpathInfo: ", ygXpathInfo)
+			log.Info(ntfXlateReq.reqLogId+"subscribeNotfRespXlator:Translate: ygXpathInfo: ", ygXpathInfo)
 		}
 
 		// for subtree, path transformr can be present at any node level
@@ -110,12 +111,12 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 				if err := respXlator.processDbToYangKeyXfmrList(); err != nil {
 					return nil, err
 				} else {
-					log.Error(ntfXlateReq.reqLogId + "subscribeNotfRespXlator: translated path: ", *respXlator.ntfXlateReq.path)
+					log.Error(ntfXlateReq.reqLogId+"subscribeNotfRespXlator: translated path: ", *respXlator.ntfXlateReq.path)
 					return respXlator.ntfXlateReq.path, nil
 				}
 			}
 		} else if ygXpathInfo.virtualTbl != nil && (*ygXpathInfo.virtualTbl) {
-			log.Error(ntfXlateReq.reqLogId + "Translate: virtual table is set to true and path transformer not found list node path: ", *respXlator.ntfXlateReq.path)
+			log.Error(ntfXlateReq.reqLogId+"Translate: virtual table is set to true and path transformer not found list node path: ", *respXlator.ntfXlateReq.path)
 			return nil, tlerr.InternalError{Format: ntfXlateReq.reqLogId + "virtual table is set to true and path transformer not found list node path", Path: ygPath}
 		} else if len(ygXpathInfo.xfmrFunc) == 0 && len(ygXpathInfo.xfmrKey) > 0 {
 			dbYgXlateInfo := &DbYgXlateInfo{pathIdx: idx, ygXpathInfo: ygXpathInfo, xlateReq: respXlator.ntfXlateReq}
@@ -123,17 +124,17 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 			respXlator.dbYgXlateList = append(respXlator.dbYgXlateList, dbYgXlateInfo)
 			// since there is no path transformer defined in the path, processing the collected db to yang key xfmrs
 			if err := respXlator.processDbToYangKeyXfmrList(); err != nil {
-				log.Error(ntfXlateReq.reqLogId + "Translate: Error in processDbToYangKeyXfmrList for the path: ", *respXlator.ntfXlateReq.path)
+				log.Error(ntfXlateReq.reqLogId+"Translate: Error in processDbToYangKeyXfmrList for the path: ", *respXlator.ntfXlateReq.path)
 				return nil, err
 			}
 		} else {
 			if len(ygXpathInfo.xfmrFunc) > 0 {
-				log.Warning(ntfXlateReq.reqLogId + "Translate: Could not find the path transformer for the xpath: ", ygPath)
+				log.Warning(ntfXlateReq.reqLogId+"Translate: Could not find the path transformer for the xpath: ", ygPath)
 			} else {
-				log.Warning(ntfXlateReq.reqLogId + "Translate: Could not find the DbToYangKey transformer for the xpath: ", ygPath)
+				log.Warning(ntfXlateReq.reqLogId+"Translate: Could not find the DbToYangKey transformer for the xpath: ", ygPath)
 			}
-			log.Warning(ntfXlateReq.reqLogId + "Translate: Attempting direct conversion - to convert the db key to yang key directly for the path: ", ygPath)
-			log.Infof(ntfXlateReq.reqLogId + "Translate: key comp: %v, pathElem key: %v", respXlator.ntfXlateReq.key.Comp, pathElem[idx].Key)
+			log.Warning(ntfXlateReq.reqLogId+"Translate: Attempting direct conversion - to convert the db key to yang key directly for the path: ", ygPath)
+			log.Infof(ntfXlateReq.reqLogId+"Translate: key comp: %v, pathElem key: %v", respXlator.ntfXlateReq.key.Comp, pathElem[idx].Key)
 
 			if len(respXlator.ntfXlateReq.key.Comp) == len(pathElem[idx].Key) {
 				dbKeyIdx := 0
@@ -142,17 +143,17 @@ func (respXlator *subscribeNotfRespXlator) Translate() (*gnmi.Path, error) {
 					dbKeyIdx++
 				}
 			} else {
-				log.Error(ntfXlateReq.reqLogId + "Translate: Could not find the path transformer or DbToYangKey transformer for the ygXpathListInfo: ", ygPath)
+				log.Error(ntfXlateReq.reqLogId+"Translate: Could not find the path transformer or DbToYangKey transformer for the ygXpathListInfo: ", ygPath)
 				return nil, tlerr.InternalError{Format: ntfXlateReq.reqLogId + "Could not find the path transformer or DbToYangKey transformer", Path: ygPath}
 			}
 		}
 	}
 
-	log.Info(ntfXlateReq.reqLogId + "subscribeNotfRespXlator: translated path: ", *respXlator.ntfXlateReq.path)
+	log.Info(ntfXlateReq.reqLogId+"subscribeNotfRespXlator: translated path: ", *respXlator.ntfXlateReq.path)
 	return respXlator.ntfXlateReq.path, nil
 }
 
-func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *yangXpathInfo, pathIdx int) (error) {
+func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *yangXpathInfo, pathIdx int) error {
 	var currPath gnmi.Path
 	pathElems := respXlator.ntfXlateReq.path.Elem
 	ygSchemPath := "/" + pathElems[0].Name
@@ -177,19 +178,19 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 		keyGroup:      &respXlator.KeyGroupComps,
 	}
 
-	if err := respXlator.xfmrPathHandlerFunc("DbToYangPath_" + ygXpathInfo.xfmrPath, inParam); err != nil {
-		log.Errorf(respXlator.ntfXlateReq.reqLogId + "Error in path transformer callback : %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)
+	if err := respXlator.xfmrPathHandlerFunc("DbToYangPath_"+ygXpathInfo.xfmrPath, inParam); err != nil {
+		log.Errorf(respXlator.ntfXlateReq.reqLogId+"Error in path transformer callback : %v for the gnmi path: %v, and the error: %v", ygXpathInfo.xfmrPath, respXlator.ntfXlateReq.path, err)
 		return err
 	}
 
-	log.Info(respXlator.ntfXlateReq.reqLogId + "handlePathTransformer: uriPathKeysMap: ", inParam.ygPathKeys)
+	log.Info(respXlator.ntfXlateReq.reqLogId+"handlePathTransformer: uriPathKeysMap: ", inParam.ygPathKeys)
 	ygpath := "/" + respXlator.ntfXlateReq.path.Elem[0].Name
 
 	for idx := 1; idx <= pathIdx; idx++ {
 		ygpath = ygpath + "/" + respXlator.ntfXlateReq.path.Elem[idx].Name
 
 		if log.V(dbLgLvl) {
-			log.Info(respXlator.ntfXlateReq.reqLogId + "handlePathTransformer: yang map keys: yang path:", ygpath)
+			log.Info(respXlator.ntfXlateReq.reqLogId+"handlePathTransformer: yang map keys: yang path:", ygpath)
 		}
 
 		for keyName, keyVal := range respXlator.ntfXlateReq.path.Elem[idx].Key {
@@ -197,13 +198,13 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 				continue
 			}
 			if log.V(dbLgLvl) {
-				log.Info(respXlator.ntfXlateReq.reqLogId + "handlePathTransformer: yang map keys: yang key path:", ygpath + "/" + keyName)
+				log.Info(respXlator.ntfXlateReq.reqLogId+"handlePathTransformer: yang map keys: yang key path:", ygpath+"/"+keyName)
 			}
-			if ygKeyVal, ok := inParam.ygPathKeys[ygpath + "/" + keyName]; ok {
+			if ygKeyVal, ok := inParam.ygPathKeys[ygpath+"/"+keyName]; ok {
 				respXlator.ntfXlateReq.path.Elem[idx].Key[keyName] = ygKeyVal
 			} else {
-				log.Errorf(respXlator.ntfXlateReq.reqLogId + "Error: path transformer callback (%v) response yang key map does not have " +
-					"the yang key value for the yang key: %v ", ygXpathInfo.xfmrPath, ygpath + "/" + keyName)
+				log.Errorf(respXlator.ntfXlateReq.reqLogId+"Error: path transformer callback (%v) response yang key map does not have "+
+					"the yang key value for the yang key: %v ", ygXpathInfo.xfmrPath, ygpath+"/"+keyName)
 				return tlerr.InternalError{Format: respXlator.ntfXlateReq.reqLogId + "Error in processsing the transformer callback map keys", Path: inParam.yangPath.String()}
 			}
 		}
@@ -212,19 +213,19 @@ func (respXlator *subscribeNotfRespXlator) handlePathTransformer(ygXpathInfo *ya
 	return nil
 }
 
-func (respXlator *subscribeNotfRespXlator) xfmrPathHandlerFunc(xfmrPathFunc string, inParam XfmrDbToYgPathParams) (error) {
+func (respXlator *subscribeNotfRespXlator) xfmrPathHandlerFunc(xfmrPathFunc string, inParam XfmrDbToYgPathParams) error {
 
-	log.Infof(respXlator.ntfXlateReq.reqLogId + "Received inParam %v, Path transformer function name %v", inParam, xfmrPathFunc)
+	log.Infof(respXlator.ntfXlateReq.reqLogId+"Received inParam %v, Path transformer function name %v", inParam, xfmrPathFunc)
 
 	if retVals, err := XlateFuncCall(xfmrPathFunc, inParam); err != nil {
 		return err
 	} else {
 		if retVals == nil || len(retVals) != PATH_XFMR_RET_ARGS {
-			log.Errorf(respXlator.ntfXlateReq.reqLogId + "Error: incorrect return type in the transformer call back function (\"%v\") for the yang path %v", xfmrPathFunc, inParam.yangPath.String())
+			log.Errorf(respXlator.ntfXlateReq.reqLogId+"Error: incorrect return type in the transformer call back function (\"%v\") for the yang path %v", xfmrPathFunc, inParam.yangPath.String())
 			return tlerr.InternalError{Format: "incorrect return type in the transformer call back function", Path: inParam.yangPath.String()}
 		} else if retVals[PATH_XFMR_RET_ERR_INDX].Interface() != nil {
 			if err = retVals[PATH_XFMR_RET_ERR_INDX].Interface().(error); err != nil {
-				log.Errorf(respXlator.ntfXlateReq.reqLogId + "Path Transformer function(\"%v\") returned error - %v.", xfmrPathFunc, err)
+				log.Errorf(respXlator.ntfXlateReq.reqLogId+"Path Transformer function(\"%v\") returned error - %v.", xfmrPathFunc, err)
 				return err
 			}
 		}
@@ -233,8 +234,8 @@ func (respXlator *subscribeNotfRespXlator) xfmrPathHandlerFunc(xfmrPathFunc stri
 	return nil
 }
 
-func (respXlator *subscribeNotfRespXlator) processDbToYangKeyXfmrList() (error) {
-	for idx := (len(respXlator.dbYgXlateList) - 1); idx >= 0; idx -- {
+func (respXlator *subscribeNotfRespXlator) processDbToYangKeyXfmrList() error {
+	for idx := (len(respXlator.dbYgXlateList) - 1); idx >= 0; idx-- {
 		respXlator.dbYgXlateList[idx].handleDbToYangKeyXlate()
 	}
 	return nil
@@ -250,7 +251,7 @@ func (respXlator *subscribeNotfRespXlator) hasPathWildCard(idx int) bool {
 	return true
 }
 
-func (respXlator *subscribeNotfRespXlator) getYangListPath(listIdx int) (string) {
+func (respXlator *subscribeNotfRespXlator) getYangListPath(listIdx int) string {
 	ygPathTmp := ""
 	for idx := 0; idx <= listIdx; idx++ {
 		pathName := respXlator.ntfXlateReq.path.Elem[idx].Name
@@ -262,7 +263,7 @@ func (respXlator *subscribeNotfRespXlator) getYangListPath(listIdx int) (string)
 		}
 		ygPathTmp = ygPathTmp + "/" + pathName
 	}
-	log.Infof(respXlator.ntfXlateReq.reqLogId + "getYangListPath: listIdx: %v, ygPathTmp: %v ", listIdx, ygPathTmp)
+	log.Infof(respXlator.ntfXlateReq.reqLogId+"getYangListPath: listIdx: %v, ygPathTmp: %v ", listIdx, ygPathTmp)
 	return ygPathTmp
 }
 
@@ -283,7 +284,7 @@ func (respXlator *subscribeNotfRespXlator) getYangXpathInfo(ygPath string) (*yan
 	ygXpathListInfo, ok := xYangSpecMap[ygPath]
 
 	if !ok || ygXpathListInfo == nil {
-		log.Error(respXlator.ntfXlateReq.reqLogId + "ygXpathInfo data not found in the xYangSpecMap for xpath : ", ygPath)
+		log.Error(respXlator.ntfXlateReq.reqLogId+"ygXpathInfo data not found in the xYangSpecMap for xpath : ", ygPath)
 		return nil, tlerr.InternalError{Format: respXlator.ntfXlateReq.reqLogId + "Error in processing the subscribe path", Path: ygPath}
 	} else if ygXpathListInfo.yangEntry == nil {
 		return nil, tlerr.NotSupportedError{Format: respXlator.ntfXlateReq.reqLogId + "Subscribe not supported", Path: ygPath}
@@ -291,36 +292,36 @@ func (respXlator *subscribeNotfRespXlator) getYangXpathInfo(ygPath string) (*yan
 	return ygXpathListInfo, nil
 }
 
-func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
+func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() error {
 
 	if dbYgXlateInfo.ygXpathInfo.tableName != nil && *dbYgXlateInfo.ygXpathInfo.tableName != "NONE" {
 		dbYgXlateInfo.tableName = *dbYgXlateInfo.ygXpathInfo.tableName
 	} else if dbYgXlateInfo.ygXpathInfo.xfmrTbl != nil {
-		log.Info(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Going to call the table transformer => ", *dbYgXlateInfo.ygXpathInfo.xfmrTbl)
+		log.Info(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Going to call the table transformer => ", *dbYgXlateInfo.ygXpathInfo.xfmrTbl)
 		tblLst, err := dbYgXlateInfo.handleTableXfmrCallback()
 		if err != nil {
-			log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Error in handling the table transformer" +
+			log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Error in handling the table transformer"+
 				" callaback:", *dbYgXlateInfo.ygXpathInfo.tableName)
 			return err
 		}
 		if len(tblLst) == 0 {
-			log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Error: No tables are returned by the table " +
+			log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Error: No tables are returned by the table "+
 				"transformer: for the path:", dbYgXlateInfo.uriPath)
 			return tlerr.NotSupportedError{Format: dbYgXlateInfo.xlateReq.reqLogId + "More than one table found for the list" +
 				" URI from the table transformer", Path: dbYgXlateInfo.uriPath}
 		} else {
 			// taking the first table, since number of keys should be same between the tables returned by table transformer
 			dbYgXlateInfo.tableName = tblLst[0]
-			log.Info(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Found table from the table transformer: table name: ", dbYgXlateInfo.tableName)
+			log.Info(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Found table from the table transformer: table name: ", dbYgXlateInfo.tableName)
 		}
 	} else {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "Error in handling the table transformer callaback:", *dbYgXlateInfo.ygXpathInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"Error in handling the table transformer callaback:", *dbYgXlateInfo.ygXpathInfo.tableName)
 		return tlerr.NotSupportedError{Format: dbYgXlateInfo.xlateReq.reqLogId + "Could not find the table information for the path", Path: dbYgXlateInfo.uriPath}
 	}
 
 	ygDbInfo, err := dbYgXlateInfo.getDbYangNode()
 	if err != nil {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
 		return err
 	}
 
@@ -331,14 +332,14 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 	}
 
 	for _, listName := range ygDbInfo.listName {
-		if listName != dbYgXlateInfo.tableName + "_LIST" {
-			log.Warning(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: sonic yang model list name does not" +
+		if listName != dbYgXlateInfo.tableName+"_LIST" {
+			log.Warning(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: sonic yang model list name does not"+
 				" match with the table name, list name: ", listName)
 			continue
 		}
 		dbYgListInfo, err := dbYgXlateInfo.getDbYangListInfo(listName)
 		if err != nil {
-			log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Error in getDbYangListNode: ", err)
+			log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Error in getDbYangListNode: ", err)
 			return err
 		}
 		ygDbListNode := dbYgListInfo.dbEntry
@@ -359,7 +360,7 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 					delim = "|"
 				}
 				if len(delim) == 0 {
-					log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXlate: Key-delim or db-name annotation is missing" +
+					log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXlate: Key-delim or db-name annotation is missing"+
 						" from the sonic yang model container: ", ygDbInfo.dbEntry.Name)
 					return tlerr.NotSupportedError{Format: dbYgXlateInfo.xlateReq.reqLogId + "Could not form db key, since key-delim or " +
 						"db-name annotation is missing from the sonic yang model container", Path: ygDbInfo.dbEntry.Name}
@@ -375,7 +376,7 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXlate() (error) {
 	return nil
 }
 
-func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXfmr() (error) {
+func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXfmr() error {
 	dbDataMap := make(RedisDbMap)
 	for i := db.ApplDB; i < db.MaxDB; i++ {
 		dbDataMap[i] = make(map[string]map[string]db.Value)
@@ -386,11 +387,11 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleDbToYangKeyXfmr() (error) {
 	inParams.table = dbYgXlateInfo.tableName
 	rmap, err := keyXfmrHandlerFunc(inParams, dbYgXlateInfo.ygXpathInfo.xfmrKey)
 	if err != nil {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXfmr: error in keyXfmrHandlerFunc ", err)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXfmr: error in keyXfmrHandlerFunc ", err)
 		return err
 	}
 
-	log.Info(dbYgXlateInfo.xlateReq.reqLogId + "handleDbToYangKeyXfmr: res map: ", rmap)
+	log.Info(dbYgXlateInfo.xlateReq.reqLogId+"handleDbToYangKeyXfmr: res map: ", rmap)
 	for k, v := range rmap {
 		//Assuming that always the string to be passed as the value in the DbtoYang key transformer response map
 		dbYgXlateInfo.xlateReq.path.Elem[dbYgXlateInfo.pathIdx].Key[k] = fmt.Sprintf("%v", v)
@@ -404,17 +405,17 @@ func (dbYgXlateInfo *DbYgXlateInfo) getDbYangListInfo(listName string) (*dbInfo,
 	log.Info("getDbYangListInfo: dbListkey: ", dbListkey)
 	dbListInfo, ok := xDbSpecMap[dbListkey]
 	if !ok {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "getDbYangListInfo: xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"getDbYangListInfo: xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
 		return nil, tlerr.InternalError{Format: dbYgXlateInfo.xlateReq.reqLogId + "xDbSpecMap does not have the dbInfo entry for the table " + dbYgXlateInfo.tableName, Path: dbYgXlateInfo.uriPath}
 	}
 	if dbListInfo.dbEntry == nil {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "dbInfo has nil value for its yangEntry field for the table:", dbYgXlateInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"dbInfo has nil value for its yangEntry field for the table:", dbYgXlateInfo.tableName)
 		return nil, tlerr.InternalError{Format: dbYgXlateInfo.xlateReq.reqLogId + "dbInfo has nil value for its yangEntry field for the table " + dbYgXlateInfo.tableName, Path: dbYgXlateInfo.uriPath}
 	}
 	if dbListInfo.dbEntry.IsList() {
 		return dbListInfo, nil
 	} else {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "dbInfo is not a Db yang LIST node", *dbListInfo)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"dbInfo is not a Db yang LIST node", *dbListInfo)
 		return nil, tlerr.InternalError{Format: dbYgXlateInfo.xlateReq.reqLogId + "dbListInfo is not a Db yang LIST node for the listName " + listName}
 	}
 	return nil, nil
@@ -422,10 +423,10 @@ func (dbYgXlateInfo *DbYgXlateInfo) getDbYangListInfo(listName string) (*dbInfo,
 
 func (dbYgXlateInfo *DbYgXlateInfo) getDbYangNode() (*dbInfo, error) {
 	if dbInfo, ok := xDbSpecMap[dbYgXlateInfo.tableName]; !ok || dbInfo == nil {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"xDbSpecMap does not have the dbInfo entry for the table:", dbYgXlateInfo.tableName)
 		return nil, tlerr.InternalError{Format: dbYgXlateInfo.xlateReq.reqLogId + "xDbSpecMap does not have the dbInfo entry for the table " + dbYgXlateInfo.tableName, Path: dbYgXlateInfo.uriPath}
 	} else if dbInfo.dbEntry == nil {
-		log.Error(dbYgXlateInfo.xlateReq.reqLogId + "dbInfo has nil value for its yangEntry field for the table:", dbYgXlateInfo.tableName)
+		log.Error(dbYgXlateInfo.xlateReq.reqLogId+"dbInfo has nil value for its yangEntry field for the table:", dbYgXlateInfo.tableName)
 		return nil, tlerr.InternalError{Format: dbYgXlateInfo.xlateReq.reqLogId + "dbInfo has nil value for its yangEntry field for the table " + dbYgXlateInfo.tableName, Path: dbYgXlateInfo.uriPath}
 	} else {
 		return dbInfo, nil
@@ -436,7 +437,7 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleTableXfmrCallback() ([]string, error) 
 	ygXpathInfo := dbYgXlateInfo.ygXpathInfo
 	uriPath := dbYgXlateInfo.uriPath
 
-	log.Info(dbYgXlateInfo.xlateReq.reqLogId + "handleTableXfmrCallback: ", uriPath)
+	log.Info(dbYgXlateInfo.xlateReq.reqLogId+"handleTableXfmrCallback: ", uriPath)
 	var dbs [db.MaxDB]*db.DB
 	txCache := new(sync.Map)
 	currDbNum := db.DBNum(ygXpathInfo.dbIndex)
@@ -462,11 +463,11 @@ func (dbYgXlateInfo *DbYgXlateInfo) handleTableXfmrCallback() ([]string, error) 
 		uriPath, SUBSCRIBE, "", &dbDataMap, nil, nil, txCache)
 	tblList, tblXfmrErr := xfmrTblHandlerFunc(*ygXpathInfo.xfmrTbl, inParams, xfmrDbTblKeyCache)
 	if tblXfmrErr != nil {
-		log.Errorf(dbYgXlateInfo.xlateReq.reqLogId + "handleTableXfmrCallback: table transformer callback returns error: %v for the callback %v", tblXfmrErr, *ygXpathInfo.xfmrTbl)
+		log.Errorf(dbYgXlateInfo.xlateReq.reqLogId+"handleTableXfmrCallback: table transformer callback returns error: %v for the callback %v", tblXfmrErr, *ygXpathInfo.xfmrTbl)
 	} else if inParams.isVirtualTbl != nil && *inParams.isVirtualTbl {
-		log.Info(dbYgXlateInfo.xlateReq.reqLogId + "handleTableXfmrCallback: virtualTbl is SET to TRUE for this table transformer callback: ", *ygXpathInfo.xfmrTbl)
+		log.Info(dbYgXlateInfo.xlateReq.reqLogId+"handleTableXfmrCallback: virtualTbl is SET to TRUE for this table transformer callback: ", *ygXpathInfo.xfmrTbl)
 	} else {
-		log.Infof(dbYgXlateInfo.xlateReq.reqLogId + "handleTableXfmrCallback: table list %v returned by table transformer callback: %v ", tblList, *ygXpathInfo.xfmrTbl)
+		log.Infof(dbYgXlateInfo.xlateReq.reqLogId+"handleTableXfmrCallback: table list %v returned by table transformer callback: %v ", tblList, *ygXpathInfo.xfmrTbl)
 		return tblList, nil
 	}
 

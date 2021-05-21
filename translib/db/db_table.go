@@ -53,18 +53,16 @@ import (
 //        })
 
 type Table struct {
-	ts          *TableSpec
-	entry       map[string]Value
-	complete    bool
-	patterns    map[string][]Key
-	db          *DB
+	ts       *TableSpec
+	entry    map[string]Value
+	complete bool
+	patterns map[string][]Key
+	db       *DB
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Exported Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // GetTable gets the entire table.
 func (d *DB) GetTable(ts *TableSpec) (Table, error) {
@@ -121,7 +119,7 @@ func (d *DB) GetTable(ts *TableSpec) (Table, error) {
 		value, e := d.GetEntry(ts, keys[i])
 		if e != nil {
 			glog.Warning("GetTable: GetKeys: " + e.Error())
-			value = Value {}
+			value = Value{}
 			e = nil
 		}
 		table.entry[d.key2redis(ts, keys[i])] = value
@@ -177,5 +175,3 @@ func (t *Table) GetEntry(key Key) (Value, error) {
 ////////////////////////////////////////////////////////////////////////////////
 //  Internal Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-
-

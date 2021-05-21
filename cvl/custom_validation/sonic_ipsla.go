@@ -20,22 +20,22 @@
 package custom_validation
 
 import (
-	"github.com/go-redis/redis/v7"
-	"strings"
-	log "github.com/golang/glog"
 	"fmt"
+	"strings"
+
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	)
+	"github.com/go-redis/redis/v7"
+	log "github.com/golang/glog"
+)
 
 type slaMap struct {
 	slaTcpMap map[string]string //ip_sla_id->tcp_dst_port map
 }
 
-
 //ValidateTcpPort Validate DstIp Tcp Port mappings
 //
 func (t *CustomValidation) ValidateTcpPort(vc *CustValidationCtxt) CVLErrorInfo {
-	if (vc.CurCfg.VOp == OP_DELETE) {
+	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 	pSlaMap := &slaMap{}
@@ -44,17 +44,17 @@ func (t *CustomValidation) ValidateTcpPort(vc *CustValidationCtxt) CVLErrorInfo 
 	var ipSlaId string
 
 	tcpPort, hasTcpPort := vc.CurCfg.Data["tcp_dst_port"]
-	if !hasTcpPort  {
+	if !hasTcpPort {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	keyArr := strings.Split(vc.CurCfg.Key, "|")
-	if (len(keyArr) > 1) {
+	if len(keyArr) > 1 {
 		ipSlaId = keyArr[1]
 		keyArr = keyArr[1:]
 	}
 
-	tableKeys, err:= vc.RClient.Keys("IP_SLA|*").Result()
+	tableKeys, err := vc.RClient.Keys("IP_SLA|*").Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -63,7 +63,7 @@ func (t *CustomValidation) ValidateTcpPort(vc *CustValidationCtxt) CVLErrorInfo 
 	mCmd := map[string]*redis.SliceCmd{}
 	pipe := vc.RClient.Pipeline()
 	for _, dbKey := range tableKeys {
-		    mCmd[dbKey] = pipe.HMGet(dbKey, "tcp_dst_port")
+		mCmd[dbKey] = pipe.HMGet(dbKey, "tcp_dst_port")
 	}
 
 	_, err = pipe.Exec()
@@ -77,23 +77,23 @@ func (t *CustomValidation) ValidateTcpPort(vc *CustValidationCtxt) CVLErrorInfo 
 			continue
 		}
 
-	       keySlaComp := strings.Split(dbKey, "|") //IP_SLA|ip_sla_id
-	       keySlaDb := keySlaComp[1]
-		if (ipSlaId == keySlaDb) {
+		keySlaComp := strings.Split(dbKey, "|") //IP_SLA|ip_sla_id
+		keySlaDb := keySlaComp[1]
+		if ipSlaId == keySlaDb {
 
 			tcpPortInDb := res[0]
-			if (tcpPortInDb != tcpPort) { // if ip_sla_id matches  and if tcp dst port is different in db
-				log.Info("Error: Mismatch with existing db tcp dst port value: ",tcpPortInDb)
+			if tcpPortInDb != tcpPort { // if ip_sla_id matches  and if tcp dst port is different in db
+				log.Info("Error: Mismatch with existing db tcp dst port value: ", tcpPortInDb)
 				return CVLErrorInfo{
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: "IP_SLA",
-					Keys: keyArr,
-					ErrAppTag:  "tcp-port-configured-different",
-					ConstraintErrMsg:  fmt.Sprintf("Tcp Destination Port %s already configured", tcpPortInDb),
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        "IP_SLA",
+					Keys:             keyArr,
+					ErrAppTag:        "tcp-port-configured-different",
+					ConstraintErrMsg: fmt.Sprintf("Tcp Destination Port %s already configured", tcpPortInDb),
 				}
 			}
 
-			break;
+			break
 		}
 	}
 	log.Info("ValidateTcpPort: Retruning Success")

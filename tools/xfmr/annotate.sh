@@ -20,18 +20,19 @@
 
 set -e
 
-[ -z ${TOPDIR} ] && TOPDIR=${PWD}
 [ -z ${MAKE}   ] && MAKE=make
 
+SRCDIR=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
+TOPDIR=$(git -C ${SRCDIR} rev-parse --show-toplevel)
 YANGDIR=${TOPDIR}/models/yang
 
 if [ -z $1 ]; then
-    echo "usage: $0 YANG_FILE_NAME..."
+    >&2 echo "usage: $0 YANG_FILE_NAME..."
     exit -1
 fi
 
 # Download, patch and compile goyang
-${MAKE} -s -C ${TOPDIR} annotgen
+>&2 ${MAKE} -s -C ${TOPDIR} annotgen
 
 # Run goyang to generate annotation file for the specified yang file.
 # Annotation output is dumped on stdout.

@@ -1,49 +1,50 @@
 package transformer
 
 import (
-    "encoding/json"
-    "os"
-    "fmt"
-    "errors"
-    "io/ioutil"
-    "github.com/Azure/sonic-mgmt-common/cvl"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	"github.com/Azure/sonic-mgmt-common/cvl"
 	log "github.com/golang/glog"
 )
 
 type xTablelist struct {
-    TblInfo []xTblInfo `json:"tablelist"`
+	TblInfo []xTblInfo `json:"tablelist"`
 }
 
 type xTblInfo struct {
-    Name    string `json:"tablename"`
-    Parent  string `json:"parent"`
+	Name   string `json:"tablename"`
+	Parent string `json:"parent"`
 }
 
 type gphNode struct {
-    tableName string
+	tableName string
 	childTbl  []*gphNode
 	visited   bool
 }
 
 func tblInfoAdd(tnMap map[string]*gphNode, tname, pname string) error {
 	if _, ok := tnMap[tname]; !ok {
-		node := new (gphNode)
+		node := new(gphNode)
 		node.tableName = tname
-		node.visited   = false
-		tnMap[tname]   = node
+		node.visited = false
+		tnMap[tname] = node
 	}
 	node := tnMap[tname]
 	if _, ok := tnMap[pname]; !ok {
-		pnode := new (gphNode)
+		pnode := new(gphNode)
 		pnode.tableName = pname
-		pnode.visited   = false
-		tnMap[pname]    = pnode
+		pnode.visited = false
+		tnMap[pname] = pnode
 	}
 	tnMap[pname].childTbl = append(tnMap[pname].childTbl, node)
 	return nil
 }
 
-func childtblListGet (tnode *gphNode, ordTblList map[string][]string) ([]string, error){
+func childtblListGet(tnode *gphNode, ordTblList map[string][]string) ([]string, error) {
 	var ctlist []string
 	if len(tnode.childTbl) <= 0 {
 		return ctlist, nil
@@ -78,12 +79,12 @@ func childtblListGet (tnode *gphNode, ordTblList map[string][]string) ([]string,
 func ordTblListCreate(ordTblList map[string][]string, tnMap map[string]*gphNode) {
 	var tnodelist []*gphNode
 
-	for _, tnode  := range tnMap {
+	for _, tnode := range tnMap {
 		tnodelist = append(tnodelist, tnode)
 	}
 
 	for _, tnode := range tnodelist {
-		if ((tnode != nil) && (!tnode.visited)) {
+		if (tnode != nil) && (!tnode.visited) {
 			tnode.visited = true
 			tlist, _ := childtblListGet(tnode, ordTblList)
 			ordTblList[tnode.tableName] = tlist
@@ -91,57 +92,57 @@ func ordTblListCreate(ordTblList map[string][]string, tnMap map[string]*gphNode)
 	}
 }
 
- //sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations     
- func sortPerTblDeps(ordTblListMap map[string][]string) error {
-	 var err error
+//sort transformer result table list based on dependenciesi(using CVL API) tables to be used for CRUD operations
+func sortPerTblDeps(ordTblListMap map[string][]string) error {
+	var err error
 
-	 errStr := "Failed to create cvl session"
-	 cvSess, status := cvl.ValidationSessOpen()
-	 if status != cvl.CVL_SUCCESS {
-		 log.Warningf("CVL validation session creation failed(%v).", status)
-		 err = fmt.Errorf("%v", errStr)
-		 return err
-	 }
+	errStr := "Failed to create cvl session"
+	cvSess, status := cvl.ValidationSessOpen()
+	if status != cvl.CVL_SUCCESS {
+		log.Warningf("CVL validation session creation failed(%v).", status)
+		err = fmt.Errorf("%v", errStr)
+		return err
+	}
 
-	 for tname, tblList := range ordTblListMap {
-		 sortedTblList, status := cvSess.SortDepTables(tblList)
-		 if status != cvl.CVL_SUCCESS {
-			 log.Warningf("Failure in cvlSess.SortDepTables: %v", status)
-			 cvl.ValidationSessClose(cvSess)
-			 err = fmt.Errorf("%v", errStr)
-			 return err
-		 }
-		 ordTblListMap[tname] = sortedTblList
-	 }
-	 cvl.ValidationSessClose(cvSess)
-	 return err
- }
+	for tname, tblList := range ordTblListMap {
+		sortedTblList, status := cvSess.SortDepTables(tblList)
+		if status != cvl.CVL_SUCCESS {
+			log.Warningf("Failure in cvlSess.SortDepTables: %v", status)
+			cvl.ValidationSessClose(cvSess)
+			err = fmt.Errorf("%v", errStr)
+			return err
+		}
+		ordTblListMap[tname] = sortedTblList
+	}
+	cvl.ValidationSessClose(cvSess)
+	return err
+}
 
 func xlateJsonTblInfoLoad(ordTblListMap map[string][]string, jsonFileName string) error {
-    var tlist xTablelist
+	var tlist xTablelist
 
-    jsonFile, err := os.Open(jsonFileName)
-    if err != nil {
+	jsonFile, err := os.Open(jsonFileName)
+	if err != nil {
 		errStr := fmt.Sprintf("Error: Unable to open table list file(%v)", jsonFileName)
 		return errors.New(errStr)
-    }
-    defer jsonFile.Close()
+	}
+	defer jsonFile.Close()
 
-    xfmrLogInfoAll("Successfully Opened users.json\r\n")
+	xfmrLogInfoAll("Successfully Opened users.json\r\n")
 
-    byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := ioutil.ReadAll(jsonFile)
 
-    json.Unmarshal(byteValue, &tlist)
+	json.Unmarshal(byteValue, &tlist)
 	tnMap := make(map[string]*gphNode)
 
-    for i := 0; i < len(tlist.TblInfo); i++ {
+	for i := 0; i < len(tlist.TblInfo); i++ {
 		err := tblInfoAdd(tnMap, tlist.TblInfo[i].Name, tlist.TblInfo[i].Parent)
 		if err != nil {
 			log.Warningf("Failed to add table dependency(tbl:%v, par:%v) into tablenode list.(%v)\r\n",
-		               tlist.TblInfo[i].Name, tlist.TblInfo[i].Parent, err)
-			break;
+				tlist.TblInfo[i].Name, tlist.TblInfo[i].Parent, err)
+			break
 		}
-    }
+	}
 
 	if err == nil {
 		ordTblListCreate(ordTblListMap, tnMap)

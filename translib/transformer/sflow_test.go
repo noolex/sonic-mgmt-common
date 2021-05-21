@@ -22,60 +22,61 @@ import (
 	"errors"
 	"testing"
 	"time"
+
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 func Test_sFlowOperations(t *testing.T) {
 
 	url := "/sonic-sflow:sonic-sflow/SFLOW/SFLOW_LIST[sflow_key=global]"
-        prereq1 := map[string]interface{}{"SFLOW":map[string]interface{}{"global":map[string]interface{}{"NULL":"NULL"}}}
-        prereq2 := map[string]interface{}{"SFLOW_COLLECTOR":map[string]interface{}{"col1":map[string]interface{}{"NULL":"NULL"}}}
-        prereq3 := map[string]interface{}{"SFLOW_SESSION":map[string]interface{}{"Ethernet0":map[string]interface{}{"NULL":"NULL"}}}
+	prereq1 := map[string]interface{}{"SFLOW": map[string]interface{}{"global": map[string]interface{}{"NULL": "NULL"}}}
+	prereq2 := map[string]interface{}{"SFLOW_COLLECTOR": map[string]interface{}{"col1": map[string]interface{}{"NULL": "NULL"}}}
+	prereq3 := map[string]interface{}{"SFLOW_SESSION": map[string]interface{}{"Ethernet0": map[string]interface{}{"NULL": "NULL"}}}
 
-        // Setup - Prerequisite
-        loadConfigDB(rclient, prereq1)
-        loadConfigDB(rclient, prereq2)
-        loadConfigDB(rclient, prereq3)
+	// Setup - Prerequisite
+	loadConfigDB(rclient, prereq1)
+	loadConfigDB(rclient, prereq2)
+	loadConfigDB(rclient, prereq3)
 
-        //Set admin state
+	//Set admin state
 	adminUrl := url + "/admin_state"
 	t.Run("Enable sFlow", processSetRequest(adminUrl, globalAdminJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        //Set polling interval
-        pollingUrl := url + "/polling_interval"
+	//Set polling interval
+	pollingUrl := url + "/polling_interval"
 	t.Run("Set sFlow polling interval", processSetRequest(pollingUrl, pollingJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        //Set AgentID
-        agentUrl := url + "/agent_id"
+	//Set AgentID
+	agentUrl := url + "/agent_id"
 	t.Run("Set sFlow agent ID", processSetRequest(agentUrl, agentIdJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        // Verify global configurations
+	// Verify global configurations
 	t.Run("Verify global configurations -1", processGetRequest(url, globalConfigGetJsonResp, false))
 	// Verify the same using File (showcase)
 	t.Run("Verify global configurations -2", processGetRequestWithFile(url, "testdata/global_sflow_config.json", false))
 
-        //Add collector
-        url = "/sonic-sflow:sonic-sflow/SFLOW_COLLECTOR/SFLOW_COLLECTOR_LIST[collector_name=col1]"
+	//Add collector
+	url = "/sonic-sflow:sonic-sflow/SFLOW_COLLECTOR/SFLOW_COLLECTOR_LIST[collector_name=col1]"
 	t.Run("Add sFlow collector col1", processSetRequest(url, col1Json, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        // Verify collector configurations
+	// Verify collector configurations
 	t.Run("Verify sFlow collector col1", processGetRequest(url, col1Json, false))
 
-        // Set collector ip
-        ipUrl := url + "/collector_ip"
+	// Set collector ip
+	ipUrl := url + "/collector_ip"
 	t.Run("Set sFlow collector col1 ip", processSetRequest(ipUrl, colIPJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        // Set collector port
-        portUrl := url + "/collector_port"
+	// Set collector port
+	portUrl := url + "/collector_port"
 	t.Run("Set sFlow collector col1 port", processSetRequest(portUrl, colPortJson, "PATCH", false))
 	time.Sleep(2 * time.Second)
 
-        // Verify collector configurations
+	// Verify collector configurations
 	t.Run("Verify_sFlow_collector", processGetRequest(url, col1ModJson, false))
 }
 
@@ -104,6 +105,7 @@ func clearsFlowDataFromDb() error {
 	}
 	return err
 }
+
 /***************************************************************************/
 ///////////                  JSON Data for Tests              ///////////////
 /***************************************************************************/
@@ -118,4 +120,3 @@ var col1ModJson string = "{\"sonic-sflow:SFLOW_COLLECTOR_LIST\":[{\"collector_ip
 
 var colIPJson string = "{\"sonic-sflow:collector_ip\": \"2.2.2.2\"}"
 var colPortJson string = "{\"sonic-sflow:collector_port\": 1234}"
-

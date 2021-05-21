@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	. "github.com/Azure/sonic-mgmt-common/translib/transformer"
@@ -32,10 +33,10 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	var xfmrTrSubInfo XfmrTranslateSubscribeInfo
 	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
 	for i := db.ApplDB; i < db.MaxDB; i++ {
-                xfmrTrSubInfo.DbDataMap[i] = make(map[string]map[string]db.Value)
-        }
+		xfmrTrSubInfo.DbDataMap[i] = make(map[string]map[string]db.Value)
+	}
 	/*Static case interface state mtu*/
-        xfmrTrSubInfo.DbDataMap = nil
+	xfmrTrSubInfo.DbDataMap = nil
 	xfmrTrSubInfo.MinInterval = 0
 	xfmrTrSubInfo.NeedCache = true
 	xfmrTrSubInfo.PType = Sample
@@ -48,7 +49,7 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	/*Static case interface config mtu*/
 	//expErr := tlerr.NotSupportedError("Subscribe not supported.")
 	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/config/mtu"
-        xfmrTrSubInfo.DbDataMap = nil
+	xfmrTrSubInfo.DbDataMap = nil
 	xfmrTrSubInfo.MinInterval = 0
 	xfmrTrSubInfo.NeedCache = true
 	xfmrTrSubInfo.PType = Sample
@@ -58,8 +59,8 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	/********************************/
 
 	/* Static case interface subinterfaces */
-        path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces"
-	expErr := tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
+	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/subinterfaces"
+	expErr := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 	t.Run("Static case on change disable(interface subinterfaces)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/******************/
@@ -67,7 +68,7 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	/*Static case interface state oper-status, native format key*/
 	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]/state/oper-status"
 	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
-	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4":{}}}
+	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4": {}}}
 	xfmrTrSubInfo.MinInterval = 0
 	xfmrTrSubInfo.NeedCache = true
 	xfmrTrSubInfo.PType = OnChange
@@ -79,7 +80,7 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	/*Static case interface state oper-status, non-native/alias format key*/
 	path = "/openconfig-interfaces:interfaces/interface[name=Eth1/4]/state/oper-status"
 	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
-	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4":{}}}
+	xfmrTrSubInfo.DbDataMap[0] = map[string]map[string]db.Value{"PORT_TABLE": map[string]db.Value{"Ethernet4": {}}}
 	xfmrTrSubInfo.MinInterval = 0
 	xfmrTrSubInfo.NeedCache = true
 	xfmrTrSubInfo.PType = OnChange
@@ -105,21 +106,21 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 
 	/*Static case interface  list with key*/
 	path = "/openconfig-interfaces:interfaces/interface[name=Ethernet4]"
-	expErr = tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
+	expErr = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 	t.Run("Static case on change not supported(interface list level with key)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/***********************************/
 
 	/*Static case interface  list without key*/
 	path = "/openconfig-interfaces:interfaces/interface"
-	expErr = tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
+	expErr = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 	t.Run("Static case on change not supported (interface list level without key)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/****************************/
 
 	/*Static case interface  top-level container*/
 	path = "/openconfig-interfaces:interfaces"
-        expErr = tlerr.NotSupportedError{Format:"Subscribe not supported", Path : path}
+	expErr = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
 	t.Run("Static case on change not supported (interface top-level container)", translateSubscribeRequest(path, xfmrTrSubInfo, true, expErr))
 	time.Sleep(1 * time.Second)
 	/********************/
@@ -136,25 +137,23 @@ func Test_TranslateSubscribe_OCYang(t *testing.T) {
 	/*Subtree case bgp/neigbors/neighbor/state/session-state, non-native/alias format key*/
 	path = "/openconfig-network-instance:network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=bgp]/bgp/neighbors/neighbor[neighbor-address=Eth1/1]/state/session-state"
 	xfmrTrSubInfo.DbDataMap = make(RedisDbMap)
-	xfmrTrSubInfo.DbDataMap[6] = map[string]map[string]db.Value{"BGP_NEIGHBOR": map[string]db.Value{"default|Ethernet0":{}}}
+	xfmrTrSubInfo.DbDataMap[6] = map[string]map[string]db.Value{"BGP_NEIGHBOR": map[string]db.Value{"default|Ethernet0": {}}}
 	xfmrTrSubInfo.MinInterval = 0
 	xfmrTrSubInfo.NeedCache = true
 	xfmrTrSubInfo.PType = OnChange
 	xfmrTrSubInfo.OnChange = true
 	url = "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
 	url_body_json = "{\"sonic-device-metadata:intf_naming_mode\": \"standard\"}"
-        t.Run("Enable Alias mode", processSetRequest(url, url_body_json, "PATCH", false))
-        time.Sleep(2 * time.Second)
+	t.Run("Enable Alias mode", processSetRequest(url, url_body_json, "PATCH", false))
+	time.Sleep(2 * time.Second)
 	t.Run("Subtree case on change enable(bgp/neigbors/neighbor/state/session-state)", translateSubscribeRequest(path, xfmrTrSubInfo, false, nil))
 	time.Sleep(1 * time.Second)
 	url = "/sonic-device-metadata:sonic-device-metadata/DEVICE_METADATA/DEVICE_METADATA_LIST[name=localhost]/intf_naming_mode"
 	t.Run("Disable Alias mode", processDeleteRequest(url, false))
-        time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	/*****************************/
 
-
-    fmt.Println("+++++++++++++ Done!!! Performing  Translate Subscribe OC yang ++++++++++++")
+	fmt.Println("+++++++++++++ Done!!! Performing  Translate Subscribe OC yang ++++++++++++")
 
 }
-
