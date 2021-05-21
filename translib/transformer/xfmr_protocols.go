@@ -1,71 +1,80 @@
 package transformer
 
 import (
-    "strings"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    log "github.com/golang/glog"
+	"strings"
+
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	log "github.com/golang/glog"
 )
 
-func init () {
-    XlateFuncBind("network_instance_protocols_ptotocol_table_name_xfmr", network_instance_protocols_ptotocol_table_name_xfmr)
-    XlateFuncBind("YangToDb_network_instance_protocol_key_xfmr", YangToDb_network_instance_protocol_key_xfmr)
-    XlateFuncBind("DbToYang_network_instance_protocol_key_xfmr", DbToYang_network_instance_protocol_key_xfmr)
+func init() {
+	XlateFuncBind("network_instance_protocols_ptotocol_table_name_xfmr", network_instance_protocols_ptotocol_table_name_xfmr)
+	XlateFuncBind("YangToDb_network_instance_protocol_key_xfmr", YangToDb_network_instance_protocol_key_xfmr)
+	XlateFuncBind("DbToYang_network_instance_protocol_key_xfmr", DbToYang_network_instance_protocol_key_xfmr)
 
 }
 
-var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func (inParams XfmrParams)  ([]string, error) {
-    var tblList []string
+var network_instance_protocols_ptotocol_table_name_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error) {
+	var tblList []string
 
-    log.V(3).Info("network_instance_protocols_protocol_table_name_xfmr")
-    if (inParams.oper == GET) {
-        pathInfo := NewPathInfo(inParams.uri)
-        niName := pathInfo.Var("name")
-        cfg_tbl_updated := false
-        if (inParams.dbDataMap != nil) {
-            if ((niName == "default") || (strings.HasPrefix(niName, "Vrf"))) {
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"].Field["NULL"] = "NULL"
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["PIM|pim"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["PIM|pim"].Field["NULL"] = "NULL"
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"].Field["NULL"] = "NULL"
-                cfg_tbl_updated = true
-            }
-            if ((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
-                if !cfg_tbl_updated {
-                    (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
-                    cfg_tbl_updated = true
-                }
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"] = db.Value{Field: make(map[string]string)}
-                (*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"].Field["NULL"] = "NULL"
-            }
-            if cfg_tbl_updated {
-                tblList = append(tblList, "CFG_PROTO_TBL")
-            }
-        }
-    }
-    return tblList, nil
+	log.V(3).Info("network_instance_protocols_protocol_table_name_xfmr")
+	if inParams.oper == GET {
+		pathInfo := NewPathInfo(inParams.uri)
+		niName := pathInfo.Var("name")
+		cfg_tbl_updated := false
+		if inParams.dbDataMap != nil {
+			if (niName == "default") || (strings.HasPrefix(niName, "Vrf")) {
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["BGP|bgp"].Field["NULL"] = "NULL"
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["OSPF|ospfv2"].Field["NULL"] = "NULL"
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["PIM|pim"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["PIM|pim"].Field["NULL"] = "NULL"
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["STATIC|static"].Field["NULL"] = "NULL"
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
+				cfg_tbl_updated = true
+			}
+			if strings.HasPrefix(niName, "all") {
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP|igmp"].Field["NULL"] = "NULL"
+				cfg_tbl_updated = true
+			}
+			if (niName == "default") || (strings.HasPrefix(niName, "Vlan")) {
+				if !cfg_tbl_updated {
+					(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"] = make(map[string]db.Value)
+					cfg_tbl_updated = true
+				}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"] = db.Value{Field: make(map[string]string)}
+				(*inParams.dbDataMap)[db.ConfigDB]["CFG_PROTO_TBL"]["IGMP_SNOOPING|IGMP-SNOOPING"].Field["NULL"] = "NULL"
+			}
+			if cfg_tbl_updated {
+				tblList = append(tblList, "CFG_PROTO_TBL")
+			}
+		}
+	}
+	return tblList, nil
 }
 
 var YangToDb_network_instance_protocol_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-    var key string
-    if (inParams.oper == GET) {
-        pathInfo := NewPathInfo(inParams.uri)
-        protoId := pathInfo.Var("identifier")
-        protoName := pathInfo.Var("name#2")
-        key = protoId+"|"+protoName
-    }
-    return key, nil
+	var key string
+	if inParams.oper == GET {
+		pathInfo := NewPathInfo(inParams.uri)
+		protoId := pathInfo.Var("identifier")
+		protoName := pathInfo.Var("name#2")
+		key = protoId + "|" + protoName
+	}
+	return key, nil
 }
 
 var DbToYang_network_instance_protocol_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    rmap := make(map[string]interface{})
-    entry_key := inParams.key
-    dynKey := strings.Split(entry_key, "|")
-    rmap["identifier"] = dynKey[0]
-    rmap["name"] = dynKey[1]
-    return rmap, nil
+	rmap := make(map[string]interface{})
+	entry_key := inParams.key
+	dynKey := strings.Split(entry_key, "|")
+	rmap["identifier"] = dynKey[0]
+	rmap["name"] = dynKey[1]
+	return rmap, nil
 }

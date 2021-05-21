@@ -209,6 +209,46 @@ module sonic-ospfv2 {
             "Max metric startup timeout in seconds";
         }
 
+        leaf max-metric-router-lsa-all {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise all Router LSA links with max-metric";
+        }
+
+        leaf max-metric-router-lsa-stub {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise all Router LSA stub links with max-metric";
+        }
+
+        leaf max-metric-router-point-to-point {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise Router LSA point-to-point links with max-metric";
+        }
+
+        leaf max-metric-external-lsa-all {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise all External LSA stub links with max-metric";
+        }
+
+        leaf max-metric-summary-lsa-all {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise all Summary LSA stub links with max-metric";
+        }
+
         leaf max-metric-on-shutdown {
           type uint32 {
             range "5..500";

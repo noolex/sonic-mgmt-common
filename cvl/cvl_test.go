@@ -20,19 +20,22 @@
 package cvl_test
 
 import (
-	"github.com/Azure/sonic-mgmt-common/cvl"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis/v7"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/go-redis/redis/v7"
+
 	//"syscall"
-	"testing"
 	"runtime"
+	"testing"
+
 	. "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	//"github.com/Azure/sonic-mgmt-common/cvl/internal/yparser"
 )
@@ -46,47 +49,47 @@ type testEditCfgData struct {
 
 var rclient *redis.Client
 var port_map map[string]interface{}
-var filehandle  *os.File
+var filehandle *os.File
 
 var loadDeviceDataMap bool
-var deviceDataMap = map[string]interface{} {
-	"DEVICE_METADATA" : map[string]interface{} {
-		"localhost": map[string] interface{} {
-			"hwsku": "Quanta-IX8-54x",
-			"hostname": "sonic",
-			"platform": "x86_64-quanta_ix8_54x-r0",
-			"mac": "4c:76:25:f4:70:82",
+var deviceDataMap = map[string]interface{}{
+	"DEVICE_METADATA": map[string]interface{}{
+		"localhost": map[string]interface{}{
+			"hwsku":         "Quanta-IX8-54x",
+			"hostname":      "sonic",
+			"platform":      "x86_64-quanta_ix8_54x-r0",
+			"mac":           "4c:76:25:f4:70:82",
 			"deployment_id": "1",
 		},
 	},
 }
 
 /* Dependent port channel configuration. */
-var depDataMap = map[string]interface{} {
-	"PORTCHANNEL" : map[string]interface{} {
-		"PortChannel001": map[string] interface{} {
+var depDataMap = map[string]interface{}{
+	"PORTCHANNEL": map[string]interface{}{
+		"PortChannel001": map[string]interface{}{
 			"admin_status": "up",
-			"mtu": "9100",
+			"mtu":          "9100",
 		},
-		"PortChannel002": map[string] interface{} {
+		"PortChannel002": map[string]interface{}{
 			"admin_status": "up",
-			"mtu": "9100",
+			"mtu":          "9100",
 		},
 	},
-	"PORTCHANNEL_MEMBER": map[string]interface{} {
-		"PortChannel001|Ethernet4": map[string] interface{} {
+	"PORTCHANNEL_MEMBER": map[string]interface{}{
+		"PortChannel001|Ethernet4": map[string]interface{}{
 			"NULL": "NULL",
 		},
-		"PortChannel001|Ethernet8": map[string] interface{} {
+		"PortChannel001|Ethernet8": map[string]interface{}{
 			"NULL": "NULL",
 		},
-		"PortChannel001|Ethernet12": map[string] interface{} {
+		"PortChannel001|Ethernet12": map[string]interface{}{
 			"NULL": "NULL",
 		},
-		"PortChannel002|Ethernet20": map[string] interface{} {
+		"PortChannel002|Ethernet20": map[string]interface{}{
 			"NULL": "NULL",
 		},
-		"PortChannel002|Ethernet24": map[string] interface{} {
+		"PortChannel002|Ethernet24": map[string]interface{}{
 			"NULL": "NULL",
 		},
 	},
@@ -204,7 +207,7 @@ func loadConfigDB(rclient *redis.Client, mpi map[string]interface{}) {
 
 func compareErrorDetails(cvlErr cvl.CVLErrorInfo, expCode cvl.CVLRetCode, errAppTag string, constraintmsg string) bool {
 
-	if ((cvlErr.ErrCode == expCode) && ((cvlErr.ErrAppTag == errAppTag) || (cvlErr.ConstraintErrMsg == constraintmsg))) {
+	if (cvlErr.ErrCode == expCode) && ((cvlErr.ErrAppTag == errAppTag) || (cvlErr.ConstraintErrMsg == constraintmsg)) {
 		return true
 	}
 
@@ -232,7 +235,7 @@ func prepareDb() {
 	}
 
 	//Load device data map on which application of deviation files depends
-	dm, err:= rclient.Keys("DEVICE_METADATA|localhost").Result()
+	dm, err := rclient.Keys("DEVICE_METADATA|localhost").Result()
 	if (err != nil) || (len(dm) == 0) {
 		loadConfigDB(rclient, deviceDataMap)
 		loadDeviceDataMap = true
@@ -240,13 +243,13 @@ func prepareDb() {
 
 	port_map = loadConfig("", PortsMapByte)
 
-	portKeys, err:= rclient.Keys("PORT|*").Result()
+	portKeys, err := rclient.Keys("PORT|*").Result()
 	//Load only the port config which are not there in Redis
 	if err == nil {
 		portMapKeys := port_map["PORT"].(map[string]interface{})
 		for _, portKey := range portKeys {
 			//Delete the port key which is already there in Redis
-			delete(portMapKeys, portKey[len("PORTS|") - 1:])
+			delete(portMapKeys, portKey[len("PORTS|")-1:])
 		}
 		port_map["PORT"] = portMapKeys
 	}
@@ -258,13 +261,13 @@ func prepareDb() {
 //Clear all db entries which are used in the test cases.
 //The list of such db should be updated here if new
 //table is referred in any test case.
-//The test case running may fail if tables are not cleared 
+//The test case running may fail if tables are not cleared
 //prior to starting execution of test cases.
 //"DEVICE_METADATA" should not be cleaned as it is used
 //during cvl package init() phase.
 func clearDb() {
 
-	tblList := []string {
+	tblList := []string{
 		"ACL_RULE",
 		"ACL_TABLE",
 		"BGP_GLOBALS",
@@ -295,8 +298,8 @@ func clearDb() {
 
 	for _, tbl := range tblList {
 		_, err := exec.Command("/bin/sh", "-c",
-		"sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '" +
-		tbl + "|*' | cut -d ' ' -f 2`").Output()
+			"sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '"+
+				tbl+"|*' | cut -d ' ' -f 2`").Output()
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -304,20 +307,18 @@ func clearDb() {
 	}
 }
 
-
-func  WriteToFile(message string) {
+func WriteToFile(message string) {
 	pc := make([]uintptr, 10)
 	runtime.Callers(2, pc)
 	f := runtime.FuncForPC(pc[0])
 
-	message =  f.Name()+ "\n"  + message
+	message = f.Name() + "\n" + message
 
 	if _, err := filehandle.Write([]byte(message)); err != nil {
 		fmt.Println("Unable to write to cvl test log file")
 	}
 
-	message =  "\n-------------------------------------------------\n"
-
+	message = "\n-------------------------------------------------\n"
 
 	if _, err := filehandle.Write([]byte(message)); err != nil {
 		fmt.Println("Unable to write to cvl test log file")
@@ -329,11 +330,11 @@ func TestMain(m *testing.M) {
 
 	redisAlreadyRunning := false
 	pidOfRedis, err := exec.Command("pidof", "redis-server").Output()
-	if err == nil &&  string(pidOfRedis) != "\n" {
+	if err == nil && string(pidOfRedis) != "\n" {
 		redisAlreadyRunning = true
 	}
 
-	if (redisAlreadyRunning == false) {
+	if redisAlreadyRunning == false {
 		//Redis not running, lets start it
 		_, err := exec.Command("/bin/sh", "-c", "sudo /etc/init.d/redis-server start").Output()
 		if err != nil {
@@ -350,7 +351,6 @@ func TestMain(m *testing.M) {
 		fmt.Println("Could not open the log file for writing.")
 	}
 
-
 	//Clear all tables which are used for testing
 	clearDb()
 
@@ -363,7 +363,7 @@ func TestMain(m *testing.M) {
 
 	unloadConfigDB(rclient, port_map)
 	unloadConfigDB(rclient, depDataMap)
-	if (loadDeviceDataMap == true) {
+	if loadDeviceDataMap == true {
 		unloadConfigDB(rclient, deviceDataMap)
 	}
 
@@ -378,7 +378,7 @@ func TestMain(m *testing.M) {
 		//log.Fatal(err)
 	}
 
-	if (redisAlreadyRunning == false) {
+	if redisAlreadyRunning == false {
 		//If Redis was not already running, close the instance that we ran
 		_, err := exec.Command("/bin/sh", "-c", "sudo /etc/init.d/redis-server stop").Output()
 		if err != nil {
@@ -394,12 +394,12 @@ func TestMain(m *testing.M) {
 //Test Initialize() API
 func TestInitialize(t *testing.T) {
 	ret := cvl.Initialize()
-	if (ret != cvl.CVL_SUCCESS) {
+	if ret != cvl.CVL_SUCCESS {
 		t.Errorf("CVl initialization failed")
 	}
 
 	ret = cvl.Initialize()
-	if (ret != cvl.CVL_SUCCESS) {
+	if ret != cvl.CVL_SUCCESS {
 		t.Errorf("CVl re-initialization should not fail")
 	}
 }
@@ -407,7 +407,7 @@ func TestInitialize(t *testing.T) {
 //Test Initialize() API
 func TestFinish(t *testing.T) {
 	ret := cvl.Initialize()
-	if (ret != cvl.CVL_SUCCESS) {
+	if ret != cvl.CVL_SUCCESS {
 		t.Errorf("CVl initialization failed")
 	}
 
@@ -440,9 +440,8 @@ func TestValidateEditConfig_CfgFile(t *testing.T) {
 			jsonEditCfg_Create_ConfigMap := convertJsonFileToMap(t, tc.cfgDataFile)
 
 			cfgData := []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap, false},
 			}
-
 
 			cvlErrObj, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -451,9 +450,8 @@ func TestValidateEditConfig_CfgFile(t *testing.T) {
 			}
 
 			cfgData = []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap, false},
 			}
-
 
 			cvlErrObj, err = cvSess.ValidateEditConfig(cfgData)
 
@@ -493,9 +491,8 @@ func TestValidateEditConfig_CfgStrBuffer(t *testing.T) {
 			jsonEditCfg_Create_ConfigMap := convertDataStringToMap(t, tc.cfgData)
 
 			cfgData := []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_TABLE|TestACL1", jsonEditCfg_Create_DependentMap, false},
 			}
-
 
 			cvlErrObj, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -504,9 +501,8 @@ func TestValidateEditConfig_CfgStrBuffer(t *testing.T) {
 			}
 
 			cfgData = []cvl.CVLEditConfigData{
-				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap},
+				cvl.CVLEditConfigData{cvl.VALIDATE_ALL, cvl.OP_CREATE, "ACL_RULE|TestACL1|Rule1", jsonEditCfg_Create_ConfigMap, false},
 			}
-
 
 			cvlErrObj, err = cvSess.ValidateEditConfig(cfgData)
 
@@ -518,6 +514,7 @@ func TestValidateEditConfig_CfgStrBuffer(t *testing.T) {
 
 	cvl.ValidationSessClose(cvSess)
 }
+
 /* API when config is given as string buffer. */
 func TestValidateConfig_CfgStrBuffer(t *testing.T) {
 	type testStruct struct {
@@ -529,7 +526,7 @@ func TestValidateConfig_CfgStrBuffer(t *testing.T) {
 	tests := []testStruct{}
 
 	for index, _ := range json_validate_config_data {
-		// Fetch the modelName. 
+		// Fetch the modelName.
 		result := strings.Split(json_validate_config_data[index], "{")
 		modelName := strings.Trim(strings.Replace(strings.TrimSpace(result[1]), "\"", "", -1), ":")
 
@@ -543,7 +540,6 @@ func TestValidateConfig_CfgStrBuffer(t *testing.T) {
 		t.Run(fmt.Sprintf("%s [%d]", tc.filedescription, index+1), func(t *testing.T) {
 			err := cvSess.ValidateConfig(tc.jsonString)
 
-
 			if err != tc.retCode {
 				t.Errorf("Config Validation failed.")
 			}
@@ -551,10 +547,9 @@ func TestValidateConfig_CfgStrBuffer(t *testing.T) {
 		})
 	}
 
-	 cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 }
-
 
 /* API when config is given as json file. */
 func TestValidateConfig_CfgFile(t *testing.T) {
@@ -577,7 +572,6 @@ func TestValidateConfig_CfgFile(t *testing.T) {
 			jsonString := convertJsonFileToString(t, tc.fileName)
 			err := cvSess.ValidateConfig(jsonString)
 
-
 			if err != tc.retCode {
 				t.Errorf("Config Validation failed.")
 			}
@@ -585,7 +579,7 @@ func TestValidateConfig_CfgFile(t *testing.T) {
 		})
 	}
 
-	 cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 }
 
 //Validate invalid json data
@@ -645,6 +639,7 @@ func TestValidateEditConfig_Delete_Semantic_ACLTableReference_Positive(t *testin
 			cvl.OP_DELETE,
 			"ACL_RULE|TestACL1005|Rule1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -666,10 +661,10 @@ func TestValidateEditConfig_Delete_Semantic_ACLTableReference_Positive(t *testin
 func TestValidateEditConfig_Create_Syntax_Valid_FieldValue(t *testing.T) {
 
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -690,6 +685,7 @@ func TestValidateEditConfig_Create_Syntax_Valid_FieldValue(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -716,18 +712,19 @@ func TestValidateEditConfig_Create_Syntax_CableLength(t *testing.T) {
 			cvl.OP_CREATE,
 			"CABLE_LENGTH|AZURE",
 			map[string]string{
-			  "Ethernet8": "5m",
-			  "Ethernet12": "5m",
-			  "PortChannel16": "5m",
+				"Ethernet8":     "5m",
+				"Ethernet12":    "5m",
+				"PortChannel16": "5m",
 			},
+			false,
 		},
-	 }
+	}
 
-	 cvSess, _ := cvl.ValidationSessOpen()
+	cvSess, _ := cvl.ValidationSessOpen()
 
-	 cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
+	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
-	 cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 	if err == cvl.CVL_SUCCESS {
 		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
@@ -743,6 +740,7 @@ func TestValidateEditConfig_Create_Syntax_Invalid_FieldValue(t *testing.T) {
 			"stage": "INGRESS",
 			"type":  "junk",
 		},
+			false,
 		},
 	}
 
@@ -761,10 +759,10 @@ func TestValidateEditConfig_Create_Syntax_Invalid_FieldValue(t *testing.T) {
 /* API to test edit config with valid syntax. */
 func TestValidateEditConfig_Create_Syntax_Invalid_PacketAction_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -778,13 +776,14 @@ func TestValidateEditConfig_Create_Syntax_Invalid_PacketAction_Negative(t *testi
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD777",
-				"IP_TYPE": "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
-				"L4_SRC_PORT":    "1909",
+				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -806,10 +805,10 @@ func TestValidateEditConfig_Create_Syntax_Invalid_PacketAction_Negative(t *testi
 /* API to test edit config with valid syntax. */
 func TestValidateEditConfig_Create_Syntax_Invalid_SrcPrefix_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -823,13 +822,14 @@ func TestValidateEditConfig_Create_Syntax_Invalid_SrcPrefix_Negative(t *testing.
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE": "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/3288888",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -852,10 +852,10 @@ func TestValidateEditConfig_Create_Syntax_Invalid_SrcPrefix_Negative(t *testing.
 func TestValidateEditConfig_Create_Syntax_InvalidIPAddress_Negative(t *testing.T) {
 
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -868,13 +868,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidIPAddress_Negative(t *testing.T
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1a.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -896,10 +897,10 @@ func TestValidateEditConfig_Create_Syntax_InvalidIPAddress_Negative(t *testing.T
 /* API to test edit config with valid syntax. */
 func TestValidateEditConfig_Create_Syntax_OutofBound_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -913,13 +914,14 @@ func TestValidateEditConfig_Create_Syntax_OutofBound_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "19099090909090",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -941,16 +943,15 @@ func TestValidateEditConfig_Create_Syntax_OutofBound_Negative(t *testing.T) {
 /* API to test edit config with valid syntax. */
 func TestValidateEditConfig_Create_Syntax_InvalidProtocol_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
 
 	loadConfigDB(rclient, depDataMap)
-
 
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
@@ -959,13 +960,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidProtocol_Negative(t *testing.T)
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "10388888",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -989,10 +991,10 @@ func TestValidateEditConfig_Create_Syntax_InvalidProtocol_Negative(t *testing.T)
 //hence ACL_TABLE is not required here
 func TestValidateEditConfig_Create_Syntax_InvalidRange_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -1006,13 +1008,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidRange_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "777779000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1034,7 +1037,6 @@ func TestValidateEditConfig_Create_Syntax_InvalidRange_Negative(t *testing.T) {
 /* API to test edit config with valid syntax. */
 func TestValidateEditConfig_Create_Syntax_InvalidCharNEw_Negative(t *testing.T) {
 
-
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1042,13 +1044,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidCharNEw_Negative(t *testing.T) 
 			"ACL_RULE|TestACL1jjjj|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1068,16 +1071,15 @@ func TestValidateEditConfig_Create_Syntax_InvalidCharNEw_Negative(t *testing.T) 
 
 func TestValidateEditConfig_Create_Syntax_SpecialChar_Positive(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
 
 	loadConfigDB(rclient, depDataMap)
-
 
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
@@ -1086,13 +1088,14 @@ func TestValidateEditConfig_Create_Syntax_SpecialChar_Positive(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule@##",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1119,13 +1122,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidKeyName_Negative(t *testing.T) 
 			"AC&&***L_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1145,10 +1149,10 @@ func TestValidateEditConfig_Create_Syntax_InvalidKeyName_Negative(t *testing.T) 
 
 func TestValidateEditConfig_Create_Semantic_AdditionalInvalidNode_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL1": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -1162,7 +1166,7 @@ func TestValidateEditConfig_Create_Semantic_AdditionalInvalidNode_Negative(t *te
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
@@ -1170,6 +1174,7 @@ func TestValidateEditConfig_Create_Semantic_AdditionalInvalidNode_Negative(t *te
 				"L4_DST_PORT_RANGE": "9000-12000",
 				"extra":             "shhs",
 			},
+			false,
 		},
 	}
 
@@ -1198,6 +1203,7 @@ func TestValidateEditConfig_Create_Semantic_MissingMandatoryNode_Negative(t *tes
 			map[string]string{
 				"NULL": "NULL",
 			},
+			false,
 		},
 	}
 
@@ -1223,13 +1229,14 @@ func TestValidateEditConfig_Create_Syntax_Invalid_Negative(t *testing.T) {
 			"ACL_RULERule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1256,13 +1263,14 @@ func TestValidateEditConfig_Create_Syntax_IncompleteKey_Negative(t *testing.T) {
 			"ACL_RULE|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1289,13 +1297,14 @@ func TestValidateEditConfig_Create_Syntax_InvalidKey_Negative(t *testing.T) {
 			"|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1325,6 +1334,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Negative(t *testing.T) {
 				"src_ip": "10.1.0.32",
 				"dst_ip": "2.2.2.2",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1333,6 +1343,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Negative(t *testing.T) {
 			map[string]string{
 				"MIRROR_ACTION": "everflow",
 			},
+			false,
 		},
 	}
 
@@ -1361,6 +1372,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"admin_status": "up",
 				"mtu":          "9100",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -1370,36 +1382,42 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"admin_status": "up",
 				"mtu":          "9100",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch1|Ethernet4",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch1|Ethernet8",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet12",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet16",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_NONE,
 			"PORTCHANNEL_MEMBER|ch2|Ethernet20",
 			map[string]string{},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1409,6 +1427,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Negative(t *testing.T) {
 				"vlanid":   "102",
 				"members@": "Ethernet24,ch1,Ethernet8",
 			},
+			false,
 		},
 	}
 
@@ -1436,13 +1455,14 @@ func TestValidateEditConfig_Delete_Syntax_InvalidKey_Negative(t *testing.T) {
 			"|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1469,13 +1489,14 @@ func TestValidateEditConfig_Update_Syntax_InvalidKey_Negative(t *testing.T) {
 			"|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1502,13 +1523,14 @@ func TestValidateEditConfig_Delete_InvalidKey_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1:Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1535,13 +1557,14 @@ func TestValidateEditConfig_Update_Semantic_Invalid_Key_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103uuuu",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1576,6 +1599,7 @@ func TestValidateEditConfig_Delete_Semantic_Positive(t *testing.T) {
 			cvl.OP_DELETE,
 			"MIRROR_SESSION|everflow",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1601,6 +1625,7 @@ func TestValidateEditConfig_Delete_Semantic_KeyNotExisting_Negative(t *testing.T
 			cvl.OP_DELETE,
 			"MIRROR_SESSION|everflow0",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1628,6 +1653,7 @@ func TestValidateEditConfig_Update_Semantic_MissingKey_Negative(t *testing.T) {
 			map[string]string{
 				"MIRROR_ACTION": "everflow",
 			},
+			false,
 		},
 	}
 
@@ -1647,10 +1673,10 @@ func TestValidateEditConfig_Update_Semantic_MissingKey_Negative(t *testing.T) {
 
 func TestValidateEditConfig_Create_Duplicate_Key_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"ACL_TABLE": map[string]interface{} {
-			"TestACL100": map[string]interface{} {
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL100": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -1667,6 +1693,7 @@ func TestValidateEditConfig_Create_Duplicate_Key_Negative(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "L3",
 			},
+			false,
 		},
 	}
 
@@ -1706,6 +1733,7 @@ func TestValidateEditConfig_Update_Semantic_Positive(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1791,6 +1819,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Redis_Positive(t *testin
 			map[string]string{
 				"MIRROR_ACTION": "everflow2",
 			},
+			false,
 		},
 	}
 
@@ -1822,6 +1851,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -1829,13 +1859,14 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -1845,6 +1876,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Invalid_Op_Seq(t *testin
 				"PACKET_ACTION": "DROP",
 				"L4_SRC_PORT":   "781",
 			},
+			false,
 		},
 	}
 
@@ -1871,6 +1903,7 @@ func TestValidateEditConfig_Update_Syntax_DependentData_Redis_Negative(t *testin
 			map[string]string{
 				"MIRROR_ACTION": "everflow0",
 			},
+			false,
 		},
 	}
 
@@ -1901,6 +1934,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Redis_Positive(t *testin
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1919,13 +1953,14 @@ func TestValidateEditConfig_Create_Syntax_DependentData_Redis_Positive(t *testin
 			"ACL_RULE|TestACL22|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -1947,6 +1982,7 @@ func TestValidateEditConfig_Delete_Semantic_ACLTableReference_Negative(t *testin
 			cvl.OP_DELETE,
 			"ACL_RULE|MyACLTest_ACL_IPV4|Test_1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -1978,6 +2014,7 @@ func TestValidateEditConfig_Create_Dependent_CacheData(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -1991,13 +2028,14 @@ func TestValidateEditConfig_Create_Dependent_CacheData(t *testing.T) {
 			"ACL_RULE|TestACL14|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2022,6 +2060,7 @@ func TestValidateEditConfig_Create_DepData_In_MultiSess(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -2038,18 +2077,18 @@ func TestValidateEditConfig_Create_DepData_In_MultiSess(t *testing.T) {
 			"ACL_RULE|TestACL16|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
 	_, err2 := cvSess.ValidateEditConfig(cfgDataRule)
-
 
 	cvl.ValidationSessClose(cvSess)
 
@@ -2081,20 +2120,20 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative11(t *testing.T) {
 			"ACL_RULE|TestACL188|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgDataRule)
 
 	WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
-
 
 	cvl.ValidationSessClose(cvSess)
 
@@ -2104,7 +2143,6 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative11(t *testing.T) {
 
 	unloadConfigDB(rclient, depDataMap)
 }
-
 
 func TestValidateEditConfig_Create_DepData_From_Redis(t *testing.T) {
 
@@ -2128,16 +2166,16 @@ func TestValidateEditConfig_Create_DepData_From_Redis(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgDataRule)
 
@@ -2158,8 +2196,9 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Range_Negative(t *testing
 			cvl.OP_CREATE,
 			"VLAN|Vlan701",
 			map[string]string{
-				"vlanid":   "7001",
+				"vlanid": "7001",
 			},
+			false,
 		},
 	}
 
@@ -2186,10 +2225,11 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Length_Negative(t *testin
 			cvl.OP_CREATE,
 			"ACL_TABLE|TestACL1",
 			map[string]string{
-				"stage": "INGRESS",
-				"type":  "MIRROR",
+				"stage":       "INGRESS",
+				"type":        "MIRROR",
 				"policy_desc": "A12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
 			},
+			false,
 		},
 	}
 
@@ -2216,8 +2256,9 @@ func TestValidateEditConfig_Create_Syntax_ErrAppTag_In_Pattern_Negative(t *testi
 			cvl.OP_CREATE,
 			"VLAN|Vlan5001",
 			map[string]string{
-				"vlanid":   "102",
+				"vlanid": "102",
 			},
+			false,
 		},
 	}
 
@@ -2248,6 +2289,7 @@ func TestValidateEditConfig_Create_Syntax_InValid_FieldValue(t *testing.T) {
 				"stage": "INGRESS",
 				"type":  "MIRROR",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
@@ -2255,19 +2297,21 @@ func TestValidateEditConfig_Create_Syntax_InValid_FieldValue(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV4",
+				"IP_TYPE":           "IPV4",
 				"SRC_IP":            "10.1.1.1/32",
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"ACL_RULE|TestACL1",
 			map[string]string{},
+			false,
 		},
 	}
 
@@ -2313,6 +2357,7 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative(t *testing.T) {
 				"DST_IP": "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2334,21 +2379,21 @@ func TestValidateEditConfig_Create_DepData_From_Redis_Negative(t *testing.T) {
 
 //EditConfig(Delete) deleting entry already used by other table as leafref
 func TestValidateEditConfig_Delete_Dep_Leafref_Negative(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL1": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
-		"ACL_RULE": map[string]interface{} {
-			"TestACL1|Rule1": map[string] interface{} {
-				"PACKET_ACTION": "FORWARD",
-				"IP_TYPE":	     "IPV4",
-				"SRC_IP": "10.1.1.1/32",
-				"L4_SRC_PORT": "1909",
-				"IP_PROTOCOL": "103",
-				"DST_IP": "20.2.2.2/32",
+		"ACL_RULE": map[string]interface{}{
+			"TestACL1|Rule1": map[string]interface{}{
+				"PACKET_ACTION":     "FORWARD",
+				"IP_TYPE":           "IPV4",
+				"SRC_IP":            "10.1.1.1/32",
+				"L4_SRC_PORT":       "1909",
+				"IP_PROTOCOL":       "103",
+				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
 		},
@@ -2357,13 +2402,13 @@ func TestValidateEditConfig_Delete_Dep_Leafref_Negative(t *testing.T) {
 	//Prepare data in Redis
 	loadConfigDB(rclient, depDataMap)
 
-	cfgDataVlan := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"ACL_TABLE|TestACL1",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
@@ -2384,16 +2429,17 @@ func TestValidateEditConfig_Delete_Dep_Leafref_Negative(t *testing.T) {
 
 func TestValidateEditConfig_Create_Syntax_InvalidVlanRange_Negative(t *testing.T) {
 
-        cfgData := []cvl.CVLEditConfigData{
-                cvl.CVLEditConfigData{
-                        cvl.VALIDATE_ALL,
-                        cvl.OP_CREATE,
-                        "VLAN|Vlan5002",
-                        map[string]string{
-                                "vlanid":   "6002",
-                        },
-                },
-        }
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
+			cvl.VALIDATE_ALL,
+			cvl.OP_CREATE,
+			"VLAN|Vlan5002",
+			map[string]string{
+				"vlanid": "6002",
+			},
+			false,
+		},
+	}
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
@@ -2405,46 +2451,46 @@ func TestValidateEditConfig_Create_Syntax_InvalidVlanRange_Negative(t *testing.T
 
 	if retCode == cvl.CVL_SUCCESS { //should not succeed
 		t.Errorf("Config Validation failed with details %v.", cvlErrInfo)
-        }
+	}
 
 }
 
 //Test Initialize() API
 func TestLogging(t *testing.T) {
-        ret := cvl.Initialize()
-        str := "Testing"
-        cvl.CVL_LOG(INFO ,"This is Info Log %s", str)
-        cvl.CVL_LOG(WARNING,"This is Warning Log %s", str)
-        cvl.CVL_LOG(ERROR ,"This is Error Log %s", str)
-        cvl.CVL_LOG(INFO_API ,"This is Info API %s", str)
-        cvl.CVL_LOG(INFO_TRACE ,"This is Info Trace %s", str)
-        cvl.CVL_LOG(INFO_DEBUG ,"This is Info Debug %s", str)
-        cvl.CVL_LOG(INFO_DATA ,"This is Info Data %s", str)
-        cvl.CVL_LOG(INFO_DETAIL ,"This is Info Detail %s", str)
-        cvl.CVL_LOG(INFO_ALL ,"This is Info all %s", str)
+	ret := cvl.Initialize()
+	str := "Testing"
+	cvl.CVL_LOG(INFO, "This is Info Log %s", str)
+	cvl.CVL_LOG(WARNING, "This is Warning Log %s", str)
+	cvl.CVL_LOG(ERROR, "This is Error Log %s", str)
+	cvl.CVL_LOG(INFO_API, "This is Info API %s", str)
+	cvl.CVL_LOG(INFO_TRACE, "This is Info Trace %s", str)
+	cvl.CVL_LOG(INFO_DEBUG, "This is Info Debug %s", str)
+	cvl.CVL_LOG(INFO_DATA, "This is Info Data %s", str)
+	cvl.CVL_LOG(INFO_DETAIL, "This is Info Detail %s", str)
+	cvl.CVL_LOG(INFO_ALL, "This is Info all %s", str)
 
-        if (ret != cvl.CVL_SUCCESS) {
-                t.Errorf("CVl initialization failed")
-        }
+	if ret != cvl.CVL_SUCCESS {
+		t.Errorf("CVl initialization failed")
+	}
 
-        cvl.Finish()
+	cvl.Finish()
 
 	//Initialize again for other test cases to run
 	cvl.Initialize()
 }
 
 func TestValidateEditConfig_DepData_Through_Cache(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"PORT" : map[string]interface{} {
-			"Ethernet3" : map[string]interface{} {
-				"alias":"hundredGigE1",
+	depDataMap := map[string]interface{}{
+		"PORT": map[string]interface{}{
+			"Ethernet3": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "81,82,83,84",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
-			"Ethernet5" : map[string]interface{} {
-				"alias":"hundredGigE1",
+			"Ethernet5": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "85,86,87,89",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
 		},
 	}
@@ -2453,9 +2499,9 @@ func TestValidateEditConfig_DepData_Through_Cache(t *testing.T) {
 	loadConfigDB(rclient, depDataMap)
 
 	//Modify entry
-	modDepDataMap := map[string]interface{} {
-		"PORT" : map[string]interface{} {
-			"Ethernet3" : map[string]interface{} {
+	modDepDataMap := map[string]interface{}{
+		"PORT": map[string]interface{}{
+			"Ethernet3": map[string]interface{}{
 				"mtu": "9200",
 			},
 		},
@@ -2463,16 +2509,17 @@ func TestValidateEditConfig_DepData_Through_Cache(t *testing.T) {
 
 	loadConfigDB(rclient, modDepDataMap)
 
-	cfgDataAclRule :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAclRule := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"ACL_TABLE|TestACL1",
-			map[string]string {
-				"stage": "INGRESS",
-				"type": "L3",
-				"ports@":"Ethernet3,Ethernet5",
+			map[string]string{
+				"stage":  "INGRESS",
+				"type":   "L3",
+				"ports@": "Ethernet3,Ethernet5",
 			},
+			false,
 		},
 	}
 
@@ -2493,12 +2540,12 @@ func TestValidateEditConfig_DepData_Through_Cache(t *testing.T) {
 /* Delete field for an existing key.*/
 func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 
-	depDataMap := map[string]interface{} {
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL1": map[string] interface{} {
-				"stage": "INGRESS",
-				"type": "L3",
-				"policy_desc":"Test ACL desc",
+	depDataMap := map[string]interface{}{
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
+				"stage":       "INGRESS",
+				"type":        "L3",
+				"policy_desc": "Test ACL desc",
 			},
 		},
 	}
@@ -2512,8 +2559,9 @@ func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 			cvl.OP_DELETE,
 			"ACL_TABLE|TestACL1",
 			map[string]string{
-				"policy_desc":"Test ACL desc",
+				"policy_desc": "Test ACL desc",
 			},
+			false,
 		},
 	}
 
@@ -2531,16 +2579,17 @@ func TestValidateEditConfig_Delete_Single_Field_Positive(t *testing.T) {
 }
 
 func TestValidateEditConfig_Create_Dscp_To_Tc_Map(t *testing.T) {
-	cfgData := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"DSCP_TO_TC_MAP|AZURE",
-			map[string]string {
+			map[string]string{
 				"1": "7",
 				"2": "8",
 				"3": "9",
 			},
+			false,
 		},
 	}
 
@@ -2607,14 +2656,14 @@ func TestValidateConfig_Repeated_Keys_Positive(t *testing.T) {
 }
 
 func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan20": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan20": map[string]interface{}{
 				"vlanid": "20",
 			},
 		},
-		"VLAN_MEMBER": map[string]interface{} {
-			"Vlan20|Ethernet4": map[string] interface{} {
+		"VLAN_MEMBER": map[string]interface{}{
+			"Vlan20|Ethernet4": map[string]interface{}{
 				"tagging_mode": "tagged",
 			},
 		},
@@ -2625,32 +2674,32 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataAcl := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAcl := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VLAN_MEMBER|Vlan20|Ethernet4",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgDataAcl)
 
-	cfgDataAcl = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAcl = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_DELETE,
 			"VLAN_MEMBER|Vlan20|Ethernet4",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VLAN|Vlan20",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
@@ -2660,7 +2709,7 @@ func TestValidateEditConfig_Delete_Entry_Then_Dep_Leafref_Positive(t *testing.T)
 
 	WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
 
-	if err != cvl.CVL_SUCCESS { //should be success 
+	if err != cvl.CVL_SUCCESS { //should be success
 		t.Errorf("Config Validation failed.")
 	}
 
@@ -2673,8 +2722,8 @@ func TestBadSchema(t *testing.T) {
 	env[0] = env[0] + " "
 
 	if _, err := os.Stat("/usr/sbin/schema"); os.IsNotExist(err) {
-		//Corrupt some schema file 
-		exec.Command("/bin/sh", "-c", "/bin/cp testdata/schema/sonic-port.yin testdata/schema/sonic-port.yin.bad" + 
+		//Corrupt some schema file
+		exec.Command("/bin/sh", "-c", "/bin/cp testdata/schema/sonic-port.yin testdata/schema/sonic-port.yin.bad" +
 		" && /bin/sed -i '1 a <junk>' testdata/schema/sonic-port.yin.bad").Output()
 
 		//Parse bad schema file
@@ -2682,11 +2731,11 @@ func TestBadSchema(t *testing.T) {
 			t.Errorf("Bad schema parsing should fail.")
 		}
 
-		//Revert to 
+		//Revert to
 		exec.Command("/bin/sh",  "-c", "/bin/rm testdata/schema/sonic-port.yin.bad").Output()
 	} else {
-		//Corrupt some schema file 
-		exec.Command("/bin/sh", "-c", "/bin/cp /usr/sbin/schema/sonic-port.yin /usr/sbin/schema/sonic-port.yin.bad" + 
+		//Corrupt some schema file
+		exec.Command("/bin/sh", "-c", "/bin/cp /usr/sbin/schema/sonic-port.yin /usr/sbin/schema/sonic-port.yin.bad" +
 		" && /bin/sed -i '1 a <junk>' /usr/sbin/schema/sonic-port.yin.bad").Output()
 
 		//Parse bad schema file
@@ -2694,7 +2743,7 @@ func TestBadSchema(t *testing.T) {
 			t.Errorf("Bad schema parsing should fail.")
 		}
 
-		//Revert to 
+		//Revert to
 		exec.Command("/bin/sh",  "-c", "/bin/rm /usr/sbin/schema/sonic-port.yin.bad").Output()
 	}
 
@@ -2741,6 +2790,7 @@ func TestServicability_Debug_Trace(t *testing.T) {
 				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
+			false,
 		},
 	}
 
@@ -2755,7 +2805,7 @@ func TestServicability_Debug_Trace(t *testing.T) {
 	cvl.ValidationSessClose(cvSess)
 
 	//Reload the  bad config file by sending SIGUSR2 to ourself
-	exec.Command("/bin/sh", "-c", "/bin/cp conf/cvl_cfg.json conf/cvl_cfg.json.orig" + 
+	exec.Command("/bin/sh", "-c", "/bin/cp conf/cvl_cfg.json conf/cvl_cfg.json.orig" +
 	" && /bin/echo 'junk' >> conf/cvl_cfg.json").Output()
 	p, err = os.FindProcess(os.Getpid())
 	if (err == nil) {
@@ -2767,18 +2817,18 @@ func TestServicability_Debug_Trace(t *testing.T) {
 
 // EditConfig(Create) with chained leafref from redis
 func TestValidateEditConfig_Delete_Create_Same_Entry_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan100": map[string]interface{} {
+	depDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan100": map[string]interface{}{
 				"members@": "Ethernet1",
-				"vlanid": "100",
+				"vlanid":   "100",
 			},
 		},
-		"PORT" : map[string]interface{} {
-			"Ethernet1" : map[string]interface{} {
-				"alias":"hundredGigE1",
+		"PORT": map[string]interface{}{
+			"Ethernet1": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "81,82,83,84",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
 		},
 	}
@@ -2788,27 +2838,28 @@ func TestValidateEditConfig_Delete_Create_Same_Entry_Positive(t *testing.T) {
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataVlan := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VLAN|Vlan100",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	_, err1 := cvSess.ValidateEditConfig(cfgDataVlan)
 
 	//Same entry getting created again
-	cfgDataVlan = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"VLAN|Vlan100",
-			map[string]string {
+			map[string]string{
 				"vlanid": "100",
 			},
+			false,
 		},
 	}
 
@@ -2818,7 +2869,6 @@ func TestValidateEditConfig_Delete_Create_Same_Entry_Positive(t *testing.T) {
 		t.Errorf("Config Validation failed.")
 		return
 	}
-
 
 	cvl.ValidationSessClose(cvSess)
 
@@ -2834,32 +2884,32 @@ func TestValidateStartupConfig_Positive(t *testing.T) {
 }
 
 func TestValidateIncrementalConfig_Positive(t *testing.T) {
-	existingDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan800": map[string]interface{} {
+	existingDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan800": map[string]interface{}{
 				"members@": "Ethernet1",
-				"vlanid": "800",
+				"vlanid":   "800",
 			},
-			"Vlan801": map[string]interface{} {
+			"Vlan801": map[string]interface{}{
 				"members@": "Ethernet2",
-				"vlanid": "801",
+				"vlanid":   "801",
 			},
 		},
-		"VLAN_MEMBER": map[string]interface{} {
-			"Vlan800|Ethernet1": map[string] interface{} {
+		"VLAN_MEMBER": map[string]interface{}{
+			"Vlan800|Ethernet1": map[string]interface{}{
 				"tagging_mode": "tagged",
 			},
 		},
-		"PORT" : map[string]interface{} {
-			"Ethernet1" : map[string]interface{} {
-				"alias":"hundredGigE1",
+		"PORT": map[string]interface{}{
+			"Ethernet1": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "81,82,83,84",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
-			"Ethernet2" : map[string]interface{} {
-				"alias":"hundredGigE1",
+			"Ethernet2": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "85,86,87,89",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
 		},
 	}
@@ -2929,11 +2979,11 @@ func TestValidateFields(t *testing.T) {
 }
 
 func TestValidateEditConfig_Two_Updates_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL1": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
 	}
@@ -2943,22 +2993,24 @@ func TestValidateEditConfig_Two_Updates_Positive(t *testing.T) {
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataAcl := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAcl := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"ACL_TABLE|TestACL1",
-			map[string]string {
+			map[string]string{
 				"policy_desc": "Test ACL",
 			},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"ACL_TABLE|TestACL1",
-			map[string]string {
+			map[string]string{
 				"type": "MIRROR",
 			},
+			false,
 		},
 	}
 
@@ -2968,7 +3020,7 @@ func TestValidateEditConfig_Two_Updates_Positive(t *testing.T) {
 
 	WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
 
-	if err != cvl.CVL_SUCCESS { //should be success 
+	if err != cvl.CVL_SUCCESS { //should be success
 		t.Errorf("Config Validation failed.")
 	}
 
@@ -2986,6 +3038,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannel(t *t
 				"vlanid":   "1001",
 				"members@": "Ethernet28,PortChannel002",
 			},
+			false,
 		},
 	}
 
@@ -3003,7 +3056,6 @@ func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannel(t *t
 
 }
 
-
 func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannelIfName(t *testing.T) {
 
 	cfgData := []cvl.CVLEditConfigData{
@@ -3015,6 +3067,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_PositivePortChannelIfNam
 				"vlanid":   "1001",
 				"members@": "Ethernet24,PortChannel001",
 			},
+			false,
 		},
 	}
 
@@ -3042,6 +3095,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_NegativePortChannelEther
 				"vlanid":   "1001",
 				"members@": "PortChannel001,Ethernet4",
 			},
+			false,
 		},
 	}
 
@@ -3069,6 +3123,7 @@ func TestValidateEditConfig_Create_Syntax_DependentData_NegativePortChannelNew(t
 				"vlanid":   "1001",
 				"members@": "Ethernet12,PortChannel001",
 			},
+			false,
 		},
 	}
 
@@ -3086,11 +3141,11 @@ func TestValidateEditConfig_Create_Syntax_DependentData_NegativePortChannelNew(t
 }
 
 func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan201": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan201": map[string]interface{}{
 				"vlanid":   "201",
-				"mtu": "1700",
+				"mtu":      "1700",
 				"members@": "Ethernet8",
 			},
 		},
@@ -3101,16 +3156,16 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t 
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"VLAN|Vlan201",
 			map[string]string{
-				"mtu": "1900",
+				"mtu":      "1900",
 				"members@": "Ethernet8,Ethernet12",
 			},
+			false,
 		},
 	}
 
@@ -3129,6 +3184,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t 
 			map[string]string{
 				"tagging_mode": "tagged",
 			},
+			false,
 		},
 	}
 
@@ -3146,11 +3202,11 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Positive(t 
 }
 
 func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Single_Call_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan201": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan201": map[string]interface{}{
 				"vlanid":   "201",
-				"mtu": "1700",
+				"mtu":      "1700",
 				"members@": "Ethernet8",
 			},
 		},
@@ -3161,16 +3217,16 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Single_Call
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"VLAN|Vlan201",
 			map[string]string{
-				"mtu": "1900",
+				"mtu":      "1900",
 				"members@": "Ethernet8,Ethernet12",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -3179,6 +3235,7 @@ func TestValidateEditConfig_Use_Updated_Data_As_Create_DependentData_Single_Call
 			map[string]string{
 				"tagging_mode": "tagged",
 			},
+			false,
 		},
 	}
 
@@ -3202,8 +3259,8 @@ func TestValidateEditConfig_Create_Syntax_Interface_AllKeys_Positive(t *testing.
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"INTERFACE|Ethernet24|10.0.0.0/31",
-			map[string]string{
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
@@ -3227,8 +3284,8 @@ func TestValidateEditConfig_Create_Syntax_Interface_OptionalKey_Positive(t *test
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"INTERFACE|Ethernet24",
-			map[string]string{
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
@@ -3252,8 +3309,8 @@ func TestValidateEditConfig_Create_Syntax_Interface_IncorrectKey_Negative(t *tes
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"INTERFACE|10.0.0.0/31",
-			map[string]string{
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
@@ -3271,30 +3328,30 @@ func TestValidateEditConfig_Create_Syntax_Interface_IncorrectKey_Negative(t *tes
 }
 
 func TestValidateEditConfig_EmptyNode_Positive(t *testing.T) {
-        cvSess, _ := cvl.ValidationSessOpen()
+	cvSess, _ := cvl.ValidationSessOpen()
 
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
+			cvl.VALIDATE_ALL,
+			cvl.OP_UPDATE,
+			"PORT|Ethernet0",
+			map[string]string{
+				"description": "",
+				"index":       "3",
+			},
+			false,
+		},
+	}
 
-        cfgData := []cvl.CVLEditConfigData{
-                cvl.CVLEditConfigData{
-                        cvl.VALIDATE_ALL,
-                        cvl.OP_UPDATE,
-                        "PORT|Ethernet0",
-                        map[string]string{
-                                "description": "",
-                                "index": "3",
-                        },
-                },
-        }
+	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
 
-        cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
+	cvl.ValidationSessClose(cvSess)
 
-        cvl.ValidationSessClose(cvSess)
+	WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
 
-        WriteToFile(fmt.Sprintf("\nCVL Error Info is  %v\n", cvlErrInfo))
-
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
-                t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
-        }
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	}
 
 }
 
@@ -3310,7 +3367,7 @@ func TestSortDepTables(t *testing.T) {
 		return
 	}
 
-	for i := 0; i < len(expectedResult) ; i++ {
+	for i := 0; i < len(expectedResult); i++ {
 		if result[i] != expectedResult[i] {
 			t.Errorf("Validation failed, returned value = %v", result)
 			break
@@ -3332,7 +3389,7 @@ func TestGetOrderedTables(t *testing.T) {
 		return
 	}
 
-	for i := 0; i < len(expectedResult) ; i++ {
+	for i := 0; i < len(expectedResult); i++ {
 		if result[i] != expectedResult[i] {
 			t.Errorf("Validation failed, returned value = %v", result)
 			break
@@ -3354,7 +3411,7 @@ func TestGetOrderedDepTables(t *testing.T) {
 		return
 	}
 
-	for i := 0; i < len(expectedResult) ; i++ {
+	for i := 0; i < len(expectedResult); i++ {
 		if result[i] != expectedResult[i] {
 			t.Errorf("Validation failed, returned value = %v", result)
 			break
@@ -3380,45 +3437,89 @@ func TestGetDepTables(t *testing.T) {
 	cvl.ValidationSessClose(cvSess)
 }
 
+func TestDependentOnExtension(t *testing.T) {
+	cvSess, _ := cvl.ValidationSessOpen()
+	defer cvl.ValidationSessClose(cvSess)
+
+	// Test GetDepTables API
+	result, _ := cvSess.GetDepTables("sonic-spanning-tree", "STP_VLAN")
+	expectedResult := []string{"STP_VLAN", "VLAN", "STP", "PORT", "PORTCHANNEL"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetDepTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test GetOrderedDepTables API
+	result, _ = cvSess.GetOrderedDepTables("sonic-spanning-tree", "STP")
+	expectedResult = []string{"STP_PORT", "STP_VLAN", "STP"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetOrderedDepTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test GetOrderedTables API
+	result, _ = cvSess.GetOrderedTables("sonic-spanning-tree")
+	expectedResult = []string{"STP", "STP_PORT", "STP_VLAN", "STP_VLAN_PORT"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of GetOrderedTables failed, returned value = %v", result)
+		return
+	}
+
+	// Test SortDepTables API
+	result, _ = cvSess.SortDepTables([]string{"STP_VLAN", "STP", "STP_PORT"})
+	expectedResult = []string{"STP_VLAN", "STP_PORT", "STP"}
+	sort.Strings(result)
+	sort.Strings(expectedResult)
+	if !reflect.DeepEqual(result, expectedResult) {
+		t.Errorf("TestDependentOnExtension: Validation of SortDepTables failed, returned value = %v", result)
+		return
+	}
+}
 
 func TestGetDepDataForDelete(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN_MEMBER" : map[string]interface{} {
-			"Vlan21|Ethernet7": map[string] interface{} {
-				"tagging_mode":   "tagged",
+	depDataMap := map[string]interface{}{
+		"VLAN_MEMBER": map[string]interface{}{
+			"Vlan21|Ethernet7": map[string]interface{}{
+				"tagging_mode": "tagged",
 			},
-			"Vlan22|Ethernet7": map[string] interface{} {
-				"tagging_mode":   "tagged",
+			"Vlan22|Ethernet7": map[string]interface{}{
+				"tagging_mode": "tagged",
 			},
-			"Vlan22|Ethernet72": map[string] interface{} {
-				"tagging_mode":   "tagged",
-			},
-		},
-		"PORTCHANNEL_MEMBER" : map[string]interface{} {
-			"Ch47|Ethernet7": map[string] interface{} {
-				"NULL": "NULL",
-			},
-			"Ch47|Ethernet75": map[string] interface{} {
-				"NULL": "NULL",
+			"Vlan22|Ethernet72": map[string]interface{}{
+				"tagging_mode": "tagged",
 			},
 		},
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL1": map[string] interface{} {
-				"stage": "INGRESS",
-				"type": "L3",
+		"PORTCHANNEL_MEMBER": map[string]interface{}{
+			"Ch47|Ethernet7": map[string]interface{}{
+				"NULL": "NULL",
+			},
+			"Ch47|Ethernet75": map[string]interface{}{
+				"NULL": "NULL",
+			},
+		},
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
+				"stage":  "INGRESS",
+				"type":   "L3",
 				"ports@": "Ethernet3,Ethernet76,Ethernet7",
 			},
 		},
-		"CFG_L2MC_STATIC_MEMBER_TABLE" : map[string]interface{} {
-			"Vlan24|10.1.1.1|Ethernet7": map[string] interface{} {
+		"CFG_L2MC_STATIC_MEMBER_TABLE": map[string]interface{}{
+			"Vlan24|10.1.1.1|Ethernet7": map[string]interface{}{
 				"NULL": "NULL",
 			},
-			"Vlan25|10.1.1.2|Ethernet78": map[string] interface{} {
+			"Vlan25|10.1.1.2|Ethernet78": map[string]interface{}{
 				"NULL": "NULL",
 			},
 		},
-		"CFG_L2MC_MROUTER_TABLE" : map[string]interface{} {
-			"Vlan21|Ethernet7": map[string] interface{} {
+		"CFG_L2MC_MROUTER_TABLE": map[string]interface{}{
+			"Vlan21|Ethernet7": map[string]interface{}{
 				"NULL": "NULL",
 			},
 		},
@@ -3428,20 +3529,20 @@ func TestGetDepDataForDelete(t *testing.T) {
 				"dst_ip": "2.2.2.2",
 			},
 		},
-		"ACL_RULE" : map[string]interface{} {
-			"TestACL1|Rule1": map[string] interface{} {
+		"ACL_RULE": map[string]interface{}{
+			"TestACL1|Rule1": map[string]interface{}{
 				"PACKET_ACTION": "FORWARD",
 				"MIRROR_ACTION": "sess1",
 			},
 		},
-		"INTERFACE" : map[string]interface{} {
-			"Ethernet7": map[string] interface{} {
+		"INTERFACE": map[string]interface{}{
+			"Ethernet7": map[string]interface{}{
 				"vrf_name": "Vrf1",
 			},
-			"Ethernet7|10.2.1.1/16": map[string] interface{} {
+			"Ethernet7|10.2.1.1/16": map[string]interface{}{
 				"NULL": "NULL",
 			},
-			"Ethernet7|10.2.1.2/16": map[string] interface{} {
+			"Ethernet7|10.2.1.2/16": map[string]interface{}{
 				"NULL": "NULL",
 			},
 		},
@@ -3449,68 +3550,70 @@ func TestGetDepDataForDelete(t *testing.T) {
 
 	loadConfigDB(rclient, depDataMap)
 
-        cvSess, _ := cvl.ValidationSessOpen()
+	cvSess, _ := cvl.ValidationSessOpen()
 
 	depEntries := cvSess.GetDepDataForDelete("PORT|Ethernet7")
 
-        if (len(depEntries) != 9) { //9 entries to be deleted
-                t.Errorf("GetDepDataForDelete() failed")
-        }
+	if len(depEntries) != 9 { //9 entries to be deleted
+		t.Errorf("GetDepDataForDelete() failed")
+	}
 
 	depEntries1 := cvSess.GetDepDataForDelete("MIRROR_SESSION|sess1")
 
-        if (len(depEntries1) != 1) { //1 entry to be deleted
-                t.Errorf("GetDepDataForDelete() failed")
-        }
-        cvl.ValidationSessClose(cvSess)
+	if len(depEntries1) != 1 { //1 entry to be deleted
+		t.Errorf("GetDepDataForDelete() failed")
+	}
+	cvl.ValidationSessClose(cvSess)
 
 	unloadConfigDB(rclient, depDataMap)
 }
 
 func TestMaxElements_All_Entries_In_Request(t *testing.T) {
-        cvSess, _ := cvl.ValidationSessOpen()
+	cvSess, _ := cvl.ValidationSessOpen()
 
-        cfgData := []cvl.CVLEditConfigData{
-                cvl.CVLEditConfigData{
-                        cvl.VALIDATE_ALL,
-                        cvl.OP_CREATE,
-                        "VXLAN_TUNNEL|tun1",
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
+			cvl.VALIDATE_ALL,
+			cvl.OP_CREATE,
+			"VXLAN_TUNNEL|tun1",
 			map[string]string{
 				"src_ip": "20.1.1.1",
 			},
-                },
-        }
+			false,
+		},
+	}
 
 	//Check addition of first element
-        cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
+	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
 
-        cfgData1 := []cvl.CVLEditConfigData{
-                cvl.CVLEditConfigData{
-                        cvl.VALIDATE_ALL,
-                        cvl.OP_CREATE,
-                        "VXLAN_TUNNEL|tun2",
+	cfgData1 := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
+			cvl.VALIDATE_ALL,
+			cvl.OP_CREATE,
+			"VXLAN_TUNNEL|tun2",
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
-                },
-        }
+			false,
+		},
+	}
 
 	//Try to validate addition of second element
-        cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData1)
+	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData1)
 
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 	//Should fail as "VXLAN_TUNNEL" has max-elements as '1'
-        if cvlErrInfo.ErrCode == cvl.CVL_SUCCESS {
-                t.Errorf("VXLAN_TUNNEL Config Validation failed -- error details %v", cvlErrInfo)
-        }
+	if cvlErrInfo.ErrCode == cvl.CVL_SUCCESS {
+		t.Errorf("VXLAN_TUNNEL Config Validation failed -- error details %v", cvlErrInfo)
+	}
 
 }
 
 func TestMaxElements_Entries_In_Redis(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VXLAN_TUNNEL" : map[string]interface{} {
-			"tun1" : map[string]interface{} {
+	depDataMap := map[string]interface{}{
+		"VXLAN_TUNNEL": map[string]interface{}{
+			"tun1": map[string]interface{}{
 				"src_ip": "20.1.1.1",
 			},
 		},
@@ -3518,7 +3621,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 
 	loadConfigDB(rclient, depDataMap)
 
-        cvSess, _ := cvl.ValidationSessOpen()
+	cvSess, _ := cvl.ValidationSessOpen()
 
 	cfgData := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
@@ -3528,39 +3631,39 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
+			false,
 		},
 	}
 
 	//Check addition of second element
 	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
 
-
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 	//Should fail as "VXLAN_TUNNEL" has max-elements as '1'
-        if cvlErrInfo.ErrCode == cvl.CVL_SUCCESS {
-                t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	if cvlErrInfo.ErrCode == cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
 		unloadConfigDB(rclient, depDataMap)
 		return
-        }
+	}
 
 	cfgData1 := []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VXLAN_TUNNEL|tun1",
-			map[string]string{
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
-	//Delete the existing entry, should succeed 
+	//Delete the existing entry, should succeed
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData1)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
-                t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
 		unloadConfigDB(rclient, depDataMap)
 		return
-        }
+	}
 
 	cfgData1 = []cvl.CVLEditConfigData{
 		cvl.CVLEditConfigData{
@@ -3570,6 +3673,7 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "20.1.1.1",
 			},
+			false,
 		},
 		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
@@ -3578,14 +3682,15 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 			map[string]string{
 				"src_ip": "30.1.1.1",
 			},
+			false,
 		},
 	}
 
 	//Check validation of new entry, should succeed now
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData1)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
-                t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
-        }
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+		t.Errorf("Config Validation failed -- error details %v", cvlErrInfo)
+	}
 
 	unloadConfigDB(rclient, depDataMap)
 }
@@ -3593,57 +3698,60 @@ func TestMaxElements_Entries_In_Redis(t *testing.T) {
 func TestValidateEditConfig_Two_Create_Requests_Positive(t *testing.T) {
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataVlan := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"VLAN|Vlan21",
-			map[string]string {
+			map[string]string{
 				"vlanid": "21",
 			},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgDataVlan)
 
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		cvl.ValidationSessClose(cvSess)
 		t.Errorf("VLAN Create : Config Validation failed")
 		return
-        }
+	}
 
-	cfgDataVlan = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_CREATE,
 			"VLAN|Vlan21",
-			map[string]string {
+			map[string]string{
 				"vlanid": "21",
 			},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"STP_VLAN|Vlan21",
-			map[string]string {
-				"enabled": "true",
+			map[string]string{
+				"enabled":       "true",
 				"forward_delay": "15",
-				"hello_time": "2",
-				"max_age" : "20",
-				"priority": "327",
-				"vlanid": "21",
+				"hello_time":    "2",
+				"max_age":       "20",
+				"priority":      "327",
+				"vlanid":        "21",
 			},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgDataVlan)
 
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		t.Errorf("STP VLAN Create : Config Validation failed")
 		return
-        }
+	}
 }
 
 func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
@@ -3655,12 +3763,12 @@ func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
 		},
 		"STP_VLAN": map[string]interface{}{
 			"Vlan51": map[string]interface{}{
-				"enabled": "true",
+				"enabled":       "true",
 				"forward_delay": "15",
-				"hello_time": "2",
-				"max_age" : "20",
-				"priority": "327",
-				"vlanid": "51",
+				"hello_time":    "2",
+				"max_age":       "20",
+				"priority":      "327",
+				"vlanid":        "51",
 			},
 		},
 	}
@@ -3669,47 +3777,47 @@ func TestValidateEditConfig_Two_Delete_Requests_Positive(t *testing.T) {
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataVlan := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"STP_VLAN|Vlan51",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgDataVlan)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		cvl.ValidationSessClose(cvSess)
 		unloadConfigDB(rclient, depDataMap)
 		t.Errorf("STP VLAN delete : Config Validation failed")
 		return
-        }
+	}
 
-	cfgDataVlan = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_DELETE,
 			"STP_VLAN|Vlan51",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VLAN|Vlan51",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgDataVlan)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		t.Errorf("VLAN delete : Config Validation failed")
-        }
+	}
 
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 	unloadConfigDB(rclient, depDataMap)
 }
@@ -3718,9 +3826,9 @@ func TestVailidateStaticPlatformLimits_YANG_Deviation_Ngeative(t *testing.T) {
 
 	//Get platform
 	platformName := ""
-	metaData, err:= rclient.HGetAll("DEVICE_METADATA|localhost").Result()
+	metaData, err := rclient.HGetAll("DEVICE_METADATA|localhost").Result()
 
-	if (err == nil) {
+	if err == nil {
 		platformName, _ = metaData["platform"]
 	}
 
@@ -3739,33 +3847,35 @@ func TestVailidateStaticPlatformLimits_YANG_Deviation_Ngeative(t *testing.T) {
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataAcl := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAcl := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"ACL_TABLE|TestACL903",
-			map[string]string {
+			map[string]string{
 				"type": "L3",
 			},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"ACL_TABLE|TestACL904",
-			map[string]string {
+			map[string]string{
 				"type": "L3",
 			},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgDataAcl)
 
 	if (strings.Contains(platformName, "quanta_ix8")) &&
-	(cvlErrInfo.ErrCode == cvl.CVL_SUCCESS) {
+		(cvlErrInfo.ErrCode == cvl.CVL_SUCCESS) {
 		t.Errorf("Should not be able to create more than 3 ACL TABLEs")
-        }
+	}
 
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
 	unloadConfigDB(rclient, depDataMapAcl)
 }
@@ -3786,14 +3896,14 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 		"STP_VLAN_PORT": map[string]interface{}{
 			"Vlan511|Ethernet16": map[string]interface{}{
 				"path_cost": "200",
-				"priority": "128",
+				"priority":  "128",
 			},
 		},
 		"STP_PORT": map[string]interface{}{
 			"Ethernet16": map[string]interface{}{
 				"bpdu_filter": "global",
-				"enabled": "true",
-				"portfast": "true",
+				"enabled":     "true",
+				"portfast":    "true",
 			},
 		},
 	}
@@ -3801,87 +3911,89 @@ func TestValidateEditConfig_Multi_Delete_MultiKey_Same_Session_Positive(t *testi
 	loadConfigDB(rclient, depDataMap)
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgData := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"STP_VLAN_PORT|Vlan511|Ethernet16",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ := cvSess.ValidateEditConfig(cfgData)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		t.Errorf("STP_VLAN_PORT Delete: Config Validation failed")
 		unloadConfigDB(rclient, depDataMap)
 		return
-        }
+	}
 
-	cfgData = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"VLAN_MEMBER|Vlan511|Ethernet16",
-			map[string]string {
+			map[string]string{
 				"tagging_mode": "untagged",
 			},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData)
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		t.Errorf("VLAN_MEMBER Delete: Config Validation failed")
 		unloadConfigDB(rclient, depDataMap)
 		return
-        }
+	}
 
-	cfgData = []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData = []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_DELETE,
 			"STP_VLAN_PORT|Vlan511|Ethernet16",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_NONE,
 			cvl.OP_DELETE,
 			"VLAN_MEMBER|Vlan511|Ethernet16",
-			map[string]string {
+			map[string]string{
 				"tagging_mode": "untagged",
 			},
+			false,
 		},
-		cvl.CVLEditConfigData {
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			"STP_PORT|Ethernet16",
-			map[string]string {
-			},
+			map[string]string{},
+			false,
 		},
 	}
 
 	cvlErrInfo, _ = cvSess.ValidateEditConfig(cfgData)
 
-        cvl.ValidationSessClose(cvSess)
+	cvl.ValidationSessClose(cvSess)
 
-        if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
+	if cvlErrInfo.ErrCode != cvl.CVL_SUCCESS {
 		t.Errorf("STP_PORT Delete: Config Validation failed")
 		return
-        }
+	}
 
 	unloadConfigDB(rclient, depDataMap)
 }
 
 func TestValidateEditConfig_Update_Leaf_List_Max_Elements_Negative(t *testing.T) {
 	depDataMap := map[string]interface{}{
-		"VLAN": map[string]interface{} {
-			"Vlan801": map[string]interface{} {
+		"VLAN": map[string]interface{}{
+			"Vlan801": map[string]interface{}{
 				"vlanid": "801",
 			},
 		},
-		"CFG_L2MC_STATIC_GROUP_TABLE": map[string]interface{} {
-			"Vlan801|16.2.2.1": map[string]interface{} {
+		"CFG_L2MC_STATIC_GROUP_TABLE": map[string]interface{}{
+			"Vlan801|16.2.2.1": map[string]interface{}{
 				"out-intf@": "Ethernet4,Ethernet8,Ethernet16",
 			},
 		},
@@ -3891,14 +4003,15 @@ func TestValidateEditConfig_Update_Leaf_List_Max_Elements_Negative(t *testing.T)
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgData := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"CFG_L2MC_STATIC_GROUP_TABLE|Vlan801|16.2.2.1",
-			map[string]string {
+			map[string]string{
 				"out-intf@": "Ethernet4,Ethernet8,Ethernet16,Ethernet20",
 			},
+			false,
 		},
 	}
 
@@ -3919,21 +4032,22 @@ func TestValidationTimeStats(t *testing.T) {
 
 	stats := cvl.GetValidationTimeStats()
 
-	if (stats.Hits != 0 || stats.Time != 0 || stats.Peak != 0) {
+	if stats.Hits != 0 || stats.Time != 0 || stats.Peak != 0 {
 		t.Errorf("TestValidationTimeStats : clearing stats failed")
 		return
 	}
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgData := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"VRF|VrfTest",
-			map[string]string {
+			map[string]string{
 				"fallback": "true",
 			},
+			false,
 		},
 	}
 
@@ -3943,7 +4057,7 @@ func TestValidationTimeStats(t *testing.T) {
 
 	stats = cvl.GetValidationTimeStats()
 
-	if (stats.Hits == 0 || stats.Time == 0 || stats.Peak == 0) {
+	if stats.Hits == 0 || stats.Time == 0 || stats.Peak == 0 {
 		t.Errorf("TestValidationTimeStats : getting stats failed")
 		return
 	}
@@ -3953,7 +4067,7 @@ func TestValidationTimeStats(t *testing.T) {
 
 	stats = cvl.GetValidationTimeStats()
 
-	if (stats.Hits != 0 || stats.Time != 0 || stats.Peak != 0) {
+	if stats.Hits != 0 || stats.Time != 0 || stats.Peak != 0 {
 		t.Errorf("TestValidationTimeStats : clearing stats failed")
 	}
 }

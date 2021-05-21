@@ -20,9 +20,10 @@
 package custom_validation
 
 import (
+	"strconv"
+	"strings"
+
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-    "strings"
-    "strconv"
 )
 
 const QMIN = 0
@@ -35,39 +36,39 @@ func (t *CustomValidation) ValidateQindexPattern(
 	util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateQindexPattern operation: %v", vc.CurCfg.VOp)
 	util.CVL_LEVEL_LOG(util.INFO, "ValidateQindexPattern key: %v", vc.CurCfg.Key)
 	keys := strings.Split(vc.CurCfg.Key, "|")
-    if len(keys) != 3 {
-        err_str := "Invalid Key"
-        return CVLErrorInfo{
-            ErrCode:          CVL_SEMANTIC_ERROR,
-            TableName:        keys[0],
-            Keys:             keys,
-            ConstraintErrMsg: err_str,
-            ErrAppTag:        "key-invalid",
-        }
-    }
+	if len(keys) != 3 {
+		err_str := "Invalid Key"
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[0],
+			Keys:             keys,
+			ConstraintErrMsg: err_str,
+			ErrAppTag:        "key-invalid",
+		}
+	}
 
-    var qmin, qmax int
-    if strings.Contains(keys[2], "-") {
-	   qrange := strings.Split(keys[2], "-")
-       qmin, _ = strconv.Atoi(qrange[0])
-       qmax, _ = strconv.Atoi(qrange[1])
-    } else {
-      qmin, _ = strconv.Atoi(keys[2])
-      qmax, _ = strconv.Atoi(keys[2])
-    }
+	var qmin, qmax int
+	if strings.Contains(keys[2], "-") {
+		qrange := strings.Split(keys[2], "-")
+		qmin, _ = strconv.Atoi(qrange[0])
+		qmax, _ = strconv.Atoi(qrange[1])
+	} else {
+		qmin, _ = strconv.Atoi(keys[2])
+		qmax, _ = strconv.Atoi(keys[2])
+	}
 
-    if ((qmin < QMIN) ||
-        (keys[1] == "CPU" && qmax > CPU_QMAX) ||
-        (keys[1] != "CPU" && qmax > QMAX)) {
-        err_str := "Invalid Q-index"
-        return CVLErrorInfo{
-            ErrCode:          CVL_SEMANTIC_ERROR,
-            TableName:        keys[0],
-            Keys:             keys,
-            ConstraintErrMsg: err_str,
-            ErrAppTag:        "qindex-invalid",
-        }
-    }
+	if (qmin < QMIN) ||
+		(keys[1] == "CPU" && qmax > CPU_QMAX) ||
+		(keys[1] != "CPU" && qmax > QMAX) {
+		err_str := "Invalid Q-index"
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keys[0],
+			Keys:             keys,
+			ConstraintErrMsg: err_str,
+			ErrAppTag:        "qindex-invalid",
+		}
+	}
 
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

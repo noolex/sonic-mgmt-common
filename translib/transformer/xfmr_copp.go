@@ -20,13 +20,14 @@ package transformer
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/cvl/custom_validation"
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-	"strings"
 )
 
 func init() {

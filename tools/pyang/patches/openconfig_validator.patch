@@ -1,0 +1,149 @@
+diff --git a/openconfig_pyang/plugins/openconfig.py b/openconfig_pyang/plugins/openconfig.py
+index ebf84f4..7ceb722 100644
+--- a/openconfig_pyang/plugins/openconfig.py
++++ b/openconfig_pyang/plugins/openconfig.py
+@@ -22,6 +22,7 @@ modules according the YANG usage guidelines in RFC 6087.
+ from __future__ import print_function, unicode_literals
+ 
+ import re
++import sys
+ from enum import IntEnum
+ import optparse
+ import os.path
+@@ -31,7 +32,6 @@ from pyang import statements
+ from pyang.error import err_add
+ from pyang.plugins import lint
+ 
+-
+ from util import yangpath
+ 
+ # Keywords which result in data nodes being created in a YANG tree
+@@ -42,6 +42,38 @@ LEAFNODE_KEYWORDS = [u"leaf", u"leaf-list"]
+ # YANG types that should not be used in OpenConfig models.
+ BAD_TYPES = [u"empty", u"bits"]
+ 
++ignore_file_dict = dict()
++patched_mods = set()
++
++def prepare_ignore_list(ctx, ignore_file_dict):
++  ignore_file = ctx.opts.ignore_file
++  with open(ignore_file, "r") as ignore_fh:
++    for entry in ignore_fh:
++      entry = entry.strip()
++      if entry.startswith('#'):
++        continue
++      entry_list = list(filter(None,entry.split(' ')))
++      if len(entry_list) == 0:
++        continue
++      mod_name = entry_list[0]
++      if mod_name not in ignore_file_dict:
++        ignore_file_dict[mod_name] = set()
++      for line_num in entry_list[1:]:
++        ignore_file_dict[mod_name].add(int(line_num.strip()))
++
++def prepare_patched_mods_list(ctx, patched_mods):
++  patch_dir = ctx.opts.patch_dir
++  for patch_file in os.listdir(patch_dir):
++    if patch_file.endswith('.patch'):
++      mod_name = patch_file.replace('.patch','').replace('.yang','')
++      patched_mods.add(mod_name)
++
++def get_error_flags(elevel,error_seen):
++  kind = "warning"
++  if not error.is_warning(elevel):
++    kind = "error"
++    error_seen = True
++  return kind,error_seen
+ 
+ class ErrorLevel(IntEnum):
+   """An enumeration of the Pyang error levels.
+@@ -114,6 +146,61 @@ class OpenConfigPlugin(lint.LintPlugin):
+     lint.LintPlugin.__init__(self)
+     self.modulename_prefixes = ["openconfig"]
+ 
++  def post_validate_ctx(self, ctx, modules):
++    error_seen = False
++    ignore_file_dict = dict()
++    patched_mods = set()
++    prepare_ignore_list(ctx,ignore_file_dict)
++    prepare_patched_mods_list(ctx,patched_mods)
++    fd = None
++    if ctx.opts.logfile is not None:
++      fd = open(ctx.opts.logfile, "w")
++    for (epos, etag, eargs) in ctx.errors:
++      elevel = error.err_level(etag)
++
++      mod_name = epos.ref.split('/')[-1].split('.')[0]
++      if "/extensions/" not in str(epos):
++        mod_name = epos.ref.split('/')[-1].split('.')[0]
++        if mod_name in patched_mods:
++          if mod_name in ignore_file_dict:
++            if len(ignore_file_dict[mod_name]) == 0:
++              kind = "ignored"
++            else:
++              line_num = epos.line
++              if line_num in ignore_file_dict[mod_name]:
++                kind = "ignored"
++              else:
++                kind,error_seen = get_error_flags(elevel,error_seen)
++          else:
++            kind,error_seen = get_error_flags(elevel,error_seen)
++        else:
++          kind = "ignored"
++      else:
++        kind,error_seen = get_error_flags(elevel,error_seen)
++        # if mod_name in ignore_file_dict:
++        #   if len(ignore_file_dict[mod_name]) == 0:
++        #     kind = "ignored"
++        #   else:
++        #     line_num = epos.line
++        #     if line_num in ignore_file_dict[mod_name]:
++        #       kind = "ignored"
++        #     else:
++        #       kind,error_seen = get_error_flags(elevel,error_seen)
++        # else:
++        #   kind,error_seen = get_error_flags(elevel,error_seen)
++      if ctx.opts.logfile is not None:
++        fd.write(str(epos) + ': %s: ' % kind + \
++          error.err_to_str(etag, eargs) + '\n')
++      sys.stdout.write(str(epos) + ': %s: ' % kind + \
++        error.err_to_str(etag, eargs) + '\n')
++
++    if ctx.opts.logfile is not None:
++      fd.close()
++    if error_seen:
++      sys.exit(1)
++    else:
++      sys.exit(0)
++
+   def add_opts(self, optparser):
+     optlist = [
+         optparse.make_option("--openconfig",
+@@ -126,6 +213,18 @@ class OpenConfigPlugin(lint.LintPlugin):
+                              action="store_true",
+                              help="""Do not include standard lint (RFC 6087)
+                              checking"""),
++        optparse.make_option("--patchdir",
++                              type="string",
++                              dest="patch_dir",
++                              help="YANG Patch files directory"),
++        optparse.make_option("--ignorefile",
++                              type="string",
++                              dest="ignore_file",
++                              help="File path containing ignore list of modules"),
++        optparse.make_option("--logfile",
++                              type="string",
++                              dest="logfile",
++                              help="Log file"),
+         ]
+     g = optparser.add_option_group(optparse.OptionGroup(optparser, "OpenConfig specific options"))
+     g.add_options(optlist)
+@@ -839,6 +938,8 @@ class OCLintFunctions(object):
+                 stmt.arg)
+ 
+       keypath = keytype.search_one("path")
++      if keypath is None:
++          return
+       keypathelem = yangpath.split_paths(keypath.arg)
+       for i in range(0,len(keypathelem)):
+         if keypathelem[i] in ["config", "state"]:

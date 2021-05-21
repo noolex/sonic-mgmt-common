@@ -1,285 +1,277 @@
 package transformer
 
 import (
-    "strings"
-    "strconv"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    log "github.com/golang/glog"
-    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-    "github.com/openconfig/ygot/ygot"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"strconv"
+	"strings"
+
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 )
-func init () {
-    XlateFuncBind("YangToDb_qos_fwd_group_dscp_xfmr", YangToDb_qos_fwd_group_dscp_xfmr)
-    XlateFuncBind("DbToYang_qos_fwd_group_dscp_xfmr", DbToYang_qos_fwd_group_dscp_xfmr)
-    XlateFuncBind("Subscribe_qos_fwd_group_dscp_xfmr", Subscribe_qos_fwd_group_dscp_xfmr)
-    XlateFuncBind("YangToDb_qos_tc_to_dscp_map_fld_xfmr", YangToDb_qos_tc_to_dscp_map_fld_xfmr)
-    XlateFuncBind("DbToYang_qos_tc_to_dscp_map_fld_xfmr", DbToYang_qos_tc_to_dscp_map_fld_xfmr)
- 
+
+func init() {
+	XlateFuncBind("YangToDb_qos_fwd_group_dscp_xfmr", YangToDb_qos_fwd_group_dscp_xfmr)
+	XlateFuncBind("DbToYang_qos_fwd_group_dscp_xfmr", DbToYang_qos_fwd_group_dscp_xfmr)
+	XlateFuncBind("Subscribe_qos_fwd_group_dscp_xfmr", Subscribe_qos_fwd_group_dscp_xfmr)
+	XlateFuncBind("YangToDb_qos_tc_to_dscp_map_fld_xfmr", YangToDb_qos_tc_to_dscp_map_fld_xfmr)
+	XlateFuncBind("DbToYang_qos_tc_to_dscp_map_fld_xfmr", DbToYang_qos_tc_to_dscp_map_fld_xfmr)
+
 }
 
-var Subscribe_qos_fwd_group_dscp_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    map_type := "TC_TO_DSCP_MAP"
-    return Subscribe_qos_map_xfmr(inParams, map_type)
+var Subscribe_qos_fwd_group_dscp_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	map_type := "TC_TO_DSCP_MAP"
+	return Subscribe_qos_map_xfmr(inParams, map_type)
 }
-
 
 var YangToDb_qos_fwd_group_dscp_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
-    map_type := "TC_TO_DSCP_MAP"
+	map_type := "TC_TO_DSCP_MAP"
 
-    if inParams.oper == DELETE {
-        return qos_map_delete_xfmr(inParams, map_type)
-    }
+	if inParams.oper == DELETE {
+		return qos_map_delete_xfmr(inParams, map_type)
+	}
 
-    var err error
-    res_map := make(map[string]map[string]db.Value)
+	var err error
+	res_map := make(map[string]map[string]db.Value)
 
-    log.Info("YangToDb_qos_fwd_group_dscp_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
+	log.Info("YangToDb_qos_fwd_group_dscp_xfmr: ", inParams.ygRoot, inParams.uri)
+	log.Info("inParams: ", inParams)
 
-    pathInfo := NewPathInfo(inParams.uri)
-    name := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+	pathInfo := NewPathInfo(inParams.uri)
+	name := pathInfo.Var("name")
+	targetUriPath, err := getYangPathFromUri(inParams.uri)
 
-    log.Info("YangToDb: name: ", name)
-    log.Info("targetUriPath:",  targetUriPath)
+	log.Info("YangToDb: name: ", name)
+	log.Info("targetUriPath:", targetUriPath)
 
-    /* parse the inParams */
-    qosObj := getQosRoot(inParams.ygRoot)
-    if qosObj == nil {
-        return res_map, err
-    }
+	/* parse the inParams */
+	qosObj := getQosRoot(inParams.ygRoot)
+	if qosObj == nil {
+		return res_map, err
+	}
 
-    mapObj, ok := qosObj.ForwardingGroupDscpMaps.ForwardingGroupDscpMap[name]
-    if !ok {
-        return res_map, err
-    }
+	mapObj, ok := qosObj.ForwardingGroupDscpMaps.ForwardingGroupDscpMap[name]
+	if !ok {
+		return res_map, err
+	}
 
-    d :=  inParams.d
-    if d == nil  {
-        log.Infof("unable to get configDB")
-        return res_map, err
-    }
+	d := inParams.d
+	if d == nil {
+		log.Infof("unable to get configDB")
+		return res_map, err
+	}
 
-    map_entry := make(map[string]db.Value)
-    map_key := name
-    map_entry[map_key] = db.Value{Field: make(map[string]string)}
-    log.Info("YangToDb_qos_fwd_group_dscp_xfmr - entry_key : ", map_key)
+	map_entry := make(map[string]db.Value)
+	map_key := name
+	map_entry[map_key] = db.Value{Field: make(map[string]string)}
+	log.Info("YangToDb_qos_fwd_group_dscp_xfmr - entry_key : ", map_key)
 
-    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") &&
-       !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") {
-        log.Info("YangToDb: map entry unspecified, return the map")
+	if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") &&
+		!strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-dscp-maps/forwarding-group-dscp-map/forwarding-group-dscp-map-entries/forwarding-group-dscp-map-entry") {
+		log.Info("YangToDb: map entry unspecified, return the map")
 
-        res_map[map_type] = map_entry
-        return res_map, err
-    }
+		res_map[map_type] = map_entry
+		return res_map, err
+	}
 
-    str := qos_map_oc_yang_key_map[map_type]
-    log.Info("key string: " , str)
-    entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
-    log.Info("entry_key : ", entry_key)
-    if entry_key == "" {
-        return res_map, err
-    }
+	str := qos_map_oc_yang_key_map[map_type]
+	log.Info("key string: ", str)
+	entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
+	log.Info("entry_key : ", entry_key)
+	if entry_key == "" {
+		return res_map, err
+	}
 
-    if (inParams.oper == CREATE || inParams.oper == UPDATE ) && 
-        strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
-        mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
-        if err == nil { 
-            _, ok := mapCfg.Field[entry_key]
-            if !ok {
-                log.Info("Entry not exist; cannot create it with key in URI itself")
-                err = tlerr.NotFound("Resource not found")
-                return res_map, err
-            }
-        }
-    }
+	if (inParams.oper == CREATE || inParams.oper == UPDATE) &&
+		strings.Contains(inParams.requestUri, "-entry["+str+"=") {
+		mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
+		if err == nil {
+			_, ok := mapCfg.Field[entry_key]
+			if !ok {
+				log.Info("Entry not exist; cannot create it with key in URI itself")
+				err = tlerr.NotFound("Resource not found")
+				return res_map, err
+			}
+		}
+	}
 
-    entry, ok := mapObj.ForwardingGroupDscpMapEntries.ForwardingGroupDscpMapEntry[entry_key]
-    if !ok  {
-        log.Info("entry is nil.")
-        return res_map, err
-    }
+	entry, ok := mapObj.ForwardingGroupDscpMapEntries.ForwardingGroupDscpMapEntry[entry_key]
+	if !ok {
+		log.Info("entry is nil.")
+		return res_map, err
+	}
 
-    val :=  *(entry.Config.Dscp)
+	val := *(entry.Config.Dscp)
 
-    map_entry[map_key].Field[entry_key] = strconv.Itoa(int(val))
+	map_entry[map_key].Field[entry_key] = strconv.Itoa(int(val))
 
-    log.Info("map key : ", map_key, " entry_key: ", entry_key)
-    res_map[map_type] = map_entry
+	log.Info("map key : ", map_key, " entry_key: ", entry_key)
+	res_map[map_type] = map_entry
 
-    return res_map, err
+	return res_map, err
 }
 
+func fill_fwd_group_dscp_map_info_by_name(inParams XfmrParams, fwdGrpDscpMaps *ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps, name string) error {
 
-func fill_fwd_group_dscp_map_info_by_name(inParams XfmrParams, fwdGrpDscpMaps * ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps, name string) error {
+	mapObj, ok := fwdGrpDscpMaps.ForwardingGroupDscpMap[name]
+	if !ok {
+		mapObj, _ = fwdGrpDscpMaps.NewForwardingGroupDscpMap(name)
+		ygot.BuildEmptyTree(mapObj)
+		mapObj.Name = &name
 
+	}
 
-    mapObj, ok := fwdGrpDscpMaps.ForwardingGroupDscpMap[name]
-    if !ok {
-        mapObj, _ = fwdGrpDscpMaps.NewForwardingGroupDscpMap(name)
-        ygot.BuildEmptyTree(mapObj)
-        mapObj.Name = &name
+	var mapEntries ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries
 
-    }
+	if mapObj.ForwardingGroupDscpMapEntries == nil {
+		mapObj.ForwardingGroupDscpMapEntries = &mapEntries
+	}
 
-    var mapEntries ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries
+	var mapObjCfg ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_Config
+	if mapObj.Config == nil {
+		mapObj.Config = &mapObjCfg
+	}
 
-    if mapObj.ForwardingGroupDscpMapEntries == nil {
-        mapObj.ForwardingGroupDscpMapEntries = &mapEntries
-    }
+	var mapObjSta ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_State
+	if mapObj.State == nil {
+		mapObj.State = &mapObjSta
+	}
 
-    var mapObjCfg ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_Config
-    if mapObj.Config == nil {
-        mapObj.Config = &mapObjCfg
-    }
+	dbSpec := &db.TableSpec{Name: "TC_TO_DSCP_MAP"}
 
-    var mapObjSta ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_State
-    if mapObj.State == nil {
-        mapObj.State = &mapObjSta
-    }
+	key := db.Key{Comp: []string{name}}
 
-    dbSpec := &db.TableSpec{Name: "TC_TO_DSCP_MAP"}
+	log.Info("key: ", key)
 
-    key :=db.Key{Comp: []string{name}}
-    
-    log.Info("key: ", key)
+	mapCfg, err := inParams.d.GetEntry(dbSpec, key)
+	if err != nil {
+		log.Info("No tc-to-dscp-map with a name of : ", name)
+		return nil
+	}
 
-    mapCfg, err := inParams.d.GetEntry(dbSpec, key) 
-    if  err != nil {
-        log.Info("No tc-to-dscp-map with a name of : ", name)
-        return nil
-    }
+	log.Info("current entry: ", mapCfg)
 
-    log.Info("current entry: ", mapCfg)
+	mapObj.Config.Name = &name
+	mapObj.State.Name = &name
 
-    mapObj.Config.Name = &name
-    mapObj.State.Name = &name
+	pathInfo := NewPathInfo(inParams.uri)
+	log.Info("pathInfo.Var: ", pathInfo.Var)
 
+	tc := pathInfo.Var("fwd-group")
 
-    pathInfo := NewPathInfo(inParams.uri)
-    log.Info("pathInfo.Var: ", pathInfo.Var)
+	var tmp_cfg ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries_ForwardingGroupDscpMapEntry_Config
+	var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries_ForwardingGroupDscpMapEntry_State
+	entry_added := 0
+	for k, v := range mapCfg.Field {
+		if k == "NULL" {
+			continue
+		}
 
-    tc := pathInfo.Var("fwd-group")
+		if tc != "" && k != tc {
+			continue
+		}
 
-    var tmp_cfg ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries_ForwardingGroupDscpMapEntry_Config
-    var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupDscpMaps_ForwardingGroupDscpMap_ForwardingGroupDscpMapEntries_ForwardingGroupDscpMapEntry_State
-    entry_added :=  0
-    for k, v := range mapCfg.Field {
-        if k == "NULL" {
-            continue
-        }
+		tmp, _ := strconv.ParseUint(v, 10, 8)
+		dscp := uint8(tmp)
+		tc_val := k
 
-        if tc != "" && k!= tc {
-            continue
-        }
+		entryObj, ok := mapObj.ForwardingGroupDscpMapEntries.ForwardingGroupDscpMapEntry[tc_val]
+		if !ok {
+			entryObj, _ = mapObj.ForwardingGroupDscpMapEntries.NewForwardingGroupDscpMapEntry(tc_val)
+			ygot.BuildEmptyTree(entryObj)
+			ygot.BuildEmptyTree(entryObj.Config)
+			ygot.BuildEmptyTree(entryObj.State)
+		}
 
-        tmp, _ := strconv.ParseUint(v, 10, 8)
-        dscp := uint8(tmp)
-        tc_val := k
+		entryObj.FwdGroup = &tc_val
 
-        entryObj, ok := mapObj.ForwardingGroupDscpMapEntries.ForwardingGroupDscpMapEntry[tc_val]
-        if !ok {
-            entryObj, _ = mapObj.ForwardingGroupDscpMapEntries.NewForwardingGroupDscpMapEntry(tc_val)
-            ygot.BuildEmptyTree(entryObj)
-            ygot.BuildEmptyTree(entryObj.Config)
-            ygot.BuildEmptyTree(entryObj.State)
-        }
+		if entryObj.Config == nil {
+			entryObj.Config = &tmp_cfg
+		}
+		entryObj.Config.FwdGroup = &tc_val
+		entryObj.Config.Dscp = &dscp
 
-        entryObj.FwdGroup = &tc_val
+		if entryObj.State == nil {
+			entryObj.State = &tmp_sta
+		}
+		entryObj.State.FwdGroup = &tc_val
+		entryObj.State.Dscp = &dscp
 
-        if entryObj.Config == nil {
-            entryObj.Config = &tmp_cfg
-        }
-        entryObj.Config.FwdGroup = &tc_val
-        entryObj.Config.Dscp = &dscp
+		entry_added = entry_added + 1
 
+		log.Info("Added entry: ", entryObj)
+	}
 
-        if entryObj.State == nil {
-            entryObj.State = &tmp_sta
-        }
-        entryObj.State.FwdGroup = &tc_val
-        entryObj.State.Dscp = &dscp
+	log.Info("Done fetching tc-dscp-map : ", name)
 
-        entry_added = entry_added + 1
+	if tc != "" && entry_added == 0 {
+		err = tlerr.NotFoundError{Format: "Resource not found"}
+		log.Info("Resource not found.")
+		return err
+	}
 
-        log.Info("Added entry: ", entryObj)
-    }
-
-    log.Info("Done fetching tc-dscp-map : ", name)
-
-    if tc != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Resource not found"}
-        log.Info("Resource not found.")
-        return err
-    }
-
-    return nil
+	return nil
 }
 
 var DbToYang_qos_fwd_group_dscp_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    var err error
+	var err error
 
-    pathInfo := NewPathInfo(inParams.uri)
+	pathInfo := NewPathInfo(inParams.uri)
 
-    name := pathInfo.Var("name")
+	name := pathInfo.Var("name")
 
-    log.Info("inParams: ", inParams)
+	log.Info("inParams: ", inParams)
 
-    qosObj := getQosRoot(inParams.ygRoot)
+	qosObj := getQosRoot(inParams.ygRoot)
 
-    if qosObj == nil {
-        ygot.BuildEmptyTree(qosObj)
-    }
+	if qosObj == nil {
+		ygot.BuildEmptyTree(qosObj)
+	}
 
-    if qosObj.ForwardingGroupDscpMaps == nil {
-        ygot.BuildEmptyTree(qosObj.ForwardingGroupDscpMaps)
-    }
+	if qosObj.ForwardingGroupDscpMaps == nil {
+		ygot.BuildEmptyTree(qosObj.ForwardingGroupDscpMaps)
+	}
 
-    dbSpec := &db.TableSpec{Name: "TC_TO_DSCP_MAP"}
+	dbSpec := &db.TableSpec{Name: "TC_TO_DSCP_MAP"}
 
-    map_added := 0
-    var keyPattern string
-    if name != "" {
-        keyPattern = name
-    } else {
-        keyPattern = "*"
-    }
+	map_added := 0
+	var keyPattern string
+	if name != "" {
+		keyPattern = name
+	} else {
+		keyPattern = "*"
+	}
 
-    keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
-    for _, key := range keys {
-        log.Info("key: ", key)
+	keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
+	for _, key := range keys {
+		log.Info("key: ", key)
 
-        map_name := key.Comp[0]
+		map_name := key.Comp[0]
 
-        map_added = map_added + 1 
+		map_added = map_added + 1
 
-        err = fill_fwd_group_dscp_map_info_by_name(inParams, qosObj.ForwardingGroupDscpMaps, map_name)
+		err = fill_fwd_group_dscp_map_info_by_name(inParams, qosObj.ForwardingGroupDscpMaps, map_name)
 
-        if err != nil {
-           return err
-        }
-    }
+		if err != nil {
+			return err
+		}
+	}
 
-    if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Resource not found"}
-        log.Info("Resource not found.")
-        return err
-    }
+	if name != "" && map_added == 0 {
+		err = tlerr.NotFoundError{Format: "Resource not found"}
+		log.Info("Resource not found.")
+		return err
+	}
 
-    return err
+	return err
 }
-
-
 
 var DbToYang_qos_tc_to_dscp_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    return DbToYang_qos_intf_qos_map_xfmr(inParams, "TC_TO_DSCP_MAP")
+	return DbToYang_qos_intf_qos_map_xfmr(inParams, "TC_TO_DSCP_MAP")
 }
-
-
 
 var YangToDb_qos_tc_to_dscp_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    return YangToDb_qos_intf_qos_map_xfmr(inParams, "TC_TO_DSCP_MAP")
+	return YangToDb_qos_intf_qos_map_xfmr(inParams, "TC_TO_DSCP_MAP")
 }
-

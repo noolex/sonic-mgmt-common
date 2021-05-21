@@ -13,6 +13,10 @@ module sonic-mgmt-interface {
         prefix mgmtprt;
     }
 
+    import sonic-extension {
+        prefix sonic-ext;
+    }
+
     organization
         "SONiC";
 
@@ -21,6 +25,11 @@ module sonic-mgmt-interface {
 
     description
         "SONiC MANAGEMENT INTERFACE";
+
+    revision 2021-02-17 {
+        description
+            "Add validation for default gateway IP.";
+    }
 
     revision 2019-11-13 {
         description
@@ -90,6 +99,7 @@ module sonic-mgmt-interface {
 
                 leaf gwaddr {
                     type inet:ip-address;
+                    sonic-ext:custom-validation ValidateMgmtIntfGwAddr;
                 }
 
                 leaf secondary {

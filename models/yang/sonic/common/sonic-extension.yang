@@ -35,22 +35,21 @@ module sonic-extension {
 		argument "value";
 	}
 
-	extension map-list {
-		description
-			"If it is a map list";
-		argument "value";
-	}
-
-	extension map-leaf {
-		description
-			"Map leaf names";
-		argument "value";
-	}
-
 	extension custom-validation {
 		description
 			"Extension for custom validation. 
 			 Platform specific validation can be implemented using custom validation.";
 		argument "handler"; 
+	}
+
+	extension dependent-on {
+		description
+			"Entension to define dependency on other table. So during create/update,
+			operation will be performed first on parent table and then on this table.
+			In delete operation, this table will be deleted first and then parent table.
+			This extension can be defined only under list. Table name should always
+			suffixed with '_LIST' as modeled in yang.
+			e.g. - dependent-on STP_LIST";
+		argument "value";
 	}
 }

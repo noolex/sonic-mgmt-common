@@ -1,0 +1,15 @@
+patches
+sonic
+annotations
+testdata
+*.md
+*.html
+.gitignore
+*.tree
+*.xml
+*.log
+lint_ignore.*
+copy_yangs_to_build
+Makefile
+copy_to_build_dir.exclude
+

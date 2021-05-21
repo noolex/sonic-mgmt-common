@@ -21,13 +21,14 @@ package transformer
 
 import (
 	"encoding/json"
+	"math"
+	"strconv"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
-	"math"
-	"strconv"
-	"strings"
 )
 
 type ReferingPolicyEntry struct {
@@ -69,34 +70,38 @@ type ForwardingEgressEntry struct {
 	VRF        *string `json:",omitempty"`
 	PRIORITY   *int    `json:",omitempty"`
 	INTERFACE  *string `json:",omitempty"`
+	GROUP_NAME *string `json:",omitempty"`
 }
 
 type PolicyFlowEntry struct {
-	CLASS_NAME            string
-	PRIORITY              int
-	DESCRIPTION           *string                  `json:",omitempty"`
-	SET_DSCP              *int                     `json:",omitempty"`
-	SET_PCP               *int                     `json:",omitempty"`
-	SET_TC                *int                     `json:",omitempty"`
-	SET_POLICER_CIR       *uint64                  `json:",omitempty"`
-	SET_POLICER_CBS       *uint64                  `json:",omitempty"`
-	SET_POLICER_PIR       *uint64                  `json:",omitempty"`
-	SET_POLICER_PBS       *uint64                  `json:",omitempty"`
-	SET_MIRROR_SESSION    *string                  `json:",omitempty"`
-	DEFAULT_PACKET_ACTION *string                  `json:",omitempty"`
-	TRAP_GROUP            *string                  `json:",omitempty"`
-	TRAP_ACTION           *string                  `json:",omitempty"`
-	TRAP_PRIORITY         *uint16                  `json:",omitempty"`
-	QUEUE                 *uint8                   `json:",omitempty"`
-	METER_TYPE            *string                  `json:",omitempty"`
-	MODE                  *string                  `json:",omitempty"`
-	GREEN_ACTION          *string                  `json:",omitempty"`
-	RED_ACTION            *string                  `json:",omitempty"`
-	YELLOW_ACTION         *string                  `json:",omitempty"`
-	SET_INTERFACE         *[]ForwardingEgressEntry `json:",omitempty"`
-	SET_IP_NEXTHOP        *[]ForwardingEgressEntry `json:",omitempty"`
-	SET_IPV6_NEXTHOP      *[]ForwardingEgressEntry `json:",omitempty"`
-	STATE                 *FlowStateEntry          `json:",omitempty"`
+	CLASS_NAME             string
+	PRIORITY               int
+	DESCRIPTION            *string                 `json:",omitempty"`
+	SET_DSCP               *int                    `json:",omitempty"`
+	SET_PCP                *int                    `json:",omitempty"`
+	SET_TC                 *int                    `json:",omitempty"`
+	SET_POLICER_CIR        *uint64                 `json:",omitempty"`
+	SET_POLICER_CBS        *uint64                 `json:",omitempty"`
+	SET_POLICER_PIR        *uint64                 `json:",omitempty"`
+	SET_POLICER_PBS        *uint64                 `json:",omitempty"`
+	SET_MIRROR_SESSION     *string                 `json:",omitempty"`
+	DEFAULT_PACKET_ACTION  *string                 `json:",omitempty"`
+	TRAP_GROUP             *string                 `json:",omitempty"`
+	TRAP_ACTION            *string                 `json:",omitempty"`
+	TRAP_PRIORITY          *uint16                 `json:",omitempty"`
+	QUEUE                  *uint8                  `json:",omitempty"`
+	METER_TYPE             *string                 `json:",omitempty"`
+	MODE                   *string                 `json:",omitempty"`
+	GREEN_ACTION           *string                 `json:",omitempty"`
+	RED_ACTION             *string                 `json:",omitempty"`
+	YELLOW_ACTION          *string                 `json:",omitempty"`
+	SET_TRAP_QUEUE         *uint8                  `json:",omitempty"`
+	SET_INTERFACE          []ForwardingEgressEntry `json:",omitempty"`
+	SET_IP_NEXTHOP         []ForwardingEgressEntry `json:",omitempty"`
+	SET_IPV6_NEXTHOP       []ForwardingEgressEntry `json:",omitempty"`
+	SET_IP_NEXTHOP_GROUP   []ForwardingEgressEntry `json:",omitempty"`
+	SET_IPV6_NEXTHOP_GROUP []ForwardingEgressEntry `json:",omitempty"`
+	STATE                  *FlowStateEntry         `json:",omitempty"`
 }
 
 type PolicyBindPortEntry struct {
@@ -139,6 +144,7 @@ type FlowForwardingStateEntry struct {
 	IP_ADDRESS     *string `json:",omitempty"`
 	VRF            *string `json:",omitempty"`
 	PRIORITY       *int    `json:",omitempty"`
+	GROUP_NAME     *string `json:",omitempty"`
 }
 
 type FlowStateEntry struct {
@@ -163,11 +169,36 @@ type ServicePolicyInterfaceEntry struct {
 	APPLIED_POLICIES []ServicePolicyEntry
 }
 
+type fbsNextHopGroupReferenceEntry struct {
+	POLICY_NAME string
+	PRIORITY    int
+}
+
+type fbsNextHopGroupMember struct {
+	ENTRY_ID      uint16
+	IP_ADDRESS    string
+	VRF           *string `json:",omitempty"`
+	NEXT_HOP_TYPE *string `json:",omitempty"`
+	STATUS        *string `json:",omitempty"`
+}
+
+type fbsNextHopGroupEntry struct {
+	GROUP_NAME     string
+	TYPE           string
+	DESCRIPTION    *string                         `json:",omitempty"`
+	THRESHOLD_TYPE *string                         `json:",omitempty"`
+	THRESHOLD_UP   *uint8                          `json:",omitempty"`
+	THRESHOLD_DOWN *uint8                          `json:",omitempty"`
+	NEXT_HOPS      []fbsNextHopGroupMember         `json:",omitempty"`
+	REFERENCES     []fbsNextHopGroupReferenceEntry `json:",omitempty"`
+}
+
 func init() {
 	XlateFuncBind("rpc_show_classifier", rpc_show_classifier)
 	XlateFuncBind("rpc_show_policy", rpc_show_policy)
 	XlateFuncBind("rpc_show_service_policy", rpc_show_service_policy)
 	XlateFuncBind("rpc_clear_service_policy", rpc_clear_service_policy)
+	XlateFuncBind("rpc_show_pbf_next_hop_group", rpc_show_pbf_next_hop_group)
 }
 
 func fill_classifier_details(class_name string, classifierTblVal db.Value, classEntry *ClassifierEntry) error {
@@ -460,7 +491,6 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 		policySectionInfo.DEFAULT_PACKET_ACTION = &str_val
 	}
 	if ipNhops := policySectionTblVal.GetList("SET_IP_NEXTHOP"); len(ipNhops) > 0 {
-		var nextHops []ForwardingEgressEntry
 		for i := range ipNhops {
 			var ipNhopEntry ForwardingEgressEntry
 			nhopSplits := strings.Split(ipNhops[i], "|")
@@ -472,12 +502,22 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 				prio, _ := strconv.Atoi(nhopSplits[2])
 				ipNhopEntry.PRIORITY = &prio
 			}
-			nextHops = append(nextHops, ipNhopEntry)
+			policySectionInfo.SET_IP_NEXTHOP = append(policySectionInfo.SET_IP_NEXTHOP, ipNhopEntry)
 		}
-		policySectionInfo.SET_IP_NEXTHOP = &nextHops
+	}
+	if ipNhGrps := policySectionTblVal.GetList("SET_IP_NEXTHOP_GROUP"); len(ipNhGrps) > 0 {
+		for i := range ipNhGrps {
+			var ipNhGrpEntry ForwardingEgressEntry
+			nhopSplits := strings.Split(ipNhGrps[i], "|")
+			ipNhGrpEntry.GROUP_NAME = &nhopSplits[0]
+			if len(nhopSplits[1]) > 0 {
+				prio, _ := strconv.Atoi(nhopSplits[1])
+				ipNhGrpEntry.PRIORITY = &prio
+			}
+			policySectionInfo.SET_IP_NEXTHOP_GROUP = append(policySectionInfo.SET_IP_NEXTHOP_GROUP, ipNhGrpEntry)
+		}
 	}
 	if ipNhops := policySectionTblVal.GetList("SET_IPV6_NEXTHOP"); len(ipNhops) > 0 {
-		var nextHops []ForwardingEgressEntry
 		for i := range ipNhops {
 			var ipNhopEntry ForwardingEgressEntry
 			nhopSplits := strings.Split(ipNhops[i], "|")
@@ -489,12 +529,22 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 				prio, _ := strconv.Atoi(nhopSplits[2])
 				ipNhopEntry.PRIORITY = &prio
 			}
-			nextHops = append(nextHops, ipNhopEntry)
+			policySectionInfo.SET_IPV6_NEXTHOP = append(policySectionInfo.SET_IPV6_NEXTHOP, ipNhopEntry)
 		}
-		policySectionInfo.SET_IPV6_NEXTHOP = &nextHops
+	}
+	if ipNhGrps := policySectionTblVal.GetList("SET_IPV6_NEXTHOP_GROUP"); len(ipNhGrps) > 0 {
+		for i := range ipNhGrps {
+			var ipNhGrpEntry ForwardingEgressEntry
+			nhopSplits := strings.Split(ipNhGrps[i], "|")
+			ipNhGrpEntry.GROUP_NAME = &nhopSplits[0]
+			if len(nhopSplits[1]) > 0 {
+				prio, _ := strconv.Atoi(nhopSplits[1])
+				ipNhGrpEntry.PRIORITY = &prio
+			}
+			policySectionInfo.SET_IPV6_NEXTHOP_GROUP = append(policySectionInfo.SET_IPV6_NEXTHOP_GROUP, ipNhGrpEntry)
+		}
 	}
 	if intfs := policySectionTblVal.GetList("SET_INTERFACE"); len(intfs) > 0 {
-		var intfEntries []ForwardingEgressEntry
 		for i := range intfs {
 			var fwdEntry ForwardingEgressEntry
 			intfSplits := strings.Split(intfs[i], "|")
@@ -504,9 +554,13 @@ func fill_policy_section_table_info(policy_name string, class_name string, intf_
 				prio, _ := strconv.Atoi(intfSplits[1])
 				fwdEntry.PRIORITY = &prio
 			}
-			intfEntries = append(intfEntries, fwdEntry)
+			policySectionInfo.SET_INTERFACE = append(policySectionInfo.SET_INTERFACE, fwdEntry)
 		}
-		policySectionInfo.SET_INTERFACE = &intfEntries
+	}
+	if str_val, found := policySectionTblVal.Field["SET_TRAP_QUEUE"]; found {
+		val, _ := strconv.ParseUint(str_val, 10, 64)
+		val8 := uint8(val)
+		policySectionInfo.SET_TRAP_QUEUE = &val8
 	}
 
 	if fill_state {
@@ -628,7 +682,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 		}
 	}
 
-	if strings.EqualFold(policy_type, "QOS") {
+	if strings.EqualFold(policy_type, "QOS") || strings.EqualFold(policy_type, "ACL_COPP") {
 		var policer FlowPolicerStateEntry
 		var polCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "POLICER_COUNTERS"}
 		var lastPolCntTbl_ts *db.TableSpec = &db.TableSpec{Name: "LAST_POLICER_COUNTERS"}
@@ -656,18 +710,30 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 			var policerTblVal db.Value
 			policerTblVal, err = appDbPtr.GetEntry(POLICER_TABLES_TS, polPbfKey)
 			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
-			if err == nil {
-				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
-				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
-				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
-				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
+			policer.UNITS = "NA"
+			policer.COLOR_SOURCE = "NA"
+			policer.CONFORMED_PACKET_ACTION = "NA"
+			policer.EXCEED_PACKET_ACTION = "NA"
+			policer.VIOLATED_PACKET_ACTION = "NA"
 
+			if err == nil {
 				policer.UNITS = policerTblVal.Field["METER_TYPE"]
 				policer.COLOR_SOURCE = policerTblVal.Field["COLOR_SOURCE"]
-
 				policer.CONFORMED_PACKET_ACTION = policerTblVal.Field["GREEN_PACKET_ACTION"]
 				policer.EXCEED_PACKET_ACTION = policerTblVal.Field["YELLOW_PACKET_ACTION"]
 				policer.VIOLATED_PACKET_ACTION = policerTblVal.Field["RED_PACKET_ACTION"]
+			}
+
+			policerStateTbl := &db.TableSpec{Name: "POLICER_COUNTERS"}
+			policerTblVal, err = dbs[db.StateDB].GetEntry(policerStateTbl, polPbfKey)
+			log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
+			if err == nil {
+				policer.OPERATIONAL_CIR, _ = strconv.ParseUint(policerTblVal.Field["CIR"], 10, 64)
+				policer.OPERATIONAL_CIR = policer.OPERATIONAL_CIR * 8 // Convert to bits
+				policer.OPERATIONAL_CBS, _ = strconv.ParseUint(policerTblVal.Field["CBS"], 10, 64)
+				policer.OPERATIONAL_PIR, _ = strconv.ParseUint(policerTblVal.Field["PIR"], 10, 64)
+				policer.OPERATIONAL_PIR = policer.OPERATIONAL_PIR * 8 // Convert to bits
+				policer.OPERATIONAL_PBS, _ = strconv.ParseUint(policerTblVal.Field["PBS"], 10, 64)
 			}
 		} else {
 			// CtrlPlane binding doesnt have info in AppDB
@@ -684,7 +750,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 				policer.OPERATIONAL_PBS = *policySectionInfo.SET_POLICER_PBS
 			}
 			policer.UNITS = "bytes"
-			policer.COLOR_SOURCE = "color-blind"
+			policer.COLOR_SOURCE = "blind"
 			policer.CONFORMED_PACKET_ACTION = "forward"
 			policer.EXCEED_PACKET_ACTION = "forward"
 			policer.VIOLATED_PACKET_ACTION = "drop"
@@ -702,6 +768,7 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 		val, err := stateDbPtr.GetEntry(pbfTable_ts, pbfKey)
 		if err == nil {
 			selected := val.Field["CONFIGURED_SELECTED"]
+			grpType := val.Field["TYPE"]
 			log.Infof("Key:%v Selected:%v", pbfKey, selected)
 			if selected == "DROP" {
 				fwdEntry.PACKET_ACTION = &selected
@@ -715,8 +782,16 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 						prio_int := int(prio)
 						fwdEntry.PRIORITY = &prio_int
 					}
+				} else if grpType == "L2" {
+					convertedIfName := *(utils.GetUINameFromNativeName(&parts[0]))
+					fwdEntry.INTERFACE_NAME = &convertedIfName
+					if parts[1] != "" {
+						prio, _ := strconv.ParseInt(parts[1], 10, 32)
+						prio_int := int(prio)
+						fwdEntry.PRIORITY = &prio_int
+					}
 				} else {
-					fwdEntry.INTERFACE_NAME = &parts[0]
+					fwdEntry.GROUP_NAME = &parts[0]
 					if parts[1] != "" {
 						prio, _ := strconv.ParseInt(parts[1], 10, 32)
 						prio_int := int(prio)
@@ -724,6 +799,8 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 					}
 				}
 			}
+		} else {
+			log.Infof("No PBF_GROUP_TABLE entry present for %v", pbfKey)
 		}
 		state.FORWARDING_SELECTED = &fwdEntry
 	}
@@ -731,15 +808,15 @@ func fill_policy_class_state_info(policy_name string, class_name string, interfa
 	return nil
 }
 
-func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
+func fill_policy_details(policy_name string, policyTblVal db.Value, class_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
 	policyEntry.POLICY_NAME = policy_name
-	policyEntry.TYPE = policyTblVal.Field["TYPE"]
+	policyEntry.TYPE = strings.Replace(policyTblVal.Field["TYPE"], "_", "-", 1)
 	if str_val, found := policyTblVal.Field["DESCRIPTION"]; found {
 		policyEntry.DESCRIPTION = &str_val
 	}
 
 	var POLICY_SECTION_TABLES_TS *db.TableSpec = &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
-	referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policy_name, "*"}})
+	referingClassKeys, err := configDbPtr.GetKeysPattern(POLICY_SECTION_TABLES_TS, db.Key{[]string{policy_name, class_name}})
 	if err != nil {
 		log.Error(err)
 		return err
@@ -794,14 +871,14 @@ func fill_policy_details(policy_name string, policyTblVal db.Value, dbs [db.MaxD
 	return nil
 }
 
-func fill_policy_copp_details(policy_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
+func fill_policy_copp_details(policy_name string, class_name string, dbs [db.MaxDB]*db.DB, policyEntry *PolicyEntry) error {
 	var COPP_TRAP_TABLE_TS *db.TableSpec = &db.TableSpec{Name: "COPP_TRAP"}
 	configDbPtr := dbs[db.ConfigDB]
 
 	policyEntry.POLICY_NAME = policy_name
 	policyEntry.TYPE = "copp"
 
-	referingClassKeys, err := configDbPtr.GetKeysPattern(COPP_TRAP_TABLE_TS, db.Key{[]string{"*"}})
+	referingClassKeys, err := configDbPtr.GetKeysPattern(COPP_TRAP_TABLE_TS, db.Key{[]string{class_name}})
 	if err != nil {
 		log.Error(err)
 		return err
@@ -852,6 +929,10 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 	showOutput.Output.POLICIES = make([]PolicyEntry, 0)
 	policy_name, policy_name_found := mapData["POLICY_NAME"].(string)
 	policy_type, policy_type_found := mapData["TYPE"].(string)
+	class_name, class_name_found := mapData["CLASS_NAME"].(string)
+	if !class_name_found {
+		class_name = "*"
+	}
 
 	if policy_name_found {
 		//get policy db output
@@ -859,15 +940,14 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 		var policyEntry PolicyEntry
 		if err == nil {
 			log.Infof("In rpc_show_policy, policy_name:%v, RPC policyTblVal:%v", policy_name, policyTblVal)
-
-			err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+			err = fill_policy_details(policy_name, policyTblVal, class_name, dbs, &policyEntry)
 			if err != nil {
 				log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
 				return nil, err
 			}
 		} else {
 			if policy_name == "copp-system-policy" {
-				err = fill_policy_copp_details(policy_name, dbs, &policyEntry)
+				err = fill_policy_copp_details(policy_name, class_name, dbs, &policyEntry)
 				if err != nil {
 					log.Errorf("Failed to fetch policy:%v details err%v", policy_name, err)
 					return nil, err
@@ -895,12 +975,12 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 				if err != nil {
 					return nil, err
 				}
-				if policy_type_found && policyTblVal.Field["TYPE"] != policy_type {
+				if policy_type_found && strings.Replace(policyTblVal.Field["TYPE"], "_", "-", 1) != policy_type {
 					log.Infof("index:%v policy_name:%v match_type:%v expected:%v", index, policy_name, policyTblVal.Field["TYPE"], policy_type)
 					continue
 				}
 				var policyEntry PolicyEntry
-				err = fill_policy_details(policy_name, policyTblVal, dbs, &policyEntry)
+				err = fill_policy_details(policy_name, policyTblVal, class_name, dbs, &policyEntry)
 				if err != nil {
 					continue
 				}
@@ -910,7 +990,7 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 
 		if policy_type == "COPP" || !policy_type_found {
 			var policyEntry PolicyEntry
-			err = fill_policy_copp_details("copp-system-policy", dbs, &policyEntry)
+			err = fill_policy_copp_details("copp-system-policy", class_name, dbs, &policyEntry)
 			if err != nil {
 				log.Errorf("Failed to fetch policy:copp-system-policy details err%v", err)
 				return nil, err
@@ -978,7 +1058,10 @@ var rpc_show_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.D
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
-			field_splits := strings.Split(field, "_")
+			if field == "NULL" {
+				continue
+			}
+			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
 				if value != policy_name {
@@ -1058,6 +1141,7 @@ func clear_policer_counters(key db.Key, countersDbPtr *db.DB) error {
 	value, err := countersDbPtr.GetEntry(polCntTbl_ts, key)
 	if err == nil {
 		err = countersDbPtr.CreateEntry(lastPolCntTbl_ts, key, value)
+		log.Infof("Updated Last counter values. Error:%v", err)
 	}
 
 	return err
@@ -1096,6 +1180,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 	policy_name, policy_name_found := mapData["POLICY_NAME"].(string)
 	interface_name, interface_name_found := mapData["INTERFACE_NAME"].(string)
 	policy_type, policy_type_found := mapData["TYPE"].(string)
+	policy_type = strings.ToUpper(policy_type)
 
 	if !policy_name_found && !interface_name_found {
 		log.Errorf("Policy name and interface name not found")
@@ -1127,7 +1212,10 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 		log.Infof("key:%v policyBindTblVal:%v", policyBindKeys[index], policyBindTblVal)
 
 		for field, value := range policyBindTblVal.Field {
-			field_splits := strings.Split(field, "_")
+			if field == "NULL" {
+				continue
+			}
+			field_splits := strings.SplitN(strings.TrimSuffix(field, "_POLICY"), "_", 2)
 
 			if policy_name_found {
 				if value != policy_name {
@@ -1137,7 +1225,7 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 			}
 
 			if policy_type_found {
-				if !strings.EqualFold(field_splits[1], policy_type) {
+				if !strings.EqualFold(field_splits[1], strings.Replace(policy_type, "-", "_", 1)) {
 					log.Infof("Type:%s Needed:%s. Skip", field_splits[1], policy_type)
 					continue
 				}
@@ -1156,14 +1244,162 @@ var rpc_clear_service_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 			for i := 0; i < len(referingClassKeys); i++ {
 				fbsKey := db.Key{Comp: []string{value, referingClassKeys[i].Comp[1], key.Comp[0], field_splits[0]}}
 				clear_fbs_counters(fbsKey, dbs[db.CountersDB])
-				if field_splits[1] == "QOS" {
-					clear_policer_counters(key, dbs[db.CountersDB])
+				if field_splits[1] == "QOS" || field_splits[1] == "ACL_COPP" {
+					clear_policer_counters(fbsKey, dbs[db.CountersDB])
 				}
 			}
 		}
 	}
 	if !match_found {
 		return nil, tlerr.NotFound("No policy application found")
+	}
+
+	return result, nil
+}
+
+func fillFbsNextHopGroupEntry(grpName string, grpData db.Value) (fbsNextHopGroupEntry, error) {
+	var entry fbsNextHopGroupEntry
+
+	entry.GROUP_NAME = grpName
+
+	if descr, found := grpData.Field["DESCRIPTION"]; found {
+		entry.DESCRIPTION = &descr
+	}
+	if grpType, found := grpData.Field["TYPE"]; found {
+		entry.TYPE = grpType
+	}
+	if thrType, found := grpData.Field["THRESHOLD_TYPE"]; found {
+		entry.THRESHOLD_TYPE = &thrType
+	}
+	if thrUpStr, found := grpData.Field["THRESHOLD_UP"]; found {
+		thrUpInt, _ := strconv.ParseUint(thrUpStr, 10, 8)
+		thrUp := uint8(thrUpInt)
+		entry.THRESHOLD_UP = &thrUp
+	}
+	if thrDownStr, found := grpData.Field["THRESHOLD_DOWN"]; found {
+		thrDownInt, _ := strconv.ParseUint(thrDownStr, 10, 8)
+		thrDown := uint8(thrDownInt)
+		entry.THRESHOLD_DOWN = &thrDown
+	}
+
+	ipNhops := grpData.GetList("SET_IP_NEXTHOP")
+	if len(ipNhops) == 0 {
+		ipNhops = grpData.GetList("SET_IPV6_NEXTHOP")
+	}
+	for _, nhData := range ipNhops {
+		var mem fbsNextHopGroupMember
+		parts := strings.Split(nhData, "|")
+		entryId64, _ := strconv.ParseUint(parts[0], 10, 16)
+		mem.ENTRY_ID = uint16(entryId64)
+		mem.IP_ADDRESS = parts[1]
+		if len(parts[2]) > 0 {
+			vrf := parts[2]
+			mem.VRF = &vrf
+		}
+		if len(parts[3]) > 0 {
+			nhType := parts[3]
+			mem.NEXT_HOP_TYPE = &nhType
+		}
+		entry.NEXT_HOPS = append(entry.NEXT_HOPS, mem)
+	}
+
+	return entry, nil
+}
+
+var rpc_show_pbf_next_hop_group RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+	log.Infof("Enter")
+
+	var pbfNextHopGrpTs *db.TableSpec = &db.TableSpec{Name: "PBF_NEXTHOP_GROUP"}
+	var mapData map[string]interface{}
+	err := json.Unmarshal(body, &mapData)
+	if err != nil {
+		log.Infof("Error: %v. Input:%s", err, string(body))
+		log.Errorf("Failed to  marshal input data; err=%v", err)
+		return nil, tlerr.InvalidArgs("Invalid input %s", string(body))
+	}
+
+	input := mapData["sonic-flow-based-services:input"]
+	mapData = input.(map[string]interface{})
+	log.Infof("RPC Input data: %v", mapData)
+
+	var showOutput struct {
+		Output struct {
+			GROUPS []fbsNextHopGroupEntry
+		} `json:"sonic-flow-based-services:output"`
+	}
+
+	grpTable := make(map[string]db.Value)
+	grpReferences := make(map[string][]fbsNextHopGroupReferenceEntry)
+	showOutput.Output.GROUPS = make([]fbsNextHopGroupEntry, 0)
+	grp_name, grp_name_found := mapData["GROUP_NAME"].(string)
+	grp_type, grp_type_found := mapData["TYPE"].(string)
+
+	if grp_name_found {
+		grpTable[grp_name], err = dbs[db.ConfigDB].GetEntry(pbfNextHopGrpTs, db.Key{Comp: []string{grp_name}})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		keys, err := dbs[db.ConfigDB].GetKeys(pbfNextHopGrpTs)
+		if err != nil {
+			return nil, err
+		}
+		for _, key := range keys {
+			grpTable[key.Get(0)], err = dbs[db.ConfigDB].GetEntry(pbfNextHopGrpTs, key)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if grp_type_found {
+		for key, value := range grpTable {
+			if value.Field["TYPE"] != grp_type {
+				delete(grpTable, key)
+			}
+		}
+	}
+
+	if len(grpTable) > 0 {
+		policySectionsTbl := &db.TableSpec{Name: "POLICY_SECTIONS_TABLE"}
+		sections, err := dbs[db.ConfigDB].GetTable(policySectionsTbl)
+		if err != nil {
+			return nil, err
+		}
+
+		keys, _ := sections.GetKeys()
+		for _, key := range keys {
+			data, _ := sections.GetEntry(key)
+			ipNhGrps := data.GetList("SET_IP_NEXTHOP_GROUP")
+			if len(ipNhGrps) == 0 {
+				ipNhGrps = data.GetList("SET_IPV6_NEXTHOP_GROUP")
+			}
+			for _, nhGrp := range ipNhGrps {
+				parts := strings.Split(nhGrp, "|")
+				if _, found := grpTable[parts[0]]; found {
+					var ref fbsNextHopGroupReferenceEntry
+					ref.POLICY_NAME = key.Get(0)
+					prio, _ := strconv.ParseInt(data.Field["PRIORITY"], 10, 32)
+					ref.PRIORITY = int(prio)
+					grpReferences[parts[0]] = append(grpReferences[parts[0]], ref)
+				}
+			}
+		}
+	}
+
+	for grp, grpVal := range grpTable {
+		entry, err := fillFbsNextHopGroupEntry(grp, grpVal)
+		if err != nil {
+			return nil, err
+		}
+		entry.REFERENCES = grpReferences[grp]
+		showOutput.Output.GROUPS = append(showOutput.Output.GROUPS, entry)
+	}
+
+	var result []byte
+	result, err = json.Marshal(&showOutput)
+	if nil != err {
+		log.Error(err)
+		return nil, err
 	}
 
 	return result, nil

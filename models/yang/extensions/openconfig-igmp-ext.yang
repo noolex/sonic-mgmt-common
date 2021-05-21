@@ -1,0 +1,481 @@
+module openconfig-igmp-ext {
+
+  yang-version "1.1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/igmp/extension";
+
+  prefix "oc-igmp-ext";
+
+  // import some basic types/interfaces
+  import openconfig-extensions { prefix "oc-ext"; }
+  import openconfig-interfaces { prefix "oc-intf"; }
+  import openconfig-igmp { prefix "oc-igmp"; }
+  import openconfig-if-ip {prefix oc-ip; }
+  import openconfig-inet-types { prefix oc-inet; }
+  import openconfig-igmp-types { prefix oc-igmp-types; }
+  import openconfig-network-instance { prefix oc-netinst; }
+  
+  // meta
+  organization
+    "OpenConfig working group";
+
+  contact
+    "SONiC";
+
+  description
+    "Deviation for the Network Instance model to add Internet Group 
+    Management Protocol (IGMP).";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-06-17" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+  
+    grouping igmp-ext-config {
+        description "IGMP interface configuration";
+        container igmp {
+            description "IGMP interface config container";
+
+            container joins {
+                description "IGMP joins container";
+                list join {
+                    key "mcastgrpaddr srcaddr";
+                    description "List of IGMP join config";
+                    leaf mcastgrpaddr {
+                        type leafref {
+                            path "../config/mcastgrpaddr";
+                        }
+                        description "Multicast group address";
+                    }
+                    leaf srcaddr {
+                        type leafref {
+                            path "../config/srcaddr";
+                        }
+                        description "Source address";
+                    }
+                    container config {
+                        description "Config container for join config";
+                        uses igmp-ext-attr-config;
+                    }
+                    container state {
+                        config false;
+                        description "State container for join state";
+                        uses igmp-ext-attr-config;
+                    }
+                }
+            }
+            container config {
+                description "Config container for igmp config";
+                uses oc-igmp:igmp-interface-config;
+                uses oc-igmp-ext:igmp-ext-query-config;
+            }
+            container state {
+                config false;
+                description "State container for igmp state";
+                uses oc-igmp:igmp-interface-config;
+                uses oc-igmp-ext:igmp-ext-query-config;
+            }
+        }
+    }
+
+    grouping igmp-ext-attr-config {
+        description "IGMP interface join attribute group";
+        leaf mcastgrpaddr {
+            type oc-inet:ipv4-address;
+            description "Multicast group address";
+        }
+        leaf srcaddr {
+            type oc-inet:ipv4-address;
+            description "Source address";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4" {
+        description
+            "IGMP";
+        uses oc-igmp-ext:igmp-ext-config;
+    }
+
+    grouping igmp-ext-query-config {
+        description "IGMP interface query fields";
+        leaf last-member-query-count {
+            type uint16 {
+                range 1..7;
+            }
+            description
+                "Interval at which the router sends the IGMP member query message toward
+                   the upstream neighbor.";
+        }
+
+        leaf last-member-query-interval {
+            type uint32 {
+                range "1..255";
+            }
+            units milliseconds;
+            description
+                 "Interval at which the router sends the IGMP last member query message toward
+                     the upstream neighbor.";
+        }
+
+        leaf query-max-response-time {
+            type uint16 {
+                range "10..250";
+            }
+            units "seconds";
+            description
+                "IGMP Query Max Response Time.";
+        }
+    }
+
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/igmp/config/filter-prefixes {
+        deviate not-supported;
+    }
+
+    grouping igmp-ext-timers-config {
+        description "IGMP interface timer fields";
+        container timers {
+            description
+                "Timers for IGMP interface";
+
+            leaf group-membership-interval {
+                type uint16;
+                description
+                   "Group Membership Interval";
+            }
+
+            leaf last-member-query-count {
+                type uint16 {
+                    range 1..7;
+                }
+                default 2;
+                description
+                   "Last Member Query Count";
+            }
+
+            leaf last-member-query-time {
+                type uint32 {
+                    range "1..255";
+                }
+                units milliseconds;
+                description
+                   "Last Member Query Time";
+            }
+
+            leaf older-host-present-interval {
+                type uint16;
+                description
+                   "Older Host Present Interval";
+            }
+
+            leaf querier-present-interval {
+                type uint16;
+                description
+                   "Querier Present Interval";
+            }
+
+            leaf query-interval {
+                type uint16;
+                description
+                   "Query Interval";
+            }
+
+            leaf query-response-interval {
+                type uint16;
+                description
+                   "Query Response Interval";
+            }
+
+            leaf robustness-variable {
+                type uint8;
+                description
+                   "Robustness Variable";
+            }
+
+            leaf startup-query-interval {
+                type uint16;
+                description
+                   "Startup Query Interval";
+            }
+        }
+    }
+
+    grouping igmp-ext-querier-config {
+        description "IGMP interface querier fields";
+        container querier {
+            description
+                "Querier fields for IGMP interface";
+
+            leaf querier-type {
+                type string;
+                description
+                   "Querier Type";
+            }
+            leaf query-startup-count {
+                type uint32;
+                description
+                   "Query Startup Count";
+            }
+            leaf query-timer {
+                type string;
+                description
+                   "Query Timer";
+            }
+            leaf query-general-timer {
+                type string;
+                description
+                   "Query General Timer";
+            }
+            leaf ip-addr {
+                type oc-inet:ip-address;
+                description
+                   "Configured Interface Ip Address";
+            }
+            leaf status {
+                type string;
+                description
+                    "Interface state up/down";
+            }
+        }
+    }
+
+    grouping igmp-ext-counters-config {
+        description "IGMP interface mtrace counters fields";
+        container mtrace-counters {
+            description
+                "Mtrace request,response counters";
+            container state {
+                config false;
+                description "IGMP interface counters state information";
+                leaf mtrace-request {
+                    type uint32;
+                    description
+                        "Multicast trace request count";
+                }
+
+                leaf mtrace-response {
+                    type uint32;
+                    description
+                        "Multicast trace response count";
+                }
+
+                leaf unsupported {
+                    type uint32;
+                    description
+                        "Packet stats received for unsupported IGMP version on host side";
+                }
+           }
+        }
+    }
+
+    grouping igmp-ext-flags-config {
+       description "IGMP interface flags fields";
+       container flags {
+           description
+               "Flags for IGMP interface";
+
+           leaf all-multicast {
+               type string;
+               description
+                   "All Multicast flags enabled status";
+           }
+
+           leaf broadcast {
+               type string;
+               description
+                   "Broadcast flags enabled status";
+           }
+
+           leaf deleted {
+               type string;
+               description
+                   "Deleted flags enabled status";
+           }
+
+           leaf index {
+               type uint32;
+               description
+                   "Interface index";
+           }
+
+           leaf multicast {
+               type string;
+               description
+                   "Multicast flags enabled status";
+           }
+
+           leaf multicast-loop {
+               type string;
+               description
+                   "Multicast-loop flags enabled status";
+           }
+
+           leaf promiscous {
+               type string;
+               description
+                   "Promiscous flags enabled status";
+           }
+
+       }
+    }
+
+    grouping igmp-ext-sources-config {
+       description "IGMP sources information";
+       container sources {
+           config false;
+           description "IGMP sources list";
+           list source {
+               key "interface-id src-addr mcastgrp-addr";
+               description "IGMP interface source fields";
+               leaf interface-id {
+                   type string;
+                   description "Interface name";
+               }
+               leaf mcastgrp-addr {
+                    type oc-inet:ip-address;
+                    description "Multicast Group Address";
+               }
+               leaf src-addr {
+                    type oc-inet:ip-address;
+                    description "Source Address";
+               }
+               container state {
+                    config false;
+                    description "IGMP interface source fields";
+                    leaf interface-id {
+                        type string;
+                        description "Interface name";
+                    }
+                    leaf mcastgrp-addr {
+                        type oc-inet:ip-address;
+                        description "Multicast Group Address";
+                    }
+                    leaf src-addr {
+                        type oc-inet:ip-address;
+                        description "Source Address";
+                    }
+                    leaf ip-addr {
+                       type oc-inet:ipv4-address;
+                       description "Configured Ip Address";
+                    }
+                    leaf uptime {
+                       type string;
+                       description
+                           "Interval for which the IGMP interface is up from.";
+                    }
+                    leaf source-forwarding{
+                       type string;
+                       description
+                          "IGMP filter to enable or disable forwarding on this source";
+                    }
+                    leaf timer {
+                       type string;
+                       description
+                           "Interval for which the IGMP next query will be sent";
+                    }
+               }
+           }
+       }
+    }
+
+    grouping igmp-ext-groups-config {
+       description "IGMP groups information";
+       container groups {
+           config false;
+           description "IGMP groups list";
+           list group {
+               key "interface-id mcastgrp-addr";
+               description "IGMP interface group fields";
+               leaf interface-id {
+                   type string;
+                   description "Interface name";
+               }
+               leaf mcastgrp-addr {
+                    type oc-inet:ipv4-address;
+                    description "Multicast Group Address";
+               }
+               container state {
+                    config false;
+                    description "IGMP interface group fields";
+                    leaf interface-id {
+                       type string;
+                       description "Interface name";
+                    }
+                    leaf mcastgrp-addr {
+                       type oc-inet:ipv4-address;
+                       description "Multicast Group Address";
+                    }
+                    leaf ip-addr {
+                       type oc-inet:ipv4-address;
+                       description "Configured Ip Address";
+                    }
+                    leaf uptime {
+                       type string;
+                       description
+                           "Interval for which the IGMP interface is up from.";
+                    }
+                    leaf version{
+                       type oc-igmp-types:igmp-version;
+                       description
+                          "IGMP version";
+                    }
+                    leaf sources-count{
+                       type uint16;
+                       description
+                          "Number of sources configured under this multicast group";
+                    }
+                    leaf mode{
+                       type string;
+                       description
+                          "Filter to exclude or include a source in the join";
+                    }
+                    leaf timer {
+                       type string;
+                       description
+                           "Interval for which the IGMP next query will be sent";
+                    }
+               }
+           }
+       }
+    }
+
+    grouping igmp-ext-state-config {
+       description "IGMP state information";
+       container statistics {
+          description "IGMP statistics information";
+          uses oc-igmp:igmp-interface-counters;
+          uses igmp-ext-counters-config;
+       }
+       uses igmp-ext-sources-config;
+       uses igmp-ext-groups-config;
+       uses oc-igmp:igmp-interface-top;
+    }
+
+    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp" {
+       description "Extended IGMP state information from standard IGMP model";
+       uses oc-igmp-ext:igmp-ext-state-config;
+    }
+
+    augment "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/state" {
+       description "Extended IGMP interface state information from standard IGMP model";
+       uses oc-igmp-ext:igmp-ext-flags-config;
+       uses oc-igmp-ext:igmp-ext-querier-config;
+       uses oc-igmp-ext:igmp-ext-timers-config;
+    }
+
+    deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/interface-ref" {
+       deviate not-supported;
+    }
+
+    deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/membership-groups" {
+       deviate not-supported;
+    }
+/*
+    deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:igmp/interfaces/interface/counters" {
+       deviate not-supported;
+    }
+*/
+}

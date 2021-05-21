@@ -514,6 +514,18 @@ module openconfig-ospfv2-ext {
         "Max metric startup timeout in seconds";
     }
 
+    leaf router-lsa-all {
+      type ospf-cost-metric ;
+      description
+        "Advertise all Router LSA links with OSPF max-metric";
+    }
+
+    leaf router-lsa-stub {
+      type ospf-cost-metric ;
+      description
+        "Advertise all Router LSA stub links with OSPF max-metric";
+    }
+
     /*
     leaf on-shutdown {
       type uint32 {
@@ -1507,6 +1519,20 @@ module openconfig-ospfv2-ext {
         "The name of the passive interface .";
     }
 
+    leaf subinterface {
+      type leafref {
+        path "/oc-if:interfaces/" +
+          "oc-if:interface[oc-if:name=current()/../name]/" +
+          "oc-if:subinterfaces/oc-if:subinterface/oc-if:index";
+      }
+      default 0;
+      description
+        "Reference to a subinterface -- this requires the base
+        interface to be specified using the interface leaf in
+        this container.  If only a reference to a base interface
+        is requuired, this leaf should not be set.";
+    }
+
     leaf address {
       type inet:ipv4-address-no-zone;
       description
@@ -1529,7 +1555,7 @@ module openconfig-ospfv2-ext {
         "Configuration and state parameters relating passive interfaces";
 
       list passive-interface {
-        key "name address";
+        key "name subinterface address";
 
         description
           "Configuration and state parameters relating passive interfaces";
@@ -1540,6 +1566,14 @@ module openconfig-ospfv2-ext {
           }
           description
             "Reference to the passive interface";
+        }
+
+        leaf subinterface {
+          type leafref {
+            path "../config/subinterface";
+          }
+          description
+            "Reference to the passive sub-interface";
         }
 
         leaf address {

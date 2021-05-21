@@ -1,222 +1,220 @@
 package transformer
 
 import (
-        "errors"
-        log "github.com/golang/glog"
-        "strings"
-        "strconv"
-        "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-        "github.com/Azure/sonic-mgmt-common/translib/db"
-        "github.com/openconfig/ygot/ygot"        
+	"errors"
+	"strconv"
+	"strings"
+
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 )
 
 func init() {
-    XlateFuncBind("DbToYang_netinst_vlans_subtree_xfmr", DbToYang_netinst_vlans_subtree_xfmr)
-    XlateFuncBind("Subscribe_netinst_vlans_subtree_xfmr", Subscribe_netinst_vlans_subtree_xfmr)
+	XlateFuncBind("DbToYang_netinst_vlans_subtree_xfmr", DbToYang_netinst_vlans_subtree_xfmr)
+	XlateFuncBind("Subscribe_netinst_vlans_subtree_xfmr", Subscribe_netinst_vlans_subtree_xfmr)
 }
-
 
 func getUriAttributes(inParams XfmrParams) (*ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans, string, string, uint16, error) {
 
-    var err error
-    var vlanName string
-    pathInfo := NewPathInfo(inParams.uri)
-    niName := pathInfo.Var("name")
-    vlanIdStr := pathInfo.Var("vlan-id")
-    var vlanId uint16
+	var err error
+	var vlanName string
+	pathInfo := NewPathInfo(inParams.uri)
+	niName := pathInfo.Var("name")
+	vlanIdStr := pathInfo.Var("vlan-id")
+	var vlanId uint16
 
-    targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
-    if len(niName) == 0 {
-        return nil, "", "", 0, errors.New("Network-instance name is missing")
-    }
+	if len(niName) == 0 {
+		return nil, "", "", 0, errors.New("Network-instance name is missing")
+	}
 
-    deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
-    netInstsObj := deviceObj.NetworkInstances
+	deviceObj := (*inParams.ygRoot).(*ocbinds.Device)
+	netInstsObj := deviceObj.NetworkInstances
 
-    if netInstsObj.NetworkInstance == nil {
-        return nil, "", "", 0, errors.New("Network-instances container missing")
-    }
+	if netInstsObj.NetworkInstance == nil {
+		return nil, "", "", 0, errors.New("Network-instances container missing")
+	}
 
-    netInstObj := netInstsObj.NetworkInstance[niName]
-    if netInstObj == nil {
-        netInstObj, _ = netInstsObj.NewNetworkInstance(niName)
-        ygot.BuildEmptyTree(netInstObj)
-    }
+	netInstObj := netInstsObj.NetworkInstance[niName]
+	if netInstObj == nil {
+		netInstObj, _ = netInstsObj.NewNetworkInstance(niName)
+		ygot.BuildEmptyTree(netInstObj)
+	}
 
-    netInstVlansObj := netInstObj.Vlans
-    if netInstVlansObj == nil {
-        ygot.BuildEmptyTree(netInstObj)
-    }
+	netInstVlansObj := netInstObj.Vlans
+	if netInstVlansObj == nil {
+		ygot.BuildEmptyTree(netInstObj)
+	}
 
-    // Add prefix "VLAN"
-    if len(vlanIdStr) > 0 {
-        vlanName = "Vlan" + vlanIdStr
-        var vlanId64 uint64
-        if vlanId64,  err = strconv.ParseUint(vlanIdStr, 10, 16); err != nil {
-            return nil,  "", "", 0, errors.New("Invalid Vlan id")
-        }
-        vlanId = uint16(vlanId64)
-    }
-    log.Infof(" niName %s vlanName %s targetUriPath %s", niName, vlanName, targetUriPath)
+	// Add prefix "VLAN"
+	if len(vlanIdStr) > 0 {
+		vlanName = "Vlan" + vlanIdStr
+		var vlanId64 uint64
+		if vlanId64, err = strconv.ParseUint(vlanIdStr, 10, 16); err != nil {
+			return nil, "", "", 0, errors.New("Invalid Vlan id")
+		}
+		vlanId = uint16(vlanId64)
+	}
+	log.Infof(" niName %s vlanName %s targetUriPath %s", niName, vlanName, targetUriPath)
 
-    return netInstObj.Vlans, niName, vlanName, vlanId, err
+	return netInstObj.Vlans, niName, vlanName, vlanId, err
 }
 
-func dbToYangFillVlanMemberEntry(ocVlansVlan *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan, vlanName string, dbVal db.Value) (error){
+func dbToYangFillVlanMemberEntry(ocVlansVlan *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan, vlanName string, dbVal db.Value) error {
 
-    var dbVlanMembers []string
-    if ocVlansVlan == nil {
-        return errors.New("Operational Error")
-    }
-    var members ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members
-    ocVlansVlan.Members = &members
+	var dbVlanMembers []string
+	if ocVlansVlan == nil {
+		return errors.New("Operational Error")
+	}
+	var members ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members
+	ocVlansVlan.Members = &members
 
-    ygot.BuildEmptyTree(&members)
+	ygot.BuildEmptyTree(&members)
 
-    if dbVal.Has("members@") && len(dbVal.Field["members@"]) > 0 {
-        dbVlanMembers = strings.SplitN(dbVal.Field["members@"], ",", -1 )
-    } else {
-        return nil
-    }
+	if dbVal.Has("members@") && len(dbVal.Field["members@"]) > 0 {
+		dbVlanMembers = strings.SplitN(dbVal.Field["members@"], ",", -1)
+	} else {
+		return nil
+	}
 
-    for i:= 0 ; i < len(dbVlanMembers); i++ {
-        var vlanMember ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members_Member
-        var memberState ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members_Member_State
-        memberState.Interface = &dbVlanMembers[i]
-        vlanMember.State = &memberState
-        ocVlansVlan.Members.Member= append(ocVlansVlan.Members.Member, &vlanMember)
-    }
+	for i := 0; i < len(dbVlanMembers); i++ {
+		var vlanMember ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members_Member
+		var memberState ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Members_Member_State
+		memberState.Interface = &dbVlanMembers[i]
+		vlanMember.State = &memberState
+		ocVlansVlan.Members.Member = append(ocVlansVlan.Members.Member, &vlanMember)
+	}
 
-    return nil
+	return nil
 }
 
-func dbToYangFillVlanEntry(ocVlansVlan *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan, vlanName string, vlanId uint16, dbVal db.Value) (error) {
+func dbToYangFillVlanEntry(ocVlansVlan *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan, vlanName string, vlanId uint16, dbVal db.Value) error {
 
-    if ocVlansVlan == nil {
-        return errors.New("Operational Error")
-    }
+	if ocVlansVlan == nil {
+		return errors.New("Operational Error")
+	}
 
-    var config ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config
-    var state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_State
+	var config ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config
+	var state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_State
 
-    ygot.BuildEmptyTree(&config)
-    ygot.BuildEmptyTree(&state)
-    state.Name = &vlanName
-    config.Name = &vlanName
-    // convert to uint16
-    state.VlanId = &vlanId
-    config.VlanId = &vlanId
-    state.Status = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config_Status_UNSET
-    config.Status = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config_Status_UNSET
+	ygot.BuildEmptyTree(&config)
+	ygot.BuildEmptyTree(&state)
+	state.Name = &vlanName
+	config.Name = &vlanName
+	// convert to uint16
+	state.VlanId = &vlanId
+	config.VlanId = &vlanId
+	state.Status = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config_Status_UNSET
+	config.Status = ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans_Vlan_Config_Status_UNSET
 
-    ocVlansVlan.State = &state
-    ocVlansVlan.Config = &config
-    return dbToYangFillVlanMemberEntry(ocVlansVlan, vlanName, dbVal)
+	ocVlansVlan.State = &state
+	ocVlansVlan.Config = &config
+	return dbToYangFillVlanMemberEntry(ocVlansVlan, vlanName, dbVal)
 }
 
-var DbToYang_netinst_vlans_subtree_xfmr SubTreeXfmrDbToYang = func (inParams XfmrParams) error {
-    var err error
-    var vlansObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans
-    var niName string
-    var vlanName string
-    var vlanId uint16
-    log.Infof("DbToYang_netinst_vlans_subtree_xfmr: ")
+var DbToYang_netinst_vlans_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
+	var err error
+	var vlansObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Vlans
+	var niName string
+	var vlanName string
+	var vlanId uint16
+	log.Infof("DbToYang_netinst_vlans_subtree_xfmr: ")
 
-    vlansObj, niName, vlanName, vlanId, err  = getUriAttributes(inParams)
+	vlansObj, niName, vlanName, vlanId, err = getUriAttributes(inParams)
 
-    if (err != nil) {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    if !((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
-        return nil
-    }
+	if !((niName == "default") || (strings.HasPrefix(niName, "Vlan"))) {
+		return nil
+	}
 
-    tblName := "VLAN"
-    dbspec := &db.TableSpec { Name: tblName }
+	tblName := "VLAN"
+	dbspec := &db.TableSpec{Name: tblName}
 
-    // Vlan name given, get corresponding entry from Db.
-    if len(vlanName) > 0 {
-        // if network instance is vlan, return nil for other vlans.
-        if strings.HasPrefix(niName, "Vlan") &&
-            vlanName != niName {
-            log.Infof("vlan_tbl_key_xfmr: vlanTbl_key %s, ntwk_inst %s ", vlanName, niName)
-            return err
-        }
+	// Vlan name given, get corresponding entry from Db.
+	if len(vlanName) > 0 {
+		// if network instance is vlan, return nil for other vlans.
+		if strings.HasPrefix(niName, "Vlan") &&
+			vlanName != niName {
+			log.Infof("vlan_tbl_key_xfmr: vlanTbl_key %s, ntwk_inst %s ", vlanName, niName)
+			return err
+		}
 
-        dbEntry, derr := inParams.d.GetEntry(dbspec, db.Key{Comp: []string{vlanName}})
-        if derr != nil {
-            log.Infof(" dbEntry get failure for Key %s", vlanName)
-            return errors.New("Operational Error")
-        }
-        VlansVlanObj := vlansObj.Vlan[vlanId]
-        err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry)
-    } else {
-           if strings.HasPrefix(niName, "Vlan") {
-               dbEntry, derr := inParams.d.GetEntry(dbspec, db.Key{Comp: []string{niName}})
-               if derr != nil {
-                   log.Infof(" dbEntry get failure for Key %s", niName)
-                   return errors.New("Operational Error")
-               }
-               vlanName = niName
-               vlanIdStr := dbEntry.Field["vlanid"]
-               vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
-               vlanId = uint16(vlanId64)
+		dbEntry, derr := inParams.d.GetEntry(dbspec, db.Key{Comp: []string{vlanName}})
+		if derr != nil {
+			log.Infof(" dbEntry get failure for Key %s", vlanName)
+			return errors.New("Operational Error")
+		}
+		VlansVlanObj := vlansObj.Vlan[vlanId]
+		err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry)
+	} else {
+		if strings.HasPrefix(niName, "Vlan") {
+			dbEntry, derr := inParams.d.GetEntry(dbspec, db.Key{Comp: []string{niName}})
+			if derr != nil {
+				log.Infof(" dbEntry get failure for Key %s", niName)
+				return errors.New("Operational Error")
+			}
+			vlanName = niName
+			vlanIdStr := dbEntry.Field["vlanid"]
+			vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
+			vlanId = uint16(vlanId64)
 
-               VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
-               if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
-                   log.Error("dbToYangFillVlanEntry failure for %s", vlanName)
-               }
-               return err
-           }
+			VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
+			if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
+				log.Error("dbToYangFillVlanEntry failure for %s", vlanName)
+			}
+			return err
+		}
 
-           var keys []db.Key
-           if keys, err = inParams.d.GetKeys(&db.TableSpec{Name:tblName, CompCt:2} ); err != nil {
-                return errors.New("Operational Error")
-           }
+		var keys []db.Key
+		if keys, err = inParams.d.GetKeys(&db.TableSpec{Name: tblName, CompCt: 2}); err != nil {
+			return errors.New("Operational Error")
+		}
 
-           for _, key := range keys {
-                dbEntry, dbErr := inParams.d.GetEntry(dbspec, key)
-                if dbErr != nil {
-                    log.Error("DB GetEntry failed for key : ", key)
-                    continue
-                }
-                vlanName = key.Comp[0]
-                vlanIdStr := dbEntry.Field["vlanid"]
-                vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
-                vlanId = uint16(vlanId64)
+		for _, key := range keys {
+			dbEntry, dbErr := inParams.d.GetEntry(dbspec, key)
+			if dbErr != nil {
+				log.Error("DB GetEntry failed for key : ", key)
+				continue
+			}
+			vlanName = key.Comp[0]
+			vlanIdStr := dbEntry.Field["vlanid"]
+			vlanId64, _ := strconv.ParseUint(vlanIdStr, 10, 16)
+			vlanId = uint16(vlanId64)
 
-                VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
-                if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
-                    log.Error("dbToYangFillVlanEntry failure for %s", vlanName)
-                }
-           }
-    }
-    return err
+			VlansVlanObj, _ := vlansObj.NewVlan(vlanId)
+			if err = dbToYangFillVlanEntry(VlansVlanObj, vlanName, vlanId, dbEntry); err != nil {
+				log.Error("dbToYangFillVlanEntry failure for %s", vlanName)
+			}
+		}
+	}
+	return err
 }
 
-var Subscribe_netinst_vlans_subtree_xfmr = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    var err error
-    var result XfmrSubscOutParams
-    pathInfo := NewPathInfo(inParams.uri)
-    niName := pathInfo.Var("name")
-    vlanIdStr := pathInfo.Var("vlan-id")
-    var keyName string
+var Subscribe_netinst_vlans_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
+	pathInfo := NewPathInfo(inParams.uri)
+	niName := pathInfo.Var("name")
+	vlanIdStr := pathInfo.Var("vlan-id")
+	var keyName string
 
-    if len(vlanIdStr) > 0 {
-        keyName = "Vlan" + vlanIdStr
-        result.dbDataMap = make(RedisDbMap)
-        result.isVirtualTbl = false
-        tblName := "VLAN"
-        result.dbDataMap = RedisDbMap{db.ConfigDB:{tblName:{keyName:{}}}}
-        log.Infof("Subscribe_netinst_vlans_subtree_xfmr niName:%s key:%s",
-              niName, keyName)
-    } else  {
-        err = errors.New("Invalid or Null Key")
-    }
-    log.Info("Returning Subscribe_netinst_vlans_subtree_xfmr, result:", result)
-    return result, err
+	if len(vlanIdStr) > 0 {
+		keyName = "Vlan" + vlanIdStr
+		result.dbDataMap = make(RedisDbSubscribeMap)
+		result.isVirtualTbl = false
+		tblName := "VLAN"
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tblName: {keyName: {}}}}
+		log.Infof("Subscribe_netinst_vlans_subtree_xfmr niName:%s key:%s",
+			niName, keyName)
+	} else {
+		err = errors.New("Invalid or Null Key")
+	}
+	log.Info("Returning Subscribe_netinst_vlans_subtree_xfmr, result:", result)
+	return result, err
 }
-
-

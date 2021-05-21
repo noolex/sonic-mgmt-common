@@ -22,6 +22,7 @@ import (
 	//"errors"
 	"testing"
 	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
@@ -29,22 +30,21 @@ func Test_verifyError(t *testing.T) {
 
 	var col1Json string = "{\"sonic-sflow:SFLOW_COLLECTOR_LIST\":[{\"collector_ip\":\"1.1.1.1\",\"collector_name\":\"col1\",\"collector_port\":4444}]}"
 
-        //Delete collector
+	//Delete collector
 	url := "/sonic-sflow:sonic-sflow/SFLOW_COLLECTOR"
 	list_url := "/sonic-sflow:sonic-sflow/SFLOW_COLLECTOR/SFLOW_COLLECTOR_LIST[collector_name=col1]"
 	t.Run("Delete sFlow collector col1", processDeleteRequest(list_url, false))
 
-        //Add collector
+	//Add collector
 	t.Run("Add sFlow collector col1", processSetRequest(url, col1Json, "POST", false))
 	time.Sleep(1 * time.Second)
 
-        // Verify collector configurations
+	// Verify collector configurations
 	t.Run("Verify sFlow collector col1", processGetRequest(list_url, col1Json, false))
 	time.Sleep(1 * time.Second)
 
-        // Verify error
+	// Verify error
 	err := tlerr.AlreadyExists("Entry col1 already exists")
 	t.Run("check error", processSetRequest(url, col1Json, "POST", true, err))
 	time.Sleep(1 * time.Second)
 }
-

@@ -21,16 +21,17 @@ package translib
 
 import (
 	"errors"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -149,10 +150,10 @@ func (app *LstApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *LstApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+func (app *LstApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	notSupported := tlerr.NotSupportedError{Format: "Subscribe not supported", Path: req.path}
 
-	return nil, nil, notSupported
+	return nil, notSupported
 }
 
 func (app *LstApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -216,7 +217,7 @@ func (app *LstApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var payload []byte
 
@@ -225,12 +226,12 @@ func (app *LstApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	payload, err = generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget)
+	payload, valueTree, err := generateGetResponsePayload(app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
 	if err != nil {
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	return GetResponse{Payload: payload}, err
+	return GetResponse{Payload: payload, ValueTree: valueTree}, err
 }
 
 func (app *LstApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
@@ -238,6 +239,11 @@ func (app *LstApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
 	err := errors.New("Not implemented")
 
 	return resp, err
+}
+
+func (app *LstApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
+	return resp, tlerr.New("Not implemented")
 }
 
 /*
@@ -298,20 +304,21 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 	// Next process Interfaces
 	if nil != root.Interfaces && len(root.Interfaces.Interface) > 0 {
 		for id, intfPtr := range root.Interfaces.Interface {
+			var ifName string
 			if nil == intfPtr.InterfaceRef || nil == intfPtr.InterfaceRef.Config ||
 				nil == intfPtr.InterfaceRef.Config.Interface {
 				goto SkipIntfCheck
 			}
-
+			ifName = *intfPtr.InterfaceRef.Config.Interface
 			if nil != intfPtr.InterfaceRef.Config.Subinterface {
-				return tlerr.NotSupported("SubInterface not supported")
+				ifName = ifName + "." + strconv.FormatUint(uint64(*intfPtr.InterfaceRef.Config.Subinterface), 10)
 			}
-
-			if id != *intfPtr.InterfaceRef.Config.Interface {
-				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, *intfPtr.InterfaceRef.Config.Interface)
+			if id != ifName {
+				return tlerr.NotSupported("Different ID %s and Interface name %s not supported", id, ifName)
 			}
 
 		SkipIntfCheck:
+
 			if nil != intfPtr.UpstreamGroups && nil != intfPtr.DownstreamGroup {
 				return tlerr.InvalidArgs("Interface %s has both upstream and downstream groups", id)
 			}
@@ -330,9 +337,15 @@ func (app *LstApp) translateOcToIntCRUCommon(d *db.DB, opcode int) error {
 
 			if nil != intfPtr.DownstreamGroup && nil != intfPtr.DownstreamGroup.Config &&
 				nil != intfPtr.DownstreamGroup.Config.GroupName {
+
+				if nil != intfPtr.InterfaceRef && nil != intfPtr.InterfaceRef.Config && nil != intfPtr.InterfaceRef.Config.Subinterface {
+					return tlerr.NotSupported("SubInterface not supported")
+				}
+
 				if !isInterfaceNameValid(id, true) {
 					return tlerr.InvalidArgs("Interface %s is invalid for downstream", id)
 				}
+
 				ifName := *utils.GetNativeNameFromUIName(&id)
 				app.intfDownstreamCfgTblMap[ifName] = *intfPtr.DownstreamGroup.Config.GroupName
 			}
@@ -603,6 +616,8 @@ func (app *LstApp) processCRUCommonRoot(d *db.DB, opcode int) error {
 
 func (app *LstApp) removeGroupInterface(d *db.DB, group string, field string, intf string) error {
 	log.Infof("Grp:%s Intf:%s Field:%s", group, intf, field)
+
+	intf = *utils.GetNativeNameFromUIName(&intf)
 
 	var groups []string
 	if group == "" {
@@ -995,6 +1010,8 @@ func (app *LstApp) processLstGroupsGet(dbs [db.MaxDB]*db.DB, grpPtr *ocbinds.Ope
 				diff = 0
 			}
 			grpPtr.State.BringupRemainingTime = &diff
+			log.Infof("processLstGroupsGet: bringuptime; epoch_str:%s, epoch:%v, timeout:%v, RemainingTime:%v", epoch_str, epoch, tmout_16,
+				diff)
 		}
 	}
 

@@ -20,8 +20,8 @@ package transformer_test
 
 import (
 	"fmt"
-	"time"
 	"testing"
+	"time"
 )
 
 func Test_SetTABLE(t *testing.T) {
@@ -30,11 +30,11 @@ func Test_SetTABLE(t *testing.T) {
 
 	url := "/sonic-tests:sonic-tests/TABLE_A/TABLE_A_LIST[id=14628525]"
 
-        //Add entry
+	//Add entry
 	t.Run("Add entry", processSetRequest(url, addEntryJson, "PATCH", false))
 	time.Sleep(1 * time.Second)
 
-        // Verify entry
+	// Verify entry
 	t.Run("Verify entry", processGetRequest(url, addEntryJson, false))
 
 }

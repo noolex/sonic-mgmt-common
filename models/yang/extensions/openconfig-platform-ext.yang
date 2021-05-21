@@ -8,6 +8,7 @@ module openconfig-platform-ext {
     prefix "oc-pf-ext";
 
     import openconfig-extensions { prefix "oc-ext"; }
+    import openconfig-types { prefix oc-types; }
     import openconfig-platform { prefix oc-pf; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
     import openconfig-platform-types {prefix oc-pf-types; }
@@ -205,6 +206,19 @@ module openconfig-platform-ext {
         }
     }
 
+    grouping platform-ext-chassis-state {
+        description "Chassis state information";
+        leaf name {
+            type string;
+            description "Name of chassis";
+        }
+
+        leaf module {
+            type string;
+            description "Name of module";
+        }
+    }
+
     augment /oc-pf:components/oc-pf:component {
         description
             "Add container for software-component information";
@@ -319,6 +333,11 @@ module openconfig-platform-ext {
             type string;
             description "OUI of the xcvr module vendor";
         }
+
+        leaf revision-compliance{
+            type string;
+            description "Revision Compliance of the xcvr module";
+        }
     }
 
     augment /oc-pf:components/oc-pf:component/oc-pf:power-supply/oc-pf:state {
@@ -337,6 +356,12 @@ module openconfig-platform-ext {
                 }
             }
             description "Type of power (AC/DC).";
+        }
+
+        leaf input-power {
+            type oc-types:ieeefloat32;
+            units watts;
+            description "Input power supplied to the power supply.";
         }
     }
 
@@ -658,5 +683,10 @@ module openconfig-platform-ext {
         type string;
         description "Tx bias current in 2 uA.";
       }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:chassis/oc-pf:state {
+        description "Chassis state information";
+        uses platform-ext-chassis-state;
     }
 }

@@ -1,0 +1,183 @@
+submodule openconfig-fbs-types-ext {
+  belongs-to openconfig-fbs-ext {
+    prefix oc-fbs-ext;
+  }
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC
+    https://github.com/Azure/SONiC";
+
+  description
+    "This model defines the configuration and operational data
+    for flow based services classifiers.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2020-05-15" {
+    description
+      "Initial revision";
+
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+  identity MATCH_TYPE {
+    description
+      "Base identity for classifier match types";
+  }
+
+  identity MATCH_ACL {
+    base MATCH_TYPE;
+    description
+      "Classifiers with ACL as match criteria";
+  }
+
+  identity MATCH_FIELDS {
+    base MATCH_TYPE;
+    description
+      "Classifiers with L2-L4 header fields as match. All header
+      fields must match for the flow classification.";
+  }
+
+  identity POLICY_TYPE {
+    description
+      "Base identity for policy types";
+  }
+
+  identity POLICY_QOS {
+    base POLICY_TYPE;
+    description
+      "Policy with QoS actions";
+  }
+
+  identity POLICY_FORWARDING {
+    base POLICY_TYPE;
+    description
+      "Policy with forwarding actions.";
+  }
+
+  identity POLICY_MONITORING {
+    base POLICY_TYPE;
+    description
+      "Policy with monitoring actions like SPAN.";
+  }
+
+  identity POLICY_COPP {
+    base POLICY_TYPE;
+    description
+      "Policy with ACL based Control Plane Policing action.";
+  }
+
+  identity NEXT_HOP_NETWORK_INSTANCE {
+    description
+      "Base identify for next-hop network instance";
+  }
+
+  identity INTERFACE_NETWORK_INSTANCE {
+    base NEXT_HOP_NETWORK_INSTANCE;
+    description
+      "Network instance is same as the network instance of the interface
+      on which the policy is applied";
+  }
+
+  identity NEXT_HOP_GROUP_TYPE {
+    description
+      "Base identity for next-hop group type";
+  }
+
+  identity NEXT_HOP_GROUP_TYPE_IPV4 {
+    base NEXT_HOP_GROUP_TYPE;
+    description
+      "IPv4 next-hop group type";
+  }
+
+  identity NEXT_HOP_GROUP_TYPE_IPV6 {
+    base NEXT_HOP_GROUP_TYPE;
+    description
+      "IPv6 next-hop group type";
+  }
+
+  identity NEXT_HOP_TYPE {
+    description
+      "Next hop type";
+  }
+
+  identity NEXT_HOP_TYPE_NON_RECURSIVE {
+    base NEXT_HOP_TYPE;
+    description
+      "The next-hop must be resolved non-recursively ie directly connected to 
+      be considered part of the next-hop group. If the next-hop is resolved 
+      recursively then it will not be added to the group. The next-hop must
+      also be reachable via an underlay interface";
+  }
+
+  identity NEXT_HOP_TYPE_RECURSIVE {
+    base NEXT_HOP_TYPE;
+    description
+      "The next-hop must be resolved recursively ie indirectly connected to 
+      be considered part of the next-hop group. If the next-hop is resolved 
+      non recursively then it will not be added to the group. The next-hop
+      must also be reachable via an underlay interface";
+  }
+
+  identity NEXT_HOP_TYPE_OVERLAY {
+    base NEXT_HOP_TYPE;
+    description
+      "The next-hop must be resolved via an overlay interface";
+  }
+
+  // typedef statements
+  typedef next-hop-network-instance-type {
+    type union {
+      type string;
+      type identityref {
+        base NEXT_HOP_NETWORK_INSTANCE;
+      }
+    }
+
+    description
+      "Typedef for Network instance string value or identity";
+  }
+
+  identity NEXT_HOP_GROUP_THRESHOLD_TYPE {
+    description
+      "Base identity for threshold types used to determine if a next-hop
+        group can be selected for forwarding.";
+  }
+
+  identity NEXT_HOP_GROUP_THRESHOLD_PERCENTAGE {
+    base NEXT_HOP_GROUP_THRESHOLD_TYPE;
+    description
+      "Threshold type used is the percentage of next-hop group members
+       which are reachable.";
+  }
+
+  identity NEXT_HOP_GROUP_THRESHOLD_COUNT {
+    base NEXT_HOP_GROUP_THRESHOLD_TYPE;
+    description
+      "Threshold type used is the count of next-hop group members
+       which are reachable.";
+  }
+
+  // grouping statements
+
+  // data definition statements
+
+  // augment statements
+
+  // rpc statements
+
+  // notification statements
+
+}
+

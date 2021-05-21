@@ -24,4 +24,10 @@ module sonic-interface-annot {
             sonic-ext:db-name "APPL_DB";
         }
     }
+
+    deviation /sintf:sonic-interface/sintf:VLAN_SUB_INTERFACE/sintf:VLAN_SUB_INTERFACE_LIST/sintf:id {
+        deviate add {
+            sonic-ext:value-transformer "alias_value_xfmr";
+        }
+    }
 }
