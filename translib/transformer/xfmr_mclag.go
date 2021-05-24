@@ -45,6 +45,8 @@ func init() {
 		DbToYang_mclag_domain_delay_restore_start_time_fld_xfmr)
 	XlateFuncBind("YangToDb_mclag_unique_ip_enable_fld_xfmr", YangToDb_mclag_unique_ip_enable_fld_xfmr)
 	XlateFuncBind("DbToYang_mclag_unique_ip_enable_fld_xfmr", DbToYang_mclag_unique_ip_enable_fld_xfmr)
+	XlateFuncBind("YangToDb_mclag_peer_gateway_enable_fld_xfmr", YangToDb_mclag_peer_gateway_enable_fld_xfmr)
+	XlateFuncBind("DbToYang_mclag_peer_gateway_enable_fld_xfmr", DbToYang_mclag_peer_gateway_enable_fld_xfmr)
 }
 
 var YangToDb_mclag_domainid_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -204,7 +206,50 @@ var YangToDb_mclag_unique_ip_enable_fld_xfmr FieldXfmrYangToDb = func(inParams X
 		}
 	}
 
-	log.Infof("DbToYang_mclag_unique_ip_enable_fld_xfmr --> result: %v", res_map)
+	log.Infof("YangToDb_mclag_unique_ip_enable_fld_xfmr --> result: %v", res_map)
+	return res_map, err
+}
+
+var DbToYang_mclag_peer_gateway_enable_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+	log.Infof("DbToYang_mclag_peer_gateway_enable_fld_xfmr --> key: %v", inParams.key)
+
+	configDb := inParams.dbs[db.ConfigDB]
+	mclagEntry, _ := configDb.GetEntry(&db.TableSpec{Name: "MCLAG_PEER_GATEWAY"}, db.Key{Comp: []string{inParams.key}})
+	peerGatewayStatus := mclagEntry.Get("peer_gateway")
+	if peerGatewayStatus == "enable" {
+		result["peer-gateway-enable"], _ = ygot.EnumName(ocbinds.OpenconfigMclag_Mclag_VlanIf_VlanInterface_Config_PeerGatewayEnable_ENABLE)
+	}
+	log.Infof("DbToYang_mclag_peer_gateway_enable_fld_xfmr --> result: %v", result)
+
+	return result, err
+}
+
+var YangToDb_mclag_peer_gateway_enable_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+	res_map := make(map[string]string)
+	var err error
+
+	peerGatewayEnable, _ := inParams.param.(ocbinds.E_OpenconfigMclag_Mclag_VlanIf_VlanInterface_Config_PeerGatewayEnable)
+	log.Infof("YangToDb_mclag_peer_gateway_enable_fld_xfmr: peerGatewayEnable:%v ", peerGatewayEnable)
+	if peerGatewayEnable == ocbinds.OpenconfigMclag_Mclag_VlanIf_VlanInterface_Config_PeerGatewayEnable_ENABLE {
+		res_map["peer_gateway"] = "enable"
+	} else {
+		if inParams.oper == DELETE {
+			tblName := "MCLAG_PEER_GATEWAY"
+			pathInfo := NewPathInfo(inParams.uri)
+			tblKey := pathInfo.Var("name")
+			log.Infof("YangToDb_mclag_peer_gateway_enable_fld_xfmr Delete tblKey %v", tblKey)
+			subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
+			subIntfmap_del := make(map[string]map[string]db.Value)
+			subIntfmap_del[tblName] = make(map[string]db.Value)
+			subIntfmap_del[tblName][tblKey] = db.Value{}
+			subOpMap[db.ConfigDB] = subIntfmap_del
+			inParams.subOpDataMap[DELETE] = &subOpMap
+		}
+	}
+
+	log.Infof("YangToDb_mclag_peer_gateway_enable_fld_xfmr --> result: %v", res_map)
 	return res_map, err
 }
 
