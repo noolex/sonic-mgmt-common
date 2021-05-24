@@ -1,0 +1,72 @@
+module openconfig-port-media-fec-ext {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/platform/port-ext2/extension";
+
+    prefix "oc-port-media-fec";
+
+    import openconfig-extensions { prefix "oc-ext"; }
+    import openconfig-platform { prefix oc-pf; }
+
+    organization "SONiC";
+    contact
+        "SONiC";
+    description
+        "This module contains a collection of YANG extension for
+           port config";
+
+    oc-ext:openconfig-version "0.12.2";
+
+    revision 2021-07-05 {
+        description
+            "Initial revision.";
+        reference "0.12.2";
+    }
+
+    typedef media-fec-mode-type {
+      type enumeration {
+        enum IEEE {
+          description
+            "media-fec type ieee";
+        }
+        enum CUSTOM {
+          description
+            "media-fec type custom";
+        }
+      }
+      description
+        "Different types of medi-fec supported";
+    }
+
+    grouping port-media-fec-ext-top {
+      description
+        "Top-level grouping for port media-fec data";
+          leaf media-fec-mode  {
+            type media-fec-mode-type;
+            description
+              "Mode at which media to perform Forwad Error Correction (FEC)";
+          }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:port/oc-pf:config{
+      description "Extending port to have media-fec";
+      uses port-media-fec-ext-top {
+        when "../oc-pf:state/oc-pf:type = 'PORT'" {
+          description
+            "This data is valid only for PORT components";
+        }
+      }
+    }
+
+    augment /oc-pf:components/oc-pf:component/oc-pf:port/oc-pf:state{
+      description "Extending port to have media-fec";
+      uses port-media-fec-ext-top {
+         when "../oc-pf:state/oc-pf:type = 'PORT'" {
+          description
+            "This data is valid only for PORT components";
+        }
+      }
+    }
+}

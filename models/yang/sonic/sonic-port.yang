@@ -19,6 +19,11 @@ module sonic-port {
     description
         "SONIC PORT";
 
+    revision 2021-07-05 {
+        description
+            "Added media fec attribute";
+    }
+
     revision 2020-08-04 {
         description
             "Added fec attribute";
@@ -56,6 +61,10 @@ module sonic-port {
 
                 leaf fec {
                     type scommon:fec-mode;
+                }
+
+                leaf media-fec-mode {
+                    type scommon:media-fec-mode-type;
                 }
 
                 leaf valid_speeds {
@@ -168,6 +177,10 @@ module sonic-port {
 
                 leaf fec {
                     type scommon:fec-mode;
+                }
+
+                leaf media-fec-mode {
+                    type scommon:media-fec-mode-type;
                 }
             }
         }
