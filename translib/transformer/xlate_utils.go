@@ -19,25 +19,9 @@
 package transformer
 
 import (
-<<<<<<< HEAD
-    "fmt"
-    "errors"
-    "strings"
-    "regexp"
-    "runtime"
-    "reflect"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-    "github.com/openconfig/goyang/pkg/yang"
-    "github.com/openconfig/gnmi/proto/gnmi"
-    "github.com/openconfig/ygot/ygot"
-    "github.com/openconfig/ygot/ytypes"
-    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-    log "github.com/golang/glog"
-    "sync"
-=======
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -51,7 +35,6 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/openconfig/ygot/ygot"
 	"github.com/openconfig/ygot/ytypes"
->>>>>>> origin/broadcom_sonic_share
 )
 
 func initRegex() {
@@ -448,49 +431,6 @@ func sonicKeyDataAdd(dbIndex db.DBNum, keyNameList []string, xpathPrefix string,
 }
 
 func yangToDbXfmrFunc(funcName string) string {
-<<<<<<< HEAD
-    return ("YangToDb_" + funcName)
-}
-
-func uriWithKeyCreate (uri string, xpathTmplt string, data interface{}) (string, error) {
-    var err error
-    if _, ok := xYangSpecMap[xpathTmplt]; ok {
-         yangEntry := xYangSpecMap[xpathTmplt].yangEntry
-         if yangEntry != nil {
-              for _, k := range (strings.Split(yangEntry.Key, " ")) {
-		      keyXpath := xpathTmplt + "/" + k
-		      if _, keyXpathEntryOk := xYangSpecMap[keyXpath]; !keyXpathEntryOk {
-			      log.Warningf("No entry found in xYangSpec map for xapth %v", keyXpath)
-                              err = fmt.Errorf("No entry found in xYangSpec map for xapth %v", keyXpath)
-                              break
-		      }
-		      keyYangEntry := xYangSpecMap[keyXpath].yangEntry
-		      if keyYangEntry == nil {
-			      log.Warningf("Yang Entry not available for xpath %v", keyXpath)
-			      err = fmt.Errorf("Yang Entry not available for xpath %v", keyXpath)
-			      break
-		      }
-		      keyVal, keyValErr := unmarshalJsonToDbData(keyYangEntry, keyXpath, k, data.(map[string]interface{})[k])
-		      if keyValErr != nil {
-			      log.Warningf("unmarshalJsonToDbData() didn't unmarshal for key %v with xpath %v", k, keyXpath)
-			      err = keyValErr
-			      break
-		      }
-		      if ((strings.Contains(keyVal, ":")) && (strings.HasPrefix(keyVal, OC_MDL_PFX) || strings.HasPrefix(keyVal, IETF_MDL_PFX) || strings.HasPrefix(keyVal, IANA_MDL_PFX))) {
-			      // identity-ref/enum has module prefix
-			      keyVal = strings.SplitN(keyVal, ":", 2)[1]
-		      }
-                      uri += fmt.Sprintf("[%v=%v]", k, escapeKeyVal(keyVal))
-              }
-	 } else {
-            err = fmt.Errorf("Yang Entry not available for xpath %v", xpathTmplt)
-	 }
-    } else {
-        err = fmt.Errorf("No entry in xYangSpecMap for xpath %v", xpathTmplt)
-    }
-    xfmrLogInfoAll("returning uri - %v", uri)
-    return uri, err
-=======
 	return ("YangToDb_" + funcName)
 }
 
@@ -522,7 +462,7 @@ func uriWithKeyCreate(uri string, xpathTmplt string, data interface{}) (string, 
 					// identity-ref/enum has module prefix
 					keyVal = strings.SplitN(keyVal, ":", 2)[1]
 				}
-				uri += fmt.Sprintf("[%v=%v]", k, keyVal)
+				uri += fmt.Sprintf("[%v=%v]", k, escapeKeyVal(keyVal))
 			}
 		} else {
 			err = fmt.Errorf("Yang Entry not available for xpath %v", xpathTmplt)
@@ -530,8 +470,8 @@ func uriWithKeyCreate(uri string, xpathTmplt string, data interface{}) (string, 
 	} else {
 		err = fmt.Errorf("No entry in xYangSpecMap for xpath %v", xpathTmplt)
 	}
+	xfmrLogInfoAll("returning uri - %v", uri)
 	return uri, err
->>>>>>> origin/broadcom_sonic_share
 }
 
 func xpathRootNameGet(path string) string {
@@ -1569,7 +1509,6 @@ func ecapeKeyValForSplitPath(val string) string {
 	val = strings.Replace(val, "]", "\\]", -1)
 	return val
 }
-
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */
 /***************************************************************************************************
