@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
@@ -23,14 +22,15 @@ package translib
 import (
 	"errors"
 	"fmt"
-	"testing"
-	db "github.com/Azure/sonic-mgmt-common/translib/db"
 	"os"
+	"testing"
+
+	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 const (
-	RADIUS_TABLE               = "RADIUS_TABLE"
-	RADIUS_SERVER_TABLE        = "RADIUS_SERVER_TABLE"
+	RADIUS_TABLE        = "RADIUS_TABLE"
+	RADIUS_SERVER_TABLE = "RADIUS_SERVER_TABLE"
 )
 
 func clearRADIUSDb() {
@@ -38,21 +38,21 @@ func clearRADIUSDb() {
 
 	if err := clearRADIUSDataFromConfigDb(); err == nil {
 		fmt.Println("----- Removed All RADIUS Data from Db  -------")
-		createRADIUSData ()
+		createRADIUSData()
 	} else {
 		fmt.Printf("Failed to remove All RADIUS Data from Db: %v", err)
 		os.Exit(1) // Cancel any further tests.
 	}
 }
 
-func createRADIUSData () {
+func createRADIUSData() {
 }
 
 func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 
-	clearRADIUSDb()		
+	clearRADIUSDb()
 
-        // Global ==================================================
+	// Global ==================================================
 
 	//PATCH - global source-address
 	t.Run("PATCH - RADIUS global source-address", processSetRequest(radiusGCSourceAddressUrl, radiusGCSourceAddressReq, "PATCH", false))
@@ -84,7 +84,7 @@ func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 	t.Run("Delete - RADIUS global auth-type", processDeleteRequest(radiusGCAuthTypeUrl))
 	t.Run("Verify: Delete - RADIUS global auth-type", processGetRequest(radiusGCAuthTypeUrl, radiusGCAuthTypeEmptyReq, false))
 
-        // Host ==================================================
+	// Host ==================================================
 
 	//PATCH - host auth-port
 	t.Run("PATCH - RADIUS host auth-port", processSetRequest(radiusHRCAuthPortUrl, radiusHRCAuthPortReq, "PATCH", false))
@@ -132,12 +132,12 @@ func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 
 func clearRADIUSDataFromConfigDb() error {
 	var err error
-	
+
 	radius_ts := db.TableSpec{Name: "RADIUS"}
 	radius_server_ts := db.TableSpec{Name: "RADIUS_SERVER"}
 
 	d := getConfigDb()
-	
+
 	if d == nil {
 		err = errors.New("Failed to connect to config Db")
 		return err
@@ -173,7 +173,6 @@ var radiusGCRetransmitUrl string = radiusGCUrl + "openconfig-system-ext:retransm
 var radiusGCSecretUrl string = radiusGCUrl + "openconfig-system-ext:secret-key"
 
 var radiusGCAuthTypeUrl string = radiusGCUrl + "openconfig-system-ext:auth-type"
-
 
 // Host config-URL
 
@@ -274,4 +273,3 @@ var radiusHCPriorityEmptyReq string = "{}"
 
 var radiusHCVrfReq string = "{\"openconfig-system-ext:vrf\":\"mgmt\"}"
 var radiusHCVrfEmptyReq string = "{}"
-

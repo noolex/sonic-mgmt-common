@@ -20,19 +20,18 @@
 package transformer_test
 
 import (
-	"github.com/go-redis/redis/v7"
 	"encoding/json"
-	"io/ioutil"
 	"fmt"
-	"testing"
-	"sync"
+	"io/ioutil"
 	"reflect"
+	"sync"
+	"testing"
+
+	. "github.com/Azure/sonic-mgmt-common/translib"
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
-	. "github.com/Azure/sonic-mgmt-common/translib"
+	"github.com/go-redis/redis/v7"
 )
-
-
 
 func checkErr(t *testing.T, err error, expErr error) {
 	if err.Error() != expErr.Error() {
@@ -170,22 +169,22 @@ func processDeleteRequest(url string, errorCase bool, expErr ...error) func(*tes
 }
 
 func translateSubscribeRequest(path string, expectedTrSubInfo transformer.XfmrTranslateSubscribeInfo, errorCase bool, expErr ...error) func(*testing.T) {
-        return func(t *testing.T) {
-        isGetCase := true
-        dbs, err := getAllDbs(isGetCase)
-        txCache := new(sync.Map)
+	return func(t *testing.T) {
+		isGetCase := true
+		dbs, err := getAllDbs(isGetCase)
+		txCache := new(sync.Map)
 
-        result, err := transformer.XlateTranslateSubscribe(path ,dbs, txCache)
+		result, err := transformer.XlateTranslateSubscribe(path, dbs, txCache)
 
 		if err != nil {
 			if errorCase == false {
 				t.Errorf("Unexpected error processing '%s'; err=%v", path, err)
 			} else if expErr != nil {
-                                checkErr(t, err, expErr[0])
+				checkErr(t, err, expErr[0])
 				return
-                        }
+			}
 
-		} else if ((err == nil) && errorCase) {
+		} else if (err == nil) && errorCase {
 			t.Errorf("Expecting error but not received while processing '%s'; err=%v", path, err)
 		}
 		if result.PType != expectedTrSubInfo.PType {
@@ -197,14 +196,14 @@ func translateSubscribeRequest(path string, expectedTrSubInfo transformer.XfmrTr
 		if result.MinInterval != expectedTrSubInfo.MinInterval {
 			t.Errorf("MinInterval mismatch : received %v, expected %v, for url - %v", result.MinInterval, expectedTrSubInfo.MinInterval, path)
 		}
-		if ((result.DbDataMap == nil) && (expectedTrSubInfo.DbDataMap != nil)) {
+		if (result.DbDataMap == nil) && (expectedTrSubInfo.DbDataMap != nil) {
 			t.Errorf("DB Info mismatch : \nreceived nil, \nexpected %v, \nfor url - %v", expectedTrSubInfo.DbDataMap, path)
 		}
-        if ((result.DbDataMap != nil) && (expectedTrSubInfo.DbDataMap != nil)) {
-		    if reflect.DeepEqual(result.DbDataMap, expectedTrSubInfo.DbDataMap) != true {
-                            t.Errorf("DB Info mismatch : \nreceived - %v, \nexpected - %v, \n for url - %v", result.DbDataMap, expectedTrSubInfo.DbDataMap, path)
-                    }
-        }
+		if (result.DbDataMap != nil) && (expectedTrSubInfo.DbDataMap != nil) {
+			if reflect.DeepEqual(result.DbDataMap, expectedTrSubInfo.DbDataMap) != true {
+				t.Errorf("DB Info mismatch : \nreceived - %v, \nexpected - %v, \n for url - %v", result.DbDataMap, expectedTrSubInfo.DbDataMap, path)
+			}
+		}
 	}
 
 }
@@ -214,7 +213,7 @@ func processActionRequest(url string, jsonPayload string, oper string, user stri
 		var err error
 		switch oper {
 		case "POST":
-			ur := UserRoles{Name: user, Roles:[]string{role}}
+			ur := UserRoles{Name: user, Roles: []string{role}}
 			_, err = Action(ActionRequest{Path: url, Payload: []byte(jsonPayload), User: ur, AuthEnabled: auth})
 		default:
 			t.Errorf("Operation not supported")
@@ -249,8 +248,8 @@ func verifyDbResult(client *redis.Client, key string, expectedResult map[string]
 
 		expect := make(map[string]string)
 		for ts := range expectedResult {
-			for _,k := range expectedResult[ts].(map[string]interface{}) {
-				for f,v := range k.(map[string]interface{}) {
+			for _, k := range expectedResult[ts].(map[string]interface{}) {
+				for f, v := range k.(map[string]interface{}) {
 					strKey := fmt.Sprintf("%v", f)
 					var strVal string
 					strVal = fmt.Sprintf("%v", v)

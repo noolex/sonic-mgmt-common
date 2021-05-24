@@ -20,8 +20,9 @@
 package db
 
 import (
-	"github.com/golang/glog"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 // Work Done vs Entries Returned (Need to return a fixed number of
@@ -37,7 +38,6 @@ import (
 //  keys at some point. This will now be moved to a map/dictionary inside the
 //  ScanCursor to avoid duplicates.]
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //  Exported Types                                                            //
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,27 +45,25 @@ import (
 // ScanCursor iterates over a set of keys
 
 type ScanCursor struct {
-	ts              *TableSpec
-	cursor          uint64
-	pattern         Key
-	count           int64
-	scanComplete    bool
-	seenKeys        map[string]bool
-	lookAhead       []string     // (TBD) For exactly CountHint # of keys
-	db              *DB
+	ts           *TableSpec
+	cursor       uint64
+	pattern      Key
+	count        int64
+	scanComplete bool
+	seenKeys     map[string]bool
+	lookAhead    []string // (TBD) For exactly CountHint # of keys
+	db           *DB
 }
 
 type ScanCursorOpts struct {
-	CountHint       int64        // Hint of redis work required
-	ReturnFixed     bool         // (TBD) Return exactly CountHint # of keys
-	AllowDuplicates bool         // Do not suppress redis duplicate keys
+	CountHint       int64 // Hint of redis work required
+	ReturnFixed     bool  // (TBD) Return exactly CountHint # of keys
+	AllowDuplicates bool  // Do not suppress redis duplicate keys
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Exported Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // NewScanCursor Factory method to create ScanCursor
 func (d *DB) NewScanCursor(ts *TableSpec, pattern Key, scOpts *ScanCursorOpts) (*ScanCursor, error) {
@@ -77,19 +75,19 @@ func (d *DB) NewScanCursor(ts *TableSpec, pattern Key, scOpts *ScanCursorOpts) (
 	var e error
 	var countHint int64 = 10
 
-	if scOpts!= nil && scOpts.CountHint != 0 {
+	if scOpts != nil && scOpts.CountHint != 0 {
 		countHint = scOpts.CountHint
 	}
 
 	// Create ScanCursor
 	scanCursor := ScanCursor{
-		ts:       ts,
-		pattern:  pattern,
-		count:    countHint,
-		db:       d,
+		ts:      ts,
+		pattern: pattern,
+		count:   countHint,
+		db:      d,
 	}
 
-	if ! scOpts.AllowDuplicates {
+	if !scOpts.AllowDuplicates {
 		scanCursor.seenKeys = make(map[string]bool, initialSCSeenKeysCacheSize)
 	}
 
@@ -168,22 +166,21 @@ func (sc *ScanCursor) GetNextKeys(scOpts *ScanCursorOpts) ([]Key, bool, error) {
 	var cursor uint64
 
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	var stats Stats
 	if sc.db.dbStatsConfig.TimeStats {
 		now = time.Now()
 	}
 
-
 	countHint := sc.count
 
-	if scOpts!= nil && scOpts.CountHint != 0 {
+	if scOpts != nil && scOpts.CountHint != 0 {
 		countHint = scOpts.CountHint
 	}
 
-	for ; (! sc.scanComplete) && (len(redisKeys) == 0)  && (e == nil) ; {
+	for (!sc.scanComplete) && (len(redisKeys) == 0) && (e == nil) {
 		redisKeys, cursor, e = sc.db.client.Scan(sc.cursor,
-			sc.db.key2redis(sc.ts,sc.pattern), countHint).Result()
+			sc.db.key2redis(sc.ts, sc.pattern), countHint).Result()
 		if glog.V(4) {
 			glog.Info("ScanCursor.GetNextKeys: redisKeys: ", redisKeys,
 				" cursor: ", cursor, " e: ", e)
@@ -201,7 +198,7 @@ func (sc *ScanCursor) GetNextKeys(scOpts *ScanCursorOpts) ([]Key, bool, error) {
 	keys := make([]Key, 0, len(redisKeys))
 	for i := 0; i < len(redisKeys); i++ {
 		if sc.seenKeys != nil {
-			if _,present := sc.seenKeys[redisKeys[i]] ; present {
+			if _, present := sc.seenKeys[redisKeys[i]]; present {
 				continue
 			}
 			sc.seenKeys[redisKeys[i]] = true
@@ -249,17 +246,15 @@ func (sc *ScanCursor) GetNextKeys(scOpts *ScanCursorOpts) ([]Key, bool, error) {
 	return keys, sc.scanComplete, e
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //  Internal Constants                                                        //
 ////////////////////////////////////////////////////////////////////////////////
 
 const (
-		initialSCSeenKeysCacheSize = 100
-		initialSCLookAheadBufferSize = 100
+	initialSCSeenKeysCacheSize   = 100
+	initialSCLookAheadBufferSize = 100
 )
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Internal Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-

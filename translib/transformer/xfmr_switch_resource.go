@@ -19,28 +19,27 @@
 package transformer
 
 import (
-		log "github.com/golang/glog"
-       )
+	log "github.com/golang/glog"
+)
 
 func init() {
 	XlateFuncBind("YangToDb_swresource_name_fld_xfmr", YangToDb_swresource_name_fld_xfmr)
-        XlateFuncBind("DbToYang_swresource_name_xfmr", DbToYang_swresource_name_fld_xfmr)
+	XlateFuncBind("DbToYang_swresource_name_xfmr", DbToYang_swresource_name_fld_xfmr)
 }
 
 var YangToDb_swresource_name_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-                 res_map := make(map[string]string)
-		 var err error
-		 log.Info("YangToDb_swresource_name_fld_xfmr: ", inParams.key)
+	res_map := make(map[string]string)
+	var err error
+	log.Info("YangToDb_swresource_name_fld_xfmr: ", inParams.key)
 
-		 return res_map, err
+	return res_map, err
 }
 
-
 var DbToYang_swresource_name_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-      var err error
-      result := make(map[string]interface{})
-      log.Info("DbToYang_swresource_name_fld_xfmr: ", inParams.key)
-      result["name"] = inParams.key
+	var err error
+	result := make(map[string]interface{})
+	log.Info("DbToYang_swresource_name_fld_xfmr: ", inParams.key)
+	result["name"] = inParams.key
 
-      return result, err
+	return result, err
 }

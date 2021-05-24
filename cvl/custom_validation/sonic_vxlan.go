@@ -20,15 +20,16 @@
 package custom_validation
 
 import (
-	"github.com/go-redis/redis/v7"
-	"strings"
 	"fmt"
+	"strings"
+
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	)
+	"github.com/go-redis/redis/v7"
+)
 
 type VxlanMap struct {
-	vlanMap map[string]bool
-	vniMap map[string]bool
+	vlanMap   map[string]bool
+	vniMap    map[string]bool
 	vniVrfMap map[string]string //vni->vrf map
 }
 
@@ -38,7 +39,7 @@ func fetchVNIVrfMappingFromRedis(vc *CustValidationCtxt) {
 	vc.SessCache.Data = pVxlanMap
 
 	//Get all VXLAN keys
-	tableKeys, err:= vc.RClient.Keys("VRF|*").Result()
+	tableKeys, err := vc.RClient.Keys("VRF|*").Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "VRF is empty or invalid argument")
@@ -66,7 +67,7 @@ func fetchVNIVrfMappingFromRedis(vc *CustValidationCtxt) {
 
 		keyComp := strings.Split(dbKey, "|") //VRF|vrfname
 		//Store data vniVrfMap from Redis
-		if (len(keyComp) == 2) {
+		if len(keyComp) == 2 {
 			pVxlanMap.vniVrfMap[res[0].(string)] = keyComp[1] //Store Vrf name only
 		}
 	}
@@ -81,7 +82,7 @@ func fetchVlanVNIMappingFromRedis(vc *CustValidationCtxt) {
 	vc.SessCache.Data = pVxlanMap
 
 	//Get all VXLAN keys
-	tableKeys, err:= vc.RClient.Keys("VXLAN_TUNNEL_MAP|*").Result()
+	tableKeys, err := vc.RClient.Keys("VXLAN_TUNNEL_MAP|*").Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "VXLAN_TUNNEL_MAP is empty or invalid argument")
@@ -103,7 +104,7 @@ func fetchVlanVNIMappingFromRedis(vc *CustValidationCtxt) {
 
 	for _, val := range mCmd {
 		res, err := val.Result()
-		if (err != nil || len(res) != 2) {
+		if err != nil || len(res) != 2 {
 			continue
 		}
 
@@ -116,8 +117,8 @@ func fetchVlanVNIMappingFromRedis(vc *CustValidationCtxt) {
 //ValidateUniqueVlan Validate unique vlan across all vlan-vni mappings
 func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorInfo {
 
-	if (vc.CurCfg.VOp == OP_DELETE) {
-		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	vlan, hasVlan := vc.CurCfg.Data["vlan"]
@@ -125,7 +126,7 @@ func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorIn
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-	if (vc.SessCache.Data == nil) {
+	if vc.SessCache.Data == nil {
 		fetchVlanVNIMappingFromRedis(vc)
 	}
 
@@ -134,10 +135,10 @@ func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorIn
 	//Loop up in session cache, if the vlan is already used
 	if _, exists := vxlanMap.vlanMap[vlan]; exists {
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
+			ErrCode:   CVL_SEMANTIC_ERROR,
 			TableName: "VXLAN_TUNNEL_MAP",
-			Keys: strings.Split(vc.CurCfg.Key, "|"),
-			ErrAppTag:  "not-unique-vlanid",
+			Keys:      strings.Split(vc.CurCfg.Key, "|"),
+			ErrAppTag: "not-unique-vlanid",
 		}
 	}
 
@@ -149,8 +150,8 @@ func (t *CustomValidation) ValidateUniqueVlan(vc *CustValidationCtxt) CVLErrorIn
 
 //ValidateUniqueVNI Validate unique vni across all vlan-vni mappings
 func (t *CustomValidation) ValidateUniqueVNI(vc *CustValidationCtxt) CVLErrorInfo {
-	if (vc.CurCfg.VOp == OP_DELETE) {
-		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	vni, hasVni := vc.CurCfg.Data["vni"]
@@ -158,7 +159,7 @@ func (t *CustomValidation) ValidateUniqueVNI(vc *CustValidationCtxt) CVLErrorInf
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-	if (vc.SessCache.Data == nil) {
+	if vc.SessCache.Data == nil {
 		fetchVlanVNIMappingFromRedis(vc)
 	}
 
@@ -167,10 +168,10 @@ func (t *CustomValidation) ValidateUniqueVNI(vc *CustValidationCtxt) CVLErrorInf
 	//Loop up in session cache, if the VNI is already used
 	if _, exists := vxlanMap.vniMap[vni]; exists {
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
+			ErrCode:   CVL_SEMANTIC_ERROR,
 			TableName: "VXLAN_TUNNEL_MAP",
-			Keys: strings.Split(vc.CurCfg.Key, "|"),
-			ErrAppTag:  "not-unique-vni",
+			Keys:      strings.Split(vc.CurCfg.Key, "|"),
+			ErrAppTag: "not-unique-vni",
 		}
 	}
 
@@ -179,7 +180,6 @@ func (t *CustomValidation) ValidateUniqueVNI(vc *CustValidationCtxt) CVLErrorInf
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
-
 
 func getVniFromVxlanMapEntry(vc *CustValidationCtxt) string {
 
@@ -198,16 +198,16 @@ func getVniFromVxlanMapEntry(vc *CustValidationCtxt) string {
 
 //ValidateVxlanMapDelete Validate Vxlan Map entry delete
 func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErrorInfo {
-	if (vc.CurCfg.VOp != OP_DELETE) {
-		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	}
-
-	vni := ""
-	if vni = getVniFromVxlanMapEntry(vc) ; vni == "" {
+	if vc.CurCfg.VOp != OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-	if (vc.SessCache.Data == nil) {
+	vni := ""
+	if vni = getVniFromVxlanMapEntry(vc); vni == "" {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	if vc.SessCache.Data == nil {
 		fetchVNIVrfMappingFromRedis(vc)
 	}
 
@@ -215,11 +215,11 @@ func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErr
 
 	if vrf, exists := pVxlanMap.vniVrfMap[vni]; exists {
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "VXLAN_TUNNEL_MAP",
-			Keys: strings.Split(vc.CurCfg.Key, "|"),
-			ErrAppTag:  "vni-used-in-vrf",
-			ConstraintErrMsg:  fmt.Sprintf("VXLAN tunnel map delete is not allowed as VNI is in use in VRF %s", vrf),
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "VXLAN_TUNNEL_MAP",
+			Keys:             strings.Split(vc.CurCfg.Key, "|"),
+			ErrAppTag:        "vni-used-in-vrf",
+			ConstraintErrMsg: fmt.Sprintf("VXLAN tunnel map delete is not allowed as VNI is in use in VRF %s", vrf),
 		}
 	}
 
@@ -229,8 +229,8 @@ func (t *CustomValidation) ValidateVxlanMapDelete(vc *CustValidationCtxt) CVLErr
 //ValidateVrfVNI Validate Vrf VNI mappings
 //
 func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
-	if (vc.CurCfg.VOp == OP_DELETE) {
-		 return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
 	//Allow vni 0 for Update or create
@@ -240,11 +240,11 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	}
 
 	keyArr := strings.Split(vc.CurCfg.Key, "|")
-	if (len(keyArr) > 1) {
+	if len(keyArr) > 1 {
 		keyArr = keyArr[1:]
 	}
 
-	if (vc.SessCache.Data == nil) {
+	if vc.SessCache.Data == nil {
 		fetchVNIVrfMappingFromRedis(vc)
 		pTmpVxlanMap := (vc.SessCache.Data).(*VxlanMap)
 
@@ -261,11 +261,11 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	for vni, vrf := range pVxlanMap.vniVrfMap {
 		if (vrf == keyArr[0]) && (vni != "0") { // if vrf matches  and if vni is non-default
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: "VRF",
-				Keys: keyArr,
-				ErrAppTag:  "vni-already-configured",
-				ConstraintErrMsg:  fmt.Sprintf("VNI is already configured for VRF %s", vrf),
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRF",
+				Keys:             keyArr,
+				ErrAppTag:        "vni-already-configured",
+				ConstraintErrMsg: fmt.Sprintf("VNI is already configured for VRF %s", vrf),
 			}
 		}
 	}
@@ -273,25 +273,25 @@ func (t *CustomValidation) ValidateVrfVNI(vc *CustValidationCtxt) CVLErrorInfo {
 	//Check if VNI is configured in VXLAN_TUNNEL_MAP
 	if _, exists := pVxlanMap.vniMap[vni]; !exists {
 		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "VRF",
-			Keys: keyArr,
-			ErrAppTag:  "vni-not-configured",
-			ConstraintErrMsg:  fmt.Sprintf("VNI %s is not configured in VXLAN_TUNNEL_MAP table", vni),
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "VRF",
+			Keys:             keyArr,
+			ErrAppTag:        "vni-not-configured",
+			ConstraintErrMsg: fmt.Sprintf("VNI %s is not configured in VXLAN_TUNNEL_MAP table", vni),
 		}
 	}
 
 	//Check if VNI is already used in other VRF
-	if  vrf, exists := pVxlanMap.vniVrfMap[vni]; exists {
-	    if (keyArr[0] != pVxlanMap.vniVrfMap[vni]) {
-		return CVLErrorInfo{
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: "VRF",
-			Keys: keyArr,
-			ErrAppTag:  "vni-already-used-in-other-vrf",
-			ConstraintErrMsg:  fmt.Sprintf("VNI is already used in VRF %s", vrf),
+	if vrf, exists := pVxlanMap.vniVrfMap[vni]; exists {
+		if keyArr[0] != pVxlanMap.vniVrfMap[vni] {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        "VRF",
+				Keys:             keyArr,
+				ErrAppTag:        "vni-already-used-in-other-vrf",
+				ConstraintErrMsg: fmt.Sprintf("VNI is already used in VRF %s", vrf),
+			}
 		}
-	    }
 	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}

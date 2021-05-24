@@ -21,6 +21,7 @@ package cvl_test
 
 import (
 	"testing"
+
 	"github.com/Azure/sonic-mgmt-common/cvl"
 )
 
@@ -45,7 +46,7 @@ func TestValidateEditConfig_When_Exp_In_Choice_Negative(t *testing.T) {
 			"ACL_RULE|TestACL1|Rule1",
 			map[string]string{
 				"PACKET_ACTION":     "FORWARD",
-				"IP_TYPE":	     "IPV6",
+				"IP_TYPE":           "IPV6",
 				"SRC_IP":            "10.1.1.1/32", //Invalid field
 				"L4_SRC_PORT":       "1909",
 				"IP_PROTOCOL":       "103",
@@ -55,7 +56,6 @@ func TestValidateEditConfig_When_Exp_In_Choice_Negative(t *testing.T) {
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgDataRule)
 
@@ -88,14 +88,13 @@ func TestValidateEditConfig_When_Exp_In_Leaf_Positive(t *testing.T) {
 			cvl.OP_CREATE,
 			"STP_PORT|Ethernet4",
 			map[string]string{
-				"enabled": "true",
+				"enabled":   "true",
 				"edge_port": "true",
 				"link_type": "shared",
 			},
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -128,14 +127,13 @@ func TestValidateEditConfig_When_Exp_In_Leaf_Negative(t *testing.T) {
 			cvl.OP_CREATE,
 			"STP_PORT|Ethernet4",
 			map[string]string{
-				"enabled": "true",
+				"enabled":   "true",
 				"edge_port": "true",
 				"link_type": "shared",
 			},
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
