@@ -395,7 +395,7 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
-		log.Info("ProcessGetNtpServer: no return of ntp server state at ", requestUriPath)
+		log.Info("ProcessGetNtpServer: no return of ntp server state for ", requestUriPath)
 		return nil
 	}
 
