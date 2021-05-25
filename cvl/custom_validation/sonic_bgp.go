@@ -20,166 +20,166 @@
 package custom_validation
 
 import (
-        "strings"
-        "strconv"
-        "fmt"
-        util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-    )
+	"fmt"
+	"strconv"
+	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+)
 
 func (t *CustomValidation) ValidateL3vniConfiguration(vc *CustValidationCtxt) CVLErrorInfo {
-    
-    if (vc.CurCfg.VOp != OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
 
-    if len(vc.CurCfg.Data) != 0 {
-        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
+	if vc.CurCfg.VOp != OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-    keys := "VRF|" + vc.YNodeVal
-    vrfData, err := vc.RClient.HGetAll(keys).Result()
+	if len(vc.CurCfg.Data) != 0 {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-    if (err != nil) {
-        util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "Given VRF not found or invalid argument")
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            TableName: "BGP_GLOBALS",
-            Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: fmt.Sprintf("Failed to get all fields of VRF %s", vc.YNodeVal),
-            CVLErrDetails: "DB Access Error",
-        }
-    }
+	keys := "VRF|" + vc.YNodeVal
+	vrfData, err := vc.RClient.HGetAll(keys).Result()
 
-    vni, hasVni := vrfData["vni"]
+	if err != nil {
+		util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "Given VRF not found or invalid argument")
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "BGP_GLOBALS",
+			Keys:             strings.Split(vc.CurCfg.Key, "|"),
+			ConstraintErrMsg: fmt.Sprintf("Failed to get all fields of VRF %s", vc.YNodeVal),
+			CVLErrDetails:    "DB Access Error",
+		}
+	}
 
-    if (hasVni && vni != "0") {
-        error_str := fmt.Sprintf("Please unconfigure l3vni %s from vrf %s", vni, vc.YNodeVal)
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            Msg: error_str,
-            ConstraintErrMsg: error_str,
-        }
-    }
+	vni, hasVni := vrfData["vni"]
 
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if hasVni && vni != "0" {
+		error_str := fmt.Sprintf("Please unconfigure l3vni %s from vrf %s", vni, vc.YNodeVal)
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			Msg:              error_str,
+			ConstraintErrMsg: error_str,
+		}
+	}
+
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) ValidateStrictAndOverRideCapability (vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateStrictAndOverRideCapability(vc *CustValidationCtxt) CVLErrorInfo {
 
-    if (vc.CurCfg.VOp == OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-    if ((vc.CurCfg.Data["strict_capability_match"] == "true") && (vc.CurCfg.Data["override_capability"] == "true")) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time" ,
-        }
-    } else {
-        neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
-        if (err == nil) {
-            strictCap, hasStrict := neighData["strict_capability_match"]
-            if (hasStrict && strictCap == "true") {
-                if (vc.CurCfg.Data["override_capability"] == "true"){
-                    return CVLErrorInfo{
-                        ErrCode: CVL_SEMANTIC_ERROR,
-                        ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time",
-                    }
-                }
-            }
-            overCap, hasOver := neighData["override_capability"]
-            if (hasOver && overCap == "true") {
-                if (vc.CurCfg.Data["strict_capability_match"] == "true"){
-                    return CVLErrorInfo{
-                        ErrCode: CVL_SEMANTIC_ERROR,
-                        ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time" ,
-                    }
-                }
-            }
-        }
-    }
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if (vc.CurCfg.Data["strict_capability_match"] == "true") && (vc.CurCfg.Data["override_capability"] == "true") {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time",
+		}
+	} else {
+		neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+		if err == nil {
+			strictCap, hasStrict := neighData["strict_capability_match"]
+			if hasStrict && strictCap == "true" {
+				if vc.CurCfg.Data["override_capability"] == "true" {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time",
+					}
+				}
+			}
+			overCap, hasOver := neighData["override_capability"]
+			if hasOver && overCap == "true" {
+				if vc.CurCfg.Data["strict_capability_match"] == "true" {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						ConstraintErrMsg: "Can't set override-capability and strict-capability-match at the same time",
+					}
+				}
+			}
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) ValidateMaxDelayAndEstWait (vc *CustValidationCtxt) CVLErrorInfo {
-    var maxDelayValue  int64;
-    var estWaitValue  int64;
+func (t *CustomValidation) ValidateMaxDelayAndEstWait(vc *CustValidationCtxt) CVLErrorInfo {
+	var maxDelayValue int64
+	var estWaitValue int64
 
-    if (vc.CurCfg.VOp == OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
 
-    maxDelay, hasMaxdelay := vc.CurCfg.Data["max_delay"]
-    estWait, hasEstWait := vc.CurCfg.Data["establish_wait"]
-    if (hasMaxdelay) {
-        maxDelayValue, _ = strconv.ParseInt(maxDelay, 10, 16)
-    }
-    if (hasEstWait) {
-        estWaitValue, _ = strconv.ParseInt(estWait, 10, 16)
-    }
-    if (hasMaxdelay && hasEstWait && (estWaitValue > maxDelayValue)) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
-        }
-    } else {
-        neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
-        if (err == nil) && (hasEstWait || hasMaxdelay)  {
-            dbMaxDelay, hasDBMaxdelay := neighData["max_delay"]
-            if (hasDBMaxdelay && hasEstWait) {
-                maxDelayValue, _ = strconv.ParseInt(dbMaxDelay, 10, 16)
-                if (estWaitValue > maxDelayValue){
-                    return CVLErrorInfo{
-                        ErrCode: CVL_SEMANTIC_ERROR,
-                        ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
-                    }
-                }
-            }
-            dbEstWait, hasDBEstWait  := neighData["establish_wait"]
-            if (hasMaxdelay && hasDBEstWait) {
-                estWaitValue, _ = strconv.ParseInt(dbEstWait, 10, 16)
-                if (estWaitValue > maxDelayValue){
-                    return CVLErrorInfo{
-                        ErrCode: CVL_SEMANTIC_ERROR,
-                        ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates." ,
-                    }
-                }
-            }
-        }
-    }
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	maxDelay, hasMaxdelay := vc.CurCfg.Data["max_delay"]
+	estWait, hasEstWait := vc.CurCfg.Data["establish_wait"]
+	if hasMaxdelay {
+		maxDelayValue, _ = strconv.ParseInt(maxDelay, 10, 16)
+	}
+	if hasEstWait {
+		estWaitValue, _ = strconv.ParseInt(estWait, 10, 16)
+	}
+	if hasMaxdelay && hasEstWait && (estWaitValue > maxDelayValue) {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates.",
+		}
+	} else {
+		neighData, err := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
+		if (err == nil) && (hasEstWait || hasMaxdelay) {
+			dbMaxDelay, hasDBMaxdelay := neighData["max_delay"]
+			if hasDBMaxdelay && hasEstWait {
+				maxDelayValue, _ = strconv.ParseInt(dbMaxDelay, 10, 16)
+				if estWaitValue > maxDelayValue {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates.",
+					}
+				}
+			}
+			dbEstWait, hasDBEstWait := neighData["establish_wait"]
+			if hasMaxdelay && hasDBEstWait {
+				estWaitValue, _ = strconv.ParseInt(dbEstWait, 10, 16)
+				if estWaitValue > maxDelayValue {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						ConstraintErrMsg: "Maximum delay for best path calculation should not be less than updates.",
+					}
+				}
+			}
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) ValidateDisableConnectedCheck (vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateDisableConnectedCheck(vc *CustValidationCtxt) CVLErrorInfo {
 
-    if (vc.CurCfg.VOp == OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
-    disConnectedCheck, hasValue := vc.CurCfg.Data["disable_ebgp_connected_route_check"]
-    if (hasValue && (disConnectedCheck == "true")) {
-        if ((strings.Contains(vc.CurCfg.Key,"Eth")) || (strings.Contains(vc.CurCfg.Key,"Po")) ||
-            (strings.Contains(vc.CurCfg.Key,"Vlan"))) {
-            return CVLErrorInfo{
-                ErrCode: CVL_SEMANTIC_ERROR,
-                ConstraintErrMsg: "disable-connected-check cannot be configured for connected neighbor.",
-            }
-        }
-    }
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	disConnectedCheck, hasValue := vc.CurCfg.Data["disable_ebgp_connected_route_check"]
+	if hasValue && (disConnectedCheck == "true") {
+		if (strings.Contains(vc.CurCfg.Key, "Eth")) || (strings.Contains(vc.CurCfg.Key, "Po")) ||
+			(strings.Contains(vc.CurCfg.Key, "Vlan")) {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				ConstraintErrMsg: "disable-connected-check cannot be configured for connected neighbor.",
+			}
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) ValidateAfisafiForBackdoor (vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateAfisafiForBackdoor(vc *CustValidationCtxt) CVLErrorInfo {
 
-    if (vc.CurCfg.VOp == OP_DELETE) {
-         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
-    _, hasBackdoor := vc.CurCfg.Data["backdoor"]
-    if(hasBackdoor && (!strings.Contains(vc.CurCfg.Key,"ipv4_unicast"))) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            ConstraintErrMsg: "Backdoor is not supported for this family network",
-        }
-    }
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	if vc.CurCfg.VOp == OP_DELETE {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	_, hasBackdoor := vc.CurCfg.Data["backdoor"]
+	if hasBackdoor && (!strings.Contains(vc.CurCfg.Key, "ipv4_unicast")) {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			ConstraintErrMsg: "Backdoor is not supported for this family network",
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
-

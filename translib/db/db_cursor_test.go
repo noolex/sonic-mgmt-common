@@ -19,7 +19,6 @@
 
 package db
 
-
 import (
 	// "fmt"
 	// "errors"
@@ -29,17 +28,17 @@ import (
 	// "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	// "os/exec"
 	"os"
-	"testing"
 	"strconv"
+	"testing"
 	// "reflect"
 )
 
-func testSCAddDelKeys(t * testing.T, d * DB, ts * TableSpec, prefix string, count int, delete bool) {
+func testSCAddDelKeys(t *testing.T, d *DB, ts *TableSpec, prefix string, count int, delete bool) {
 	var e error
 	var op string
-	for i := 0; i < count ; i++ {
-		akey := Key { Comp: []string{ prefix + strconv.Itoa(i) }}
-		avalue := Value {map[string]string {"k1":"v1","k2":"v2" }}
+	for i := 0; i < count; i++ {
+		akey := Key{Comp: []string{prefix + strconv.Itoa(i)}}
+		avalue := Value{map[string]string{"k1": "v1", "k2": "v2"}}
 		if delete {
 			op = "delete"
 			e = d.DeleteEntry(ts, akey)
@@ -53,24 +52,22 @@ func testSCAddDelKeys(t * testing.T, d * DB, ts * TableSpec, prefix string, coun
 	}
 }
 
+func testSCGetNextKeys(d *DB, ts *TableSpec, pattern string, expected int) func(*testing.T) {
+	return func(t *testing.T) {
 
-func testSCGetNextKeys(d * DB, ts * TableSpec, pattern string, expected int) func(*testing.T) {
-    return func(t *testing.T) {
+		patKey := Key{Comp: []string{pattern}}
+		scOpts := ScanCursorOpts{CountHint: 10}
 
-		patKey := Key{ Comp: []string{ pattern } }
-		scOpts := ScanCursorOpts{ CountHint: 10 }
-
-		sc,e := d.NewScanCursor(ts, patKey, &scOpts)
+		sc, e := d.NewScanCursor(ts, patKey, &scOpts)
 
 		if (sc == nil) || (e != nil) {
 			t.Fatalf("testSCGetNextKeys() fails e = %v", e)
 			return
 		}
 
-		
 		var keys []Key
 		var count int
-		for scanComplete := false ; !scanComplete; {
+		for scanComplete := false; !scanComplete; {
 			keys, scanComplete, e = sc.GetNextKeys(&scOpts)
 			if e != nil {
 				t.Fatalf("sc.GetNextKeys() fails e = %v", e)
@@ -83,24 +80,24 @@ func testSCGetNextKeys(d * DB, ts * TableSpec, pattern string, expected int) fun
 			t.Fatalf("testSCGetNextKeys() count: %v != expected: %v", count, expected)
 		}
 
-		if e = sc.DeleteScanCursor() ; e != nil {
+		if e = sc.DeleteScanCursor(); e != nil {
 			t.Fatalf("DeleteScanCursor() fails e = %v", e)
 		}
 	}
 
 }
 
-func TestNewScanCursor(t * testing.T) {
+func TestNewScanCursor(t *testing.T) {
 
 	var pid int = os.Getpid()
 
-	d,e := NewDB(Options {
-			DBNo              : ConfigDB,
-			InitIndicator     : "",
-			TableNameSeparator: "|",
-			KeySeparator      : "|",
-			DisableCVLCheck   : false,
-			})
+	d, e := NewDB(Options{
+		DBNo:               ConfigDB,
+		InitIndicator:      "",
+		TableNameSeparator: "|",
+		KeySeparator:       "|",
+		DisableCVLCheck:    false,
+	})
 
 	if (d == nil) || (e != nil) {
 		t.Fatalf("NewDB() fails e = %v", e)
@@ -108,7 +105,7 @@ func TestNewScanCursor(t * testing.T) {
 	}
 	defer d.DeleteDB()
 
-	ts := TableSpec{ Name: "TESTSC_" + strconv.FormatInt(int64(pid), 10) }
+	ts := TableSpec{Name: "TESTSC_" + strconv.FormatInt(int64(pid), 10)}
 
 	prefix := "SCKEY_"
 	testSCAddDelKeys(t, d, &ts, prefix, 100, false)
@@ -119,5 +116,3 @@ func TestNewScanCursor(t * testing.T) {
 	t.Run("pattern=SCKEY_1*", testSCGetNextKeys(d, &ts, "SCKEY_1*", 11))
 	t.Run("pattern=NOTALIKELYKEY", testSCGetNextKeys(d, &ts, "NOTALIKELYKEY", 0))
 }
-
-

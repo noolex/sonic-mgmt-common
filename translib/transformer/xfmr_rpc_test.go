@@ -22,11 +22,12 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 /* to run Test_OC_Yang_Rpc_support, add the test OC YANG
-1. define the rpc 
+1. define the rpc
 --- a/models/yang/extensions/openconfig-system-ext.yang
 +++ b/models/yang/extensions/openconfig-system-ext.yang
 @@ -463,4 +463,14 @@ module openconfig-system-ext {
@@ -63,8 +64,8 @@ module openconfig-system-ext-annot {
        }
     }
 }
- 
-3. add the annot file to the models_list  
+
+3. add the annot file to the models_list
 --- a/config/transformer/models_list
 +++ b/config/transformer/models_list
 @@ -114,3 +114,4 @@ openconfig-ip-helper.yang
@@ -97,74 +98,72 @@ module openconfig-system-ext-annot {
 +    return rmap, nil
 +
 +}
- 
-*/
 
+*/
 
 func Test_OC_Yang_Rpc_support(t *testing.T) {
 
 	url := "/openconfig-system-ext:sys-log-count"
 
-        fmt.Println("++++++++++++++  POST on sys-log-count  +++++++++++++")
+	fmt.Println("++++++++++++++  POST on sys-log-count  +++++++++++++")
 
-        t.Run("POST on rpc fast-reboot", processActionRequest(url, "{}", "POST", "", "", false, false))
-        time.Sleep(1 * time.Second)
+	t.Run("POST on rpc fast-reboot", processActionRequest(url, "{}", "POST", "", "", false, false))
+	time.Sleep(1 * time.Second)
 
 }
-
 
 func Test_SONiC_Yang_Rpc_support(t *testing.T) {
 
 	url := "/sonic-nat:clear_nat"
 
-        fmt.Println("++++++++++++++  POST on clear_nat  +++++++++++++")
+	fmt.Println("++++++++++++++  POST on clear_nat  +++++++++++++")
 
-        t.Run("POST on rpc clear_nat", processActionRequest(url, "{\"sonic-nat:input\":{\"nat-param\":\"test-nat\"}}", "POST", "", "", false, false))
-        time.Sleep(1 * time.Second)
+	t.Run("POST on rpc clear_nat", processActionRequest(url, "{\"sonic-nat:input\":{\"nat-param\":\"test-nat\"}}", "POST", "", "", false, false))
+	time.Sleep(1 * time.Second)
 
 }
 
 func Test_Rpc_AdminUser_Set(t *testing.T) {
 
-        url := "/openconfig-interfaces-ext:clear-counters"
+	url := "/openconfig-interfaces-ext:clear-counters"
 
-        fmt.Println("++++++++++++++  RPC for admin user Set  +++++++++++++")
+	fmt.Println("++++++++++++++  RPC for admin user Set  +++++++++++++")
 
-        t.Run("POST on rpc admin user clear interface counters ", processActionRequest(url, "{\"openconfig-interfaces-ext:input\":{\"interface-param\":\"all\"}}", "POST", "admin", "admin", true, false))
-        time.Sleep(1 * time.Second)
+	t.Run("POST on rpc admin user clear interface counters ", processActionRequest(url, "{\"openconfig-interfaces-ext:input\":{\"interface-param\":\"all\"}}", "POST", "admin", "admin", true, false))
+	time.Sleep(1 * time.Second)
 
 }
 
 func Test_Rpc_AdminUser_Get(t *testing.T) {
 
-        url := "/sonic-snmp:show-counters"
+	url := "/sonic-snmp:show-counters"
 
-        fmt.Println("++++++++++++++  RPC for admin user Get  +++++++++++++")
+	fmt.Println("++++++++++++++  RPC for admin user Get  +++++++++++++")
 
-        t.Run("POST on rpc snmp show-counters", processActionRequest(url, "{}", "POST", "admin", "admin", true, false))
-        time.Sleep(1 * time.Second)
+	t.Run("POST on rpc snmp show-counters", processActionRequest(url, "{}", "POST", "admin", "admin", true, false))
+	time.Sleep(1 * time.Second)
 
 }
 
 func Test_Rpc_OperUser_Get(t *testing.T) {
 
-        url := "/sonic-snmp:show-counters"
+	url := "/sonic-snmp:show-counters"
 
-        fmt.Println("++++++++++++++  RPC for oper user GET +++++++++++++")
+	fmt.Println("++++++++++++++  RPC for oper user GET +++++++++++++")
 
-        t.Run("POST on rpc snmp show counters", processActionRequest(url, "{}", "POST", "oper", "operator", true, false))
-        time.Sleep(1 * time.Second)
+	t.Run("POST on rpc snmp show counters", processActionRequest(url, "{}", "POST", "oper", "operator", true, false))
+	time.Sleep(1 * time.Second)
 
 }
 
 func Test_Rpc_OperUser_Set(t *testing.T) {
 
-        url := "/openconfig-system-ext:reboot-ops"
+	url := "/openconfig-system-ext:reboot-ops"
 
-        fmt.Println("++++++++++++++  RPC for oper user Set +++++++++++++")
+	fmt.Println("++++++++++++++  RPC for oper user Set +++++++++++++")
 
-	expected_err := tlerr.AuthorizationError{Format:"User is unauthorized for Action Operation"}
-        t.Run("POST on rpc reboot-ops", processActionRequest(url, "{\"openconfig-system-ext:input\":{\"param\":\"id\"}}", "POST", "oper", "operator", true, true, expected_err))
-        time.Sleep(1 * time.Second)
+	expected_err := tlerr.AuthorizationError{Format: "User is unauthorized for Action Operation"}
+	t.Run("POST on rpc reboot-ops", processActionRequest(url, "{\"openconfig-system-ext:input\":{\"param\":\"id\"}}", "POST", "oper", "operator", true, true, expected_err))
+	time.Sleep(1 * time.Second)
 
 }

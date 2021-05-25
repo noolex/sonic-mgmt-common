@@ -20,16 +20,17 @@
 package custom_validation
 
 import (
-	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	"strings"
-	log "github.com/golang/glog"
 	"strconv"
+	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	log "github.com/golang/glog"
 )
 
 func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
 	var valid bool
-  keys :=  vc.YNodeVal
-	gwmac :=  vc.CurCfg.Data["gwmac"]
+	keys := vc.YNodeVal
+	gwmac := vc.CurCfg.Data["gwmac"]
 
 	log.Info("ValidateSagMac op:", vc.CurCfg.VOp, " key:", vc.CurCfg.Key, " data:", vc.CurCfg.Data)
 
@@ -46,27 +47,27 @@ func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
 		macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
 		if err != nil {
 			valid = false
-		} else if macHi & 0x01 == 0x01 {
+		} else if macHi&0x01 == 0x01 {
 			valid = false
 		} else {
 			valid = true
 		}
 	}
 
-	if (!valid) {
-		errStr:= "SAG MAC is not valid, it is either zero, multicast, or broadcast"
-		util.CVL_LEVEL_LOG(util.ERROR,"%s",errStr)
-		return CVLErrorInfo {
-			ErrCode: CVL_SYNTAX_INVALID_INPUT_DATA,
-			TableName: "SAG_GLOBAL",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+	if !valid {
+		errStr := "SAG MAC is not valid, it is either zero, multicast, or broadcast"
+		util.CVL_LEVEL_LOG(util.ERROR, "%s", errStr)
+		return CVLErrorInfo{
+			ErrCode:          CVL_SYNTAX_INVALID_INPUT_DATA,
+			TableName:        "SAG_GLOBAL",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 
 	tblName := "SAG_GLOBAL" + "|" + "IP"
 
-	tableData, err:= vc.RClient.HGetAll(tblName).Result()
+	tableData, err := vc.RClient.HGetAll(tblName).Result()
 
 	log.Info("tableData: ", tableData)
 
@@ -78,22 +79,21 @@ func (t *CustomValidation) ValidateSagMac(vc *CustValidationCtxt) CVLErrorInfo {
 
 	if dbExist {
 		log.Info("Existing MAC: ", dbMac)
-		errStr:= "SAG MAC cannot be changed/reconfigured, unconfigure and configure SAG MAC"
-		util.CVL_LEVEL_LOG(util.ERROR,"%s",errStr)
-		return CVLErrorInfo {
-			ErrCode: CVL_SYNTAX_INVALID_INPUT_DATA,
-			TableName: "SAG_GLOBAL",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+		errStr := "SAG MAC cannot be changed/reconfigured, unconfigure and configure SAG MAC"
+		util.CVL_LEVEL_LOG(util.ERROR, "%s", errStr)
+		return CVLErrorInfo{
+			ErrCode:          CVL_SYNTAX_INVALID_INPUT_DATA,
+			TableName:        "SAG_GLOBAL",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-
 func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
-	gwipData :=  vc.CurCfg.Data["gwip@"]
+	gwipData := vc.CurCfg.Data["gwip@"]
 	keyName := vc.CurCfg.Key
 	keyNameSplit := strings.Split(keyName, "|")
 	ifName := keyNameSplit[1]
@@ -106,26 +106,26 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 	tblNameExt := "VLAN_INTERFACE" + "|" + ifName + "|" + "*"
 
-	tableKeys, err:= vc.RClient.Keys(tblNameExt).Result()
+	tableKeys, err := vc.RClient.Keys(tblNameExt).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		log.Info("ValidateSagIp interface IP is empty")
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-    if len(tableKeys) >= 1 {
-        errStr := "Anycast IP configuration is not allowed in presence of interface IP"
-        log.Error(errStr)
-        return CVLErrorInfo {
-            ErrCode: CVL_SEMANTIC_ERROR,
-            TableName: keyName,
-            CVLErrDetails: errStr,
-            ConstraintErrMsg: errStr,
-        }
-    }
+	if len(tableKeys) >= 1 {
+		errStr := "Anycast IP configuration is not allowed in presence of interface IP"
+		log.Error(errStr)
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        keyName,
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
 
 	gwips := strings.Split(gwipData, ",")
-	for _, gwip := range(gwips)	{
+	for _, gwip := range gwips {
 
 		gwIpSplit := strings.Split(gwip, "/")
 
@@ -134,14 +134,14 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 			ifIpSplit := strings.Split(ifKeySplit[2], "/")
 
-			if ((gwIpSplit[0] == ifIpSplit[0]) && (gwIpSplit[1] == ifIpSplit[1])) {
+			if (gwIpSplit[0] == ifIpSplit[0]) && (gwIpSplit[1] == ifIpSplit[1]) {
 
 				log.Info("Anycast address cannot be same as interface address")
 				errStr := "Anycast address cannot be same as interface address"
-				return CVLErrorInfo {
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: keyNameSplit[0],
-					CVLErrDetails: errStr,
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        keyNameSplit[0],
+					CVLErrDetails:    errStr,
 					ConstraintErrMsg: errStr,
 				}
 			}
@@ -158,9 +158,9 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 		if (err != nil) || (vc.SessCache == nil) {
 			errStr := "Configure subinterface and vlan id before configuring VRRP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: keyNameSplit[0],
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        keyNameSplit[0],
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
@@ -170,9 +170,9 @@ func (t *CustomValidation) ValidateSagIp(vc *CustValidationCtxt) CVLErrorInfo {
 		if !has_vlanid {
 			errStr := "Configure  vlan id on interface before configuring SAG IP"
 			return CVLErrorInfo{
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: keyNameSplit[0],
-				CVLErrDetails: errStr,
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        keyNameSplit[0],
+				CVLErrDetails:    errStr,
 				ConstraintErrMsg: errStr,
 			}
 		}
