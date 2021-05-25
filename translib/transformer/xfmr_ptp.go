@@ -22,17 +22,18 @@ import (
 	b64 "encoding/base64"
 	"errors"
 	"fmt"
+	"net"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-	"net"
-	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 func init() {
@@ -1125,7 +1126,7 @@ var Subscribe_ptp_port_ds_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInP
 		log.Infof("Subscribe_ptp_port_ds_xfm , unable to get StateDB, error %v", err)
 		return result, err
 	}
-	
+
 	defer d.DeleteDB()
 
 	underlying_interface := "UnknownKey"

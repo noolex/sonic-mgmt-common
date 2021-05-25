@@ -1,31 +1,33 @@
-  ////////////////////////////////////////////////////////////////////////////////
-  //                                                                            //
-  //  Copyright 2019 Dell, Inc.                                                 //
-  //                                                                            //
-  //  Licensed under the Apache License, Version 2.0 (the "License");           //
-  //  you may not use this file except in compliance with the License.          //
-  //  You may obtain a copy of the License at                                   //
-  //                                                                            //
-  //  http://www.apache.org/licenses/LICENSE-2.0                                //
-  //                                                                            //
-  //  Unless required by applicable law or agreed to in writing, software       //
-  //  distributed under the License is distributed on an "AS IS" BASIS,         //
-  //  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
-  //  See the License for the specific language governing permissions and       //
-  //  limitations under the License.                                            //
-  //                                                                            //
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//  Copyright 2019 Dell, Inc.                                                 //
+//                                                                            //
+//  Licensed under the Apache License, Version 2.0 (the "License");           //
+//  you may not use this file except in compliance with the License.          //
+//  You may obtain a copy of the License at                                   //
+//                                                                            //
+//  http://www.apache.org/licenses/LICENSE-2.0                                //
+//                                                                            //
+//  Unless required by applicable law or agreed to in writing, software       //
+//  distributed under the License is distributed on an "AS IS" BASIS,         //
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
+//  See the License for the specific language governing permissions and       //
+//  limitations under the License.                                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 package transformer
+
 import (
 	"errors"
-	"strings"
 	"fmt"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	log "github.com/golang/glog"
 	"github.com/openconfig/goyang/pkg/yang"
 	"github.com/openconfig/ygot/ygot"
-	log "github.com/golang/glog"
 )
 
 func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum) ([]string, bool, error) {
@@ -62,14 +64,14 @@ func tblKeyDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string
 
 func subTreeXfmrDelDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, cdb db.DBNum, spec *yangXpathInfo, chldSpec *yangXpathInfo, subTreeResMap *map[string]map[string]db.Value) error {
 	var dbs [db.MaxDB]*db.DB
-	dbs[cdb]   = xlateParams.d
+	dbs[cdb] = xlateParams.d
 
 	xfmrLogInfoAll("Handle subtree for  (\"%v\")", xlateParams.uri)
-	if (len(chldSpec.xfmrFunc) > 0) {
-		if ((len(spec.xfmrFunc) == 0) || ((len(spec.xfmrFunc) > 0) &&
-		(spec.xfmrFunc != chldSpec.xfmrFunc))) {
+	if len(chldSpec.xfmrFunc) > 0 {
+		if (len(spec.xfmrFunc) == 0) || ((len(spec.xfmrFunc) > 0) &&
+			(spec.xfmrFunc != chldSpec.xfmrFunc)) {
 			inParams := formXfmrInputRequest(xlateParams.d, dbs, cdb, xlateParams.ygRoot, xlateParams.uri, xlateParams.requestUri, xlateParams.oper, "",
-			dbDataMap, xlateParams.subOpDataMap, nil, xlateParams.txCache)
+				dbDataMap, xlateParams.subOpDataMap, nil, xlateParams.txCache)
 			retMap, err := xfmrHandler(inParams, chldSpec.xfmrFunc)
 			if err != nil {
 				xfmrLogInfoAll("Error returned by %v: %v", chldSpec.xfmrFunc, err)
@@ -77,7 +79,7 @@ func subTreeXfmrDelDataGet(xlateParams xlateToParams, dbDataMap *map[db.DBNum]ma
 			}
 			mapCopy(*subTreeResMap, retMap)
 			if xlateParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-				for _, tblNm :=  range *inParams.pCascadeDelTbl {
+				for _, tblNm := range *inParams.pCascadeDelTbl {
 					if !contains(*xlateParams.pCascadeDelTbl, tblNm) {
 						*xlateParams.pCascadeDelTbl = append(*xlateParams.pCascadeDelTbl, tblNm)
 					}
@@ -105,13 +107,13 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 	if !xpathOk {
 		return err
 	}
-	if ((spec.yangEntry != nil) && (spec.yangEntry.ReadOnly())) {
+	if (spec.yangEntry != nil) && (spec.yangEntry.ReadOnly()) {
 		xfmrLogInfoAll("For Uri - %v skip delete processing since its a Read Only node", xlateParams.uri)
 		return err
 	}
-	cdb       := spec.dbIndex
-	dbs[cdb]   = xlateParams.d
-	dbOpts    := getDBOptions(cdb)
+	cdb := spec.dbIndex
+	dbs[cdb] = xlateParams.d
+	dbOpts := getDBOptions(cdb)
 	separator := dbOpts.KeySeparator
 
 	if !isFirstCall {
@@ -140,26 +142,26 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 		return err
 	}
 
-	xfmrLogInfoAll("tblList(%v), tbl(%v), key(%v)  for uri (\"%v\")", tblList, xlateParams.tableName,  xlateParams.keyName, xlateParams.uri)
-	for _, tbl := range(tblList) {
+	xfmrLogInfoAll("tblList(%v), tbl(%v), key(%v)  for uri (\"%v\")", tblList, xlateParams.tableName, xlateParams.keyName, xlateParams.uri)
+	for _, tbl := range tblList {
 		curDbDataMap, ferr := fillDbDataMapForTbl(xlateParams.uri, xlateParams.xpath, tbl, keyName, cdb, dbs, xlateParams.dbTblKeyGetCache)
-		if ((ferr == nil) && len(curDbDataMap) > 0) {
+		if (ferr == nil) && len(curDbDataMap) > 0 {
 			mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
 		}
 	}
 
 	// Not required to process parent and current table as subtree is already invoked before we get here
-        // We only need to traverse nested subtrees here
+	// We only need to traverse nested subtrees here
 	if isFirstCall && len(spec.xfmrFunc) == 0 {
 		parentUri := parentUriGet(xlateParams.uri)
-		xpathKeyExtRet	, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, nil, xlateParams.subOpDataMap, xlateParams.txCache, xlateParams.xfmrDbTblKeyCache)
+		xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, parentUri, xlateParams.requestUri, nil, xlateParams.subOpDataMap, xlateParams.txCache, xlateParams.xfmrDbTblKeyCache)
 		parentTbl = xpathKeyExtRet.tableName
 		parentKey = xpathKeyExtRet.dbKey
 		perr = xerr
 		xfmrLogInfoAll("Parent Uri - %v, ParentTbl - %v, parentKey - %v", parentUri, parentTbl, parentKey)
 	}
 
-	for _, tbl := range(tblList) {
+	for _, tbl := range tblList {
 		tblData, ok := (*dbDataMap)[cdb][tbl]
 		xfmrLogInfoAll("Process Tbl - %v", tbl)
 		var curTbl, curKey string
@@ -176,175 +178,175 @@ func yangListDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[stri
 				}
 
 				// Not required to check for table inheritence case here as we have a subtree and subtree is already processed before we get here
-                               // We only need to traverse nested subtrees here
+				// We only need to traverse nested subtrees here
 				if len(spec.xfmrFunc) == 0 {
 
-				xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, nil, xlateParams.subOpDataMap, xlateParams.txCache, xlateParams.xfmrDbTblKeyCache)
-				curKey = xpathKeyExtRet.dbKey
-				curTbl = xpathKeyExtRet.tableName
-				cerr = xerr
-				xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
+					xpathKeyExtRet, xerr := xpathKeyExtract(xlateParams.d, xlateParams.ygRoot, xlateParams.oper, curUri, xlateParams.requestUri, nil, xlateParams.subOpDataMap, xlateParams.txCache, xlateParams.xfmrDbTblKeyCache)
+					curKey = xpathKeyExtRet.dbKey
+					curTbl = xpathKeyExtRet.tableName
+					cerr = xerr
+					xfmrLogInfoAll("Current Uri - %v, CurrentTbl - %v, CurrentKey - %v", curUri, curTbl, curKey)
 
-				if dbKey != curKey {
-					continue
-				}
-				if isFirstCall {
-					if perr == nil && cerr == nil {
-						if len(curTbl) > 0 && parentTbl != curTbl {
-							/* Non-inhertited table case */
-							xfmrLogInfoAll("Non-inhertaed table case, uri - %v", curUri)
-							if spec.tblOwner != nil  && !*spec.tblOwner {
-								xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-								tblOwner = false
-								/* Fill only fields */
-								fillFields = true
-							}
-						} else if len(curTbl) > 0 {
-							/* Inhertited table case */
-							xfmrLogInfoAll("Inherited table case, uri - %v", curUri)
-							if len(parentKey) > 0 {
-								if parentKey == curKey { // List within list or List within container, where container map to entire table
-									xfmrLogInfoAll("Parent key is same as current key")
-									xfmrLogInfoAll("Request from NBI is at same level as that of current list - %v", curUri)
-									if spec.tblOwner != nil  && !*spec.tblOwner {
-										xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-										tblOwner = false // since query is at this level, this will make sure to add instance to result
-									}
-									/* Fill only fields */
-									fillFields = true
-								} else { /*same table but different keys */
-								xfmrLogInfoAll("Inherited table but parent key is NOT same as current key")
-								if spec.tblOwner != nil  && !*spec.tblOwner {
+					if dbKey != curKey {
+						continue
+					}
+					if isFirstCall {
+						if perr == nil && cerr == nil {
+							if len(curTbl) > 0 && parentTbl != curTbl {
+								/* Non-inhertited table case */
+								xfmrLogInfoAll("Non-inhertaed table case, uri - %v", curUri)
+								if spec.tblOwner != nil && !*spec.tblOwner {
 									xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
 									tblOwner = false
 									/* Fill only fields */
 									fillFields = true
 								}
-							}
-						} else {
-							/*same table but no parent-key exists, parent must be a container wth just tableNm annot with no keyXfmr/Nm */
-							xfmrLogInfoAll("Inherited table but no parent key available")
-							if spec.tblOwner != nil  && !*spec.tblOwner {
-								xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
-								tblOwner = false
-								/* Fill only fields */
-								fillFields = true
-
-							}
-						}
-					} else { //  len(curTbl) = 0 
-						log.Warning("No table found for Uri - %v ", curUri)
-					}
-				}
-			} else {
-				/* if table instance already filled and there are no feilds present then it's instance level delete.
-				If fields present then its fields delet and not instance delete
-				*/
-				if tblData, tblDataOk := xlateParams.result[curTbl]; tblDataOk {
-					if fieldMap, fieldMapOk := tblData[curKey]; fieldMapOk {
-						xfmrLogInfoAll("Found table instance same as that of requestUri")
-						if len(fieldMap.Field) > 0 {
-							/* Fill only fields */
-							xfmrLogInfoAll("Found table instance same as that of requestUri with fields.")
-							fillFields = true
-						}
-					}
-				}
-
-			}// end of if isFirstCall
-			} // end if !subtree case
-			xfmrLogInfoAll("For uri - %v , table-owner - %v, fillFields - %v", curUri, tblOwner, fillFields)
-			if fillFields || spec.hasChildSubTree || isFirstCall {
-				for yangChldName := range spec.yangEntry.Dir {
-					chldXpath    := xlateParams.xpath+"/"+yangChldName
-					chldUri      := curUri+"/"+yangChldName
-					chldSpec, ok := xYangSpecMap[chldXpath]
-					if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
-						chldYangType := chldSpec.yangDataType
-						curXlateParams := xlateParams
-						curXlateParams.uri = chldUri
-						curXlateParams.xpath = chldXpath
-						curXlateParams.tableName = ""
-						curXlateParams.keyName = ""
-
-						if (chldSpec.dbIndex == db.ConfigDB) && (len(chldSpec.xfmrFunc) > 0) {
-							err = subTreeXfmrDelDataGet(curXlateParams, dbDataMap, cdb, spec, chldSpec, subTreeResMap)
-							if err != nil {
-								return err
-							}
-						}
-						if chldYangType == YANG_CONTAINER {
-							err = yangContainerDelData(curXlateParams, dbDataMap, subTreeResMap, false)
-							if err != nil {
-								return err
-							}
-						} else if chldYangType == YANG_LIST {
-							err = yangListDelData(curXlateParams, dbDataMap, subTreeResMap, false)
-							if err != nil {
-								return err
-							}
-						} else if (chldSpec.dbIndex == db.ConfigDB) && ((chldYangType == YANG_LEAF) || (chldYangType == YANG_LEAF_LIST)) && !virtualTbl {
-							if len(curTbl) == 0 {
-								continue
-							}
-							if len(curKey) == 0 { //at list level key should always be there
-								xfmrLogInfoAll("No key avaialble for uri - %v", curUri)
-								continue
-							}
-							if chldYangType == YANG_LEAF && chldSpec.isKey {
-								if isFirstCall {
-									if !tblOwner { //add dummy field to identify when to fill fields only at children traversal
-										dataToDBMapAdd(curTbl, curKey, curXlateParams.result, "FillFields", "true")
-									} else {
-										dataToDBMapAdd(curTbl, curKey, curXlateParams.result, "", "")
-									}
-								}
-							} else if fillFields {
-								//strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
-								curXlateParams.uri = xlateParams.uri
-								curXlateParams.name = chldSpec.yangEntry.Name
-								curXlateParams.tableName = curTbl
-								curXlateParams.keyName = curKey
-								err = mapFillDataUtil(curXlateParams)
-								if err != nil {
-									xfmrLogInfoAll("Error received (\"%v\")", err)
-									switch e := err.(type) {
-									case tlerr.TranslibXfmrRetError:
-										ecode := e.XlateFailDelReq
-										log.Warningf("Error received (\"%v\"), ecode :%v", err, ecode)
-										if ecode {
-											return err
+							} else if len(curTbl) > 0 {
+								/* Inhertited table case */
+								xfmrLogInfoAll("Inherited table case, uri - %v", curUri)
+								if len(parentKey) > 0 {
+									if parentKey == curKey { // List within list or List within container, where container map to entire table
+										xfmrLogInfoAll("Parent key is same as current key")
+										xfmrLogInfoAll("Request from NBI is at same level as that of current list - %v", curUri)
+										if spec.tblOwner != nil && !*spec.tblOwner {
+											xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
+											tblOwner = false // since query is at this level, this will make sure to add instance to result
+										}
+										/* Fill only fields */
+										fillFields = true
+									} else { /*same table but different keys */
+										xfmrLogInfoAll("Inherited table but parent key is NOT same as current key")
+										if spec.tblOwner != nil && !*spec.tblOwner {
+											xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
+											tblOwner = false
+											/* Fill only fields */
+											fillFields = true
 										}
 									}
+								} else {
+									/*same table but no parent-key exists, parent must be a container wth just tableNm annot with no keyXfmr/Nm */
+									xfmrLogInfoAll("Inherited table but no parent key available")
+									if spec.tblOwner != nil && !*spec.tblOwner {
+										xfmrLogInfoAll("For uri - %v, table owner - %v", xlateParams.uri, *spec.tblOwner)
+										tblOwner = false
+										/* Fill only fields */
+										fillFields = true
+
+									}
 								}
-								if !removedFillFields {
-									if fieldMap, ok := curXlateParams.result[curTbl][curKey]; ok {
-										if len(fieldMap.Field) > 1 {
-											delete(curXlateParams.result[curTbl][curKey].Field, "FillFields")
-											removedFillFields = true
-										} else if len(fieldMap.Field) == 1 {
-											if _, ok := curXlateParams.result[curTbl][curKey].Field["FillFields"]; !ok {
+							} else { //  len(curTbl) = 0
+								log.Warning("No table found for Uri - %v ", curUri)
+							}
+						}
+					} else {
+						/* if table instance already filled and there are no feilds present then it's instance level delete.
+						If fields present then its fields delet and not instance delete
+						*/
+						if tblData, tblDataOk := xlateParams.result[curTbl]; tblDataOk {
+							if fieldMap, fieldMapOk := tblData[curKey]; fieldMapOk {
+								xfmrLogInfoAll("Found table instance same as that of requestUri")
+								if len(fieldMap.Field) > 0 {
+									/* Fill only fields */
+									xfmrLogInfoAll("Found table instance same as that of requestUri with fields.")
+									fillFields = true
+								}
+							}
+						}
+
+					} // end of if isFirstCall
+				} // end if !subtree case
+				xfmrLogInfoAll("For uri - %v , table-owner - %v, fillFields - %v", curUri, tblOwner, fillFields)
+				if fillFields || spec.hasChildSubTree || isFirstCall {
+					for yangChldName := range spec.yangEntry.Dir {
+						chldXpath := xlateParams.xpath + "/" + yangChldName
+						chldUri := curUri + "/" + yangChldName
+						chldSpec, ok := xYangSpecMap[chldXpath]
+						if ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly())) {
+							chldYangType := chldSpec.yangDataType
+							curXlateParams := xlateParams
+							curXlateParams.uri = chldUri
+							curXlateParams.xpath = chldXpath
+							curXlateParams.tableName = ""
+							curXlateParams.keyName = ""
+
+							if (chldSpec.dbIndex == db.ConfigDB) && (len(chldSpec.xfmrFunc) > 0) {
+								err = subTreeXfmrDelDataGet(curXlateParams, dbDataMap, cdb, spec, chldSpec, subTreeResMap)
+								if err != nil {
+									return err
+								}
+							}
+							if chldYangType == YANG_CONTAINER {
+								err = yangContainerDelData(curXlateParams, dbDataMap, subTreeResMap, false)
+								if err != nil {
+									return err
+								}
+							} else if chldYangType == YANG_LIST {
+								err = yangListDelData(curXlateParams, dbDataMap, subTreeResMap, false)
+								if err != nil {
+									return err
+								}
+							} else if (chldSpec.dbIndex == db.ConfigDB) && ((chldYangType == YANG_LEAF) || (chldYangType == YANG_LEAF_LIST)) && !virtualTbl {
+								if len(curTbl) == 0 {
+									continue
+								}
+								if len(curKey) == 0 { //at list level key should always be there
+									xfmrLogInfoAll("No key avaialble for uri - %v", curUri)
+									continue
+								}
+								if chldYangType == YANG_LEAF && chldSpec.isKey {
+									if isFirstCall {
+										if !tblOwner { //add dummy field to identify when to fill fields only at children traversal
+											dataToDBMapAdd(curTbl, curKey, curXlateParams.result, "FillFields", "true")
+										} else {
+											dataToDBMapAdd(curTbl, curKey, curXlateParams.result, "", "")
+										}
+									}
+								} else if fillFields {
+									//strip off the leaf/leaf-list for mapFillDataUtil takes uri without it
+									curXlateParams.uri = xlateParams.uri
+									curXlateParams.name = chldSpec.yangEntry.Name
+									curXlateParams.tableName = curTbl
+									curXlateParams.keyName = curKey
+									err = mapFillDataUtil(curXlateParams)
+									if err != nil {
+										xfmrLogInfoAll("Error received (\"%v\")", err)
+										switch e := err.(type) {
+										case tlerr.TranslibXfmrRetError:
+											ecode := e.XlateFailDelReq
+											log.Warningf("Error received (\"%v\"), ecode :%v", err, ecode)
+											if ecode {
+												return err
+											}
+										}
+									}
+									if !removedFillFields {
+										if fieldMap, ok := curXlateParams.result[curTbl][curKey]; ok {
+											if len(fieldMap.Field) > 1 {
+												delete(curXlateParams.result[curTbl][curKey].Field, "FillFields")
 												removedFillFields = true
+											} else if len(fieldMap.Field) == 1 {
+												if _, ok := curXlateParams.result[curTbl][curKey].Field["FillFields"]; !ok {
+													removedFillFields = true
+												}
 											}
 										}
 									}
 								}
-							}
-						} // end of Leaf case
-					} // if rw
-				} // end of curUri children traversal loop
-			} // Child Subtree or fill fields
-		} // end of for dbKey loop
-	} // end of tbl in dbDataMap
-} // end of for tbl loop
-return err
+							} // end of Leaf case
+						} // if rw
+					} // end of curUri children traversal loop
+				} // Child Subtree or fill fields
+			} // end of for dbKey loop
+		} // end of tbl in dbDataMap
+	} // end of for tbl loop
+	return err
 }
 
 func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, subTreeResMap *map[string]map[string]db.Value, isFirstCall bool) error {
 	var err error
 	var dbs [db.MaxDB]*db.DB
 	spec, ok := xYangSpecMap[xlateParams.xpath]
-	cdb     := spec.dbIndex
+	cdb := spec.dbIndex
 	dbs[cdb] = xlateParams.d
 	removedFillFields := false
 	var curTbl, curKey string
@@ -353,7 +355,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		return err
 	}
 
-	if (ok && (spec.yangEntry != nil) && (spec.yangEntry.ReadOnly())) {
+	if ok && (spec.yangEntry != nil) && (spec.yangEntry.ReadOnly()) {
 		return err
 	}
 
@@ -370,12 +372,12 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 		if cerr != nil {
 			log.Warningf("Received xpathKeyExtract error for uri: %v : err %v", xlateParams.uri, cerr)
 			switch e := err.(type) {
-				case tlerr.TranslibXfmrRetError:
-					ecode := e.XlateFailDelReq
-					xfmrLogInfoAll("Error received (\"%v\"), ecode :%v", cerr, ecode)
-					if ecode {
-						return cerr
-					}
+			case tlerr.TranslibXfmrRetError:
+				ecode := e.XlateFailDelReq
+				xfmrLogInfoAll("Error received (\"%v\"), ecode :%v", cerr, ecode)
+				if ecode {
+					return cerr
+				}
 			}
 		}
 
@@ -387,17 +389,17 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 			if perr == nil && cerr == nil && len(curTbl) > 0 {
 				if len(curKey) > 0 {
 					xfmrLogInfoAll("DELETE handling at Container parentTbl %v, curTbl %v, curKey %v", parentTbl, curTbl, curKey)
-					if (parentTbl != curTbl) {
+					if parentTbl != curTbl {
 						// Non inhertited table
 						if (spec.tblOwner != nil) && !(*spec.tblOwner) {
 							// Fill fields only
 							xfmrLogInfoAll("DELETE handling at Container Non inhertited table and not table Owner")
 							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "FillFields", "true")
 							fillFields = true
-						} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0  {
+						} else if (spec.keyName != nil && len(*spec.keyName) > 0) || len(spec.xfmrKey) > 0 {
 							// Table owner && Key transformer present. Fill table instance
 							xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
-							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+							dataToDBMapAdd(curTbl, curKey, xlateParams.result, "", "")
 						} else {
 							// Fallback case. Ideally should not enter here
 							fillFields = true
@@ -411,7 +413,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 							} else {
 								// Instance delete
 								xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner")
-								dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+								dataToDBMapAdd(curTbl, curKey, xlateParams.result, "", "")
 							}
 						} else {
 							// if Instance already filled do not fill fields
@@ -430,7 +432,7 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 					} else {
 						// Table owner && Key transformer present. Fill table instance
 						xfmrLogInfoAll("DELETE handling at Container Non inhertited table & table Owner. No Key Delete complete TABLE : %v", curTbl)
-						dataToDBMapAdd(curTbl, curKey, xlateParams.result, "","")
+						dataToDBMapAdd(curTbl, curKey, xlateParams.result, "", "")
 					}
 				}
 			} else {
@@ -455,12 +457,12 @@ func yangContainerDelData(xlateParams xlateToParams, dbDataMap *map[db.DBNum]map
 	}
 	xfmrLogInfoAll("uri %v fillFields %v, hasChildSubtree  %v, isFirstCall %v", xlateParams.uri, fillFields, spec.hasChildSubTree, isFirstCall)
 
-	if (fillFields || spec.hasChildSubTree || isFirstCall) {
+	if fillFields || spec.hasChildSubTree || isFirstCall {
 		for yangChldName := range spec.yangEntry.Dir {
-			chldXpath    := xlateParams.xpath+"/"+yangChldName
-			chldUri      := xlateParams.uri+"/"+yangChldName
+			chldXpath := xlateParams.xpath + "/" + yangChldName
+			chldUri := xlateParams.uri + "/" + yangChldName
 			chldSpec, ok := xYangSpecMap[chldXpath]
-			if (ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly()))) {
+			if ok && ((chldSpec.yangEntry != nil) && (!chldSpec.yangEntry.ReadOnly())) {
 				chldYangType := chldSpec.yangDataType
 				curXlateParams := xlateParams
 				curXlateParams.uri = chldUri
@@ -547,10 +549,10 @@ func allChildTblGetToDelete(xlateParams xlateToParams) (map[string]map[string]db
 	if ok && spec.yangEntry != nil {
 		xlateParams.uri = xlateParams.requestUri
 		xlateParams.xpath = xpath
-		if (spec.yangDataType == YANG_LIST) {
+		if spec.yangDataType == YANG_LIST {
 			err = yangListDelData(xlateParams, &dbDataMap, &subTreeResMap, isFirstCall)
 			return subTreeResMap, err
-		} else if (spec.yangDataType == YANG_CONTAINER) {
+		} else if spec.yangDataType == YANG_CONTAINER {
 			err = yangContainerDelData(xlateParams, &dbDataMap, &subTreeResMap, isFirstCall)
 		}
 	}
@@ -592,7 +594,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		xpathPrefix, keyName, tableName := sonicXpathKeyExtract(uri)
 		xfmrLogInfo("Delete req: uri(\"%v\"), key(\"%v\"), xpathPrefix(\"%v\"), tableName(\"%v\").", uri, keyName, xpathPrefix, tableName)
 		resultMap[oper][db.ConfigDB] = result
-		xlateToData := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "","",tableName)
+		xlateToData := formXlateToDbParam(d, ygRoot, oper, uri, requestUri, xpathPrefix, keyName, jsonData, resultMap, result, txCache, nil, subOpDataMap, &cascadeDelTbl, &xfmrErr, "", "", tableName)
 		err = sonicYangReqToDbMapDelete(xlateToData)
 		if err != nil {
 			return err
@@ -613,7 +615,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				inParams := formXfmrInputRequest(d, dbs, db.ConfigDB, ygRoot, uri, requestUri, oper, "", nil, subOpDataMap, nil, txCache)
 				err = preXfmrHandlerFunc(modSpecInfo.xfmrPre, inParams)
 				xfmrLogInfo("Invoked pre-transformer: %v, oper: %v, subOpDataMap: %v ",
-				modSpecInfo.xfmrPre, oper, subOpDataMap)
+					modSpecInfo.xfmrPre, oper, subOpDataMap)
 				if err != nil {
 					log.Warningf("Pre-transformer: %v failed.(err:%v)", modSpecInfo.xfmrPre, err)
 					return err
@@ -646,7 +648,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 				}
 
 				if inParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-					for _, tblNm :=  range *inParams.pCascadeDelTbl {
+					for _, tblNm := range *inParams.pCascadeDelTbl {
 						if !contains(cascadeDelTbl, tblNm) {
 							cascadeDelTbl = append(cascadeDelTbl, tblNm)
 						}
@@ -691,7 +693,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 									}
 									redisMap = &dbresult
 									(*redisMap)[db.ConfigDB] = result
-									subOpDataMap[UPDATE]     = redisMap
+									subOpDataMap[UPDATE] = redisMap
 								}
 							}
 							result = make(map[string]map[string]db.Value)
@@ -724,7 +726,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 							return err
 						}
 					}
-				}  else {
+				} else {
 					log.Warningf("No proper table and key information to fill result map for uri %v, table: %v, key %v", uri, xpathKeyExtRet.tableName, xpathKeyExtRet.dbKey)
 				}
 			} else {
@@ -764,7 +766,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 					xfmrLogInfo("skipOrdTbl flag: %v", *skipOrdTbl)
 				}
 				if inParams.pCascadeDelTbl != nil && len(*inParams.pCascadeDelTbl) > 0 {
-					for _, tblNm :=  range *inParams.pCascadeDelTbl {
+					for _, tblNm := range *inParams.pCascadeDelTbl {
 						if !contains(cascadeDelTbl, tblNm) {
 							cascadeDelTbl = append(cascadeDelTbl, tblNm)
 						}
@@ -779,7 +781,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 			if len(subOpDataMap) > 0 {
 				for op, data := range subOpDataMap {
 					if len(*data) > 0 {
-						for dbType, dbData := range (*data) {
+						for dbType, dbData := range *data {
 							if len(dbData) > 0 {
 								if _, ok := resultMap[op][dbType]; !ok {
 									resultMap[op][dbType] = make(map[string]map[string]db.Value)
@@ -800,7 +802,7 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 		log.Warningf("Failed in dbdata-xfmr for %v", resultMap)
 		return err
 	}
-	if (len(cascadeDelTbl) > 0) {
+	if len(cascadeDelTbl) > 0 {
 		cdErr := handleCascadeDelete(d, resultMap, cascadeDelTbl)
 		if cdErr != nil {
 			xfmrLogInfo("Cascade Delete Failed for cascadeDelTbl (%v), Error: (%v)", cascadeDelTbl, cdErr)
@@ -815,14 +817,14 @@ func dbMapDelete(d *db.DB, ygRoot *ygot.GoStruct, oper int, uri string, requestU
 
 func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 	var err error
-	if (xlateParams.tableName != "") {
+	if xlateParams.tableName != "" {
 		// Specific table entry case
 		xlateParams.result[xlateParams.tableName] = make(map[string]db.Value)
 		isFieldReq := false
-		if (xlateParams.keyName != "") {
+		if xlateParams.keyName != "" {
 			// Specific key case
 			var dbVal db.Value
-			tokens:= strings.Split(xlateParams.xpath, "/")
+			tokens := strings.Split(xlateParams.xpath, "/")
 			if tokens[SONIC_TABLE_INDEX] == xlateParams.tableName {
 				fieldName := ""
 				if len(tokens) > SONIC_FIELD_INDEX {
@@ -830,7 +832,7 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 				}
 
 				if fieldName != "" {
-					isFieldReq   = true
+					isFieldReq = true
 					dbSpecField := xlateParams.tableName + "/" + fieldName
 					_, ok := xDbSpecMap[dbSpecField]
 					if ok {
@@ -885,4 +887,3 @@ func sonicYangReqToDbMapDelete(xlateParams xlateToParams) error {
 	}
 	return nil
 }
-

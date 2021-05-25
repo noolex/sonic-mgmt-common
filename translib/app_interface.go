@@ -11,7 +11,7 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
@@ -31,11 +31,12 @@ package translib
 
 import (
 	"errors"
-	log "github.com/golang/glog"
-	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Structure containing app module information
@@ -59,10 +60,10 @@ type appData struct {
 // These include RESTCONF query parameters like - depth, fields etc.
 type appOptions struct {
 
-    // depth limits subtree levels in the response data.
-    // 0 indicates unlimited depth.
-    // Valid for GET API only.
-    depth uint
+	// depth limits subtree levels in the response data.
+	// 0 indicates unlimited depth.
+	// Valid for GET API only.
+	depth uint
 
 	// deleteEmptyEntry indicates if the db entry should be deleted upon
 	// deletion of last field. This is a non standard option.

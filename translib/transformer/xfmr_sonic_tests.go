@@ -19,12 +19,13 @@
 package transformer
 
 import (
-//	"bytes"
-//	"errors"
-//	"fmt"
+	//	"bytes"
+	//	"errors"
+	//	"fmt"
 	"encoding/json"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/golang/glog"
 )
 
@@ -36,7 +37,7 @@ var rpc_sum_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, e
 	var err error
 	var operand struct {
 		Input struct {
-			Left int32 `json:"left"`
+			Left  int32 `json:"left"`
 			Right int32 `json:"right"`
 		} `json:"sonic-tests:input"`
 	}
@@ -44,7 +45,7 @@ var rpc_sum_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, e
 	err = json.Unmarshal(body, &operand)
 	if err != nil {
 		glog.Errorf("Failed to parse rpc input; err=%v", err)
-		return nil,tlerr.InvalidArgs("Invalid rpc input")
+		return nil, tlerr.InvalidArgs("Invalid rpc input")
 	}
 
 	var sum struct {

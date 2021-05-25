@@ -21,12 +21,13 @@ package translib
 
 import (
 	"fmt"
-	"github.com/openconfig/gnmi/proto/gnmi"
-	"github.com/openconfig/ygot/ygot"
 	"reflect"
 	"strings"
 	"testing"
+
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/ygot/ygot"
 )
 
 func TestInitSchema(t *testing.T) {

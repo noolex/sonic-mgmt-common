@@ -38,43 +38,40 @@ import (
 
 // SKey is (TableSpec, Key, []SEvent) 3-tuples to be watched in a Transaction.
 type SKey struct {
-	Ts  *TableSpec
-	Key *Key
-	SEMap map[SEvent]bool	// nil map indicates subscribe to all
-	Opaque interface{}      // opaque data set by the caller
+	Ts     *TableSpec
+	Key    *Key
+	SEMap  map[SEvent]bool // nil map indicates subscribe to all
+	Opaque interface{}     // opaque data set by the caller
 }
 
 type SEvent int
 
 const (
-	SEventNone      SEvent = iota // No Op
-	SEventHSet   // HSET, HMSET, and its variants
-	SEventHDel   // HDEL, also SEventDel generated, if HASH is becomes empty
-	SEventDel    // DEL, & also if key gets deleted (empty HASH, expire,..)
-	SEventOther  // Some other command not covered above.
+	SEventNone  SEvent = iota // No Op
+	SEventHSet                // HSET, HMSET, and its variants
+	SEventHDel                // HDEL, also SEventDel generated, if HASH is becomes empty
+	SEventDel                 // DEL, & also if key gets deleted (empty HASH, expire,..)
+	SEventOther               // Some other command not covered above.
 
 	// The below two are always sent regardless of SEMap.
-	SEventClose  // Close requested due to Unsubscribe() called.
-	SEventErr    // Error condition. Call Unsubscribe, after return.
+	SEventClose // Close requested due to Unsubscribe() called.
+	SEventErr   // Error condition. Call Unsubscribe, after return.
 )
 
-var redisPayload2sEventMap map[string]SEvent = map[string]SEvent {
-	""      : SEventNone,
-	"hset"  : SEventHSet,
-	"hdel"  : SEventHDel,
-	"del"   : SEventDel,
+var redisPayload2sEventMap map[string]SEvent = map[string]SEvent{
+	"":     SEventNone,
+	"hset": SEventHSet,
+	"hdel": SEventHDel,
+	"del":  SEventDel,
 }
-
 
 func init() {
-    // Optimization: Start the goroutine that is scanning the SubscribeDB
-    // channels. Instead of one goroutine per Subscribe.
+	// Optimization: Start the goroutine that is scanning the SubscribeDB
+	// channels. Instead of one goroutine per Subscribe.
 }
 
-
 // HFunc gives the name of the table, and other per-table customizations.
-type HFunc func( *DB, *SKey, *Key, SEvent) (error)
-
+type HFunc func(*DB, *SKey, *Key, SEvent) error
 
 // SubscribeDB is the factory method to create a subscription to the DB.
 // The returned instance can only be used for Subscription.
@@ -90,7 +87,7 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 	var s string
 
 	// NewDB
-	d , e := NewDB(opt)
+	d, e := NewDB(opt)
 
 	if d.client == nil {
 		goto SubscribeDBExit
@@ -105,10 +102,10 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 		goto SubscribeDBExit
 	}
 
-	for i := 0 ; i < len(skeys); i++ {
+	for i := 0; i < len(skeys); i++ {
 		pattern := d.key2redisChannel(skeys[i].Ts, *(skeys[i].Key))
-		if _,present := patMap[pattern] ; ! present {
-			patMap[pattern] = make([]int,  0, 5)
+		if _, present := patMap[pattern]; !present {
+			patMap[pattern] = make([]int, 0, 5)
 			patterns = append(patterns, pattern)
 		}
 		patMap[pattern] = append(patMap[pattern], i)
@@ -121,7 +118,7 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 
 	if d.sPubSub == nil {
 		glog.Error("SubscribeDB: PSubscribe() nil: pats: ", patterns)
-		e = tlerr.TranslibDBSubscribeFail { }
+		e = tlerr.TranslibDBSubscribeFail{}
 		goto SubscribeDBExit
 	}
 
@@ -132,10 +129,9 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 
 	if e != nil {
 		glog.Error("SubscribeDB: Receive() fails: e: ", e)
-		e = tlerr.TranslibDBSubscribeFail { }
+		e = tlerr.TranslibDBSubscribeFail{}
 		goto SubscribeDBExit
 	}
-
 
 	// Start a goroutine to read messages and call handler.
 	go func() {
@@ -169,9 +165,8 @@ func SubscribeDB(opt Options, skeys []*SKey, handler HFunc) (*DB, error) {
 			sEvent = SEventErr
 		}
 		glog.Info("SubscribeDB: SEventClose|Err: ", sEvent)
-		handler(d, & SKey{}, & Key {}, sEvent)
-	} ()
-
+		handler(d, &SKey{}, &Key{}, sEvent)
+	}()
 
 SubscribeDBExit:
 
@@ -195,7 +190,7 @@ SubscribeDBExit:
 }
 
 // UnsubscribeDB is used to close a DB subscription
-func (d * DB) UnsubscribeDB() error {
+func (d *DB) UnsubscribeDB() error {
 
 	var e error = nil
 
@@ -210,7 +205,7 @@ func (d * DB) UnsubscribeDB() error {
 	}
 
 	// Mark close in progress.
-	d.sCIP = true;
+	d.sCIP = true
 
 	// Do the close, ch gets closed too.
 	d.sPubSub.Close()
@@ -230,11 +225,10 @@ UnsubscribeDBExit:
 	return e
 }
 
-
 func (d *DB) key2redisChannel(ts *TableSpec, key Key) string {
 
 	if glog.V(5) {
-		glog.Info("key2redisChannel: ", *ts, " key: " + key.String())
+		glog.Info("key2redisChannel: ", *ts, " key: "+key.String())
 	}
 
 	return "__keyspace@" + (d.Opts.DBNo).String() + "__:" + d.key2redis(ts, key)
@@ -243,7 +237,7 @@ func (d *DB) key2redisChannel(ts *TableSpec, key Key) string {
 func (d *DB) redisChannel2key(ts *TableSpec, redisChannel string) Key {
 
 	if glog.V(5) {
-		glog.Info("redisChannel2key: ", *ts, " redisChannel: " + redisChannel)
+		glog.Info("redisChannel2key: ", *ts, " redisChannel: "+redisChannel)
 	}
 
 	splitRedisKey := strings.SplitN(redisChannel, ":", 2)
@@ -273,6 +267,5 @@ func (d *DB) redisPayload2sEvent(redisPayload string) SEvent {
 		glog.Info("redisPayload2sEvent: ", sEvent)
 	}
 
-    return sEvent
+	return sEvent
 }
-

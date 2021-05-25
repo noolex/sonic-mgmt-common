@@ -930,9 +930,9 @@ var rpc_show_policy RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) (resu
 	policy_name, policy_name_found := mapData["POLICY_NAME"].(string)
 	policy_type, policy_type_found := mapData["TYPE"].(string)
 	class_name, class_name_found := mapData["CLASS_NAME"].(string)
-    if !class_name_found {
-        class_name = "*"
-    }
+	if !class_name_found {
+		class_name = "*"
+	}
 
 	if policy_name_found {
 		//get policy db output
