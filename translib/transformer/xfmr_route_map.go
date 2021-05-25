@@ -1,17 +1,17 @@
 package transformer
 
 import (
-	"bytes"
-	"strings"
+    "bytes"
+    "strings"
     "strconv" 
-	"fmt"
-	"errors"
+    "fmt"
+    "errors"
     log "github.com/golang/glog"
-	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-	"reflect"
-	"github.com/openconfig/ygot/ygot"
+    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "reflect"
+    "github.com/openconfig/ygot/ygot"
     "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-	"github.com/Azure/sonic-mgmt-common/translib/db"
+    "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 
 func init () {
@@ -113,7 +113,7 @@ var YangToDb_route_map_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (str
     _, err = strconv.ParseUint(stmtName, 10, 16)
     if err != nil {
         log.Info("URI route-map invalid statement name type, use values in range (1-65535)", stmtName)
-	    return entry_key, tlerr.InvalidArgs("Statement '%s' not supported, use values in range (1-65535)", stmtName)
+        return entry_key, tlerr.InvalidArgs("Statement '%s' not supported, use values in range (1-65535)", stmtName)
     }
     entry_key = rtMapName + "|" + stmtName
     log.Info("URI route-map ", entry_key)
