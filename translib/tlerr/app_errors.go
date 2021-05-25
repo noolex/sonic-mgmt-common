@@ -28,7 +28,7 @@ type errordata struct {
 	Format string        // message format string
 	Args   []interface{} // message format arguments
 	Path   string        // error path (optional)
-	AppTag string		 // application specific error tag (optional)
+	AppTag string        // application specific error tag (optional)
 }
 
 // InvalidArgsError indicates bad request error.
@@ -90,7 +90,7 @@ func AlreadyExists(msg string, args ...interface{}) AlreadyExistsError {
 
 // AlreadyExistsErr creates an AlreadyExistsError instance with given message, app error tag and path.
 func AlreadyExistsErr(appTag, path, msg string, args ...interface{}) AlreadyExistsError {
-	 return AlreadyExistsError{Format: msg, Args: args, AppTag: appTag, Path: path}
+	return AlreadyExistsError{Format: msg, Args: args, AppTag: appTag, Path: path}
 }
 
 func (e NotSupportedError) Error() string {

@@ -40,7 +40,8 @@ if [[ "$REPO" != *sonic-mgmt-common ]]; then
 	exit 3
 fi
 
-YANGDIR=$REPO/models/yang
+YANGDIR_BASE=$REPO/models/yang
+YANGDIR=$REPO/build/yang
 YANGDIR_COMMON=$YANGDIR/common
 YANGDIR_EXTENSIONS=$YANGDIR/extensions
 
@@ -54,59 +55,70 @@ PYANG_PLUGIN_DIR=$REPO/tools/pyang/pyang_plugins
 PYANG_COMMUNITY_PLUGIN_DIR=$REPO/build/oc-community-linter/openconfig_pyang/plugins
 exit_code=0
 
+SONIC_YANGDIR=$YANGDIR_BASE/sonic
+SONIC_YANGDIR_COMMON=$SONIC_YANGDIR/common
+SONIC_YANG_MOD_FILES=`find $SONIC_YANGDIR -maxdepth 1 -name 'sonic*.yang' | sort`
+
+# show_status displays status banner and records/ignores error status.
+# $1:step name, $2:step exist status, $3:'ignore' or empty
+function show_status() {
+    if [[ $2 == 0 ]]; then
+        echo "++++++ $1 completed ++++++"
+    elif [[ $3 == "ignore" ]]; then
+        echo "++++++ $1 failed, but ignored ++++++"
+    else
+        echo "++++++ $1 failed ++++++"
+        exit_code=1
+    fi
+}
+
 # Execute tools
+# check for SONiC yang models
+echo "Starting SONiC YANG lint check ...."
+python3 `which $PYANG` --strict --sonic --plugindir $PYANG_PLUGIN_DIR \
+    -p $SONIC_YANGDIR_COMMON:$SONIC_YANGDIR $SONIC_YANG_MOD_FILES
+show_status "SONiC YANG lint check" $? ignore
+
 # check for upgrade issues
 echo "Starting YANG upgrade check ...."
 $PYANG -f upcheck --ignore-errors --yang-dir $YANGDIR --plugindir $PYANG_PLUGIN_DIR \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_MOD_FILES \
 	$YANG_MOD_EXTENSION_FILES
-if [[ $? != 0 ]]; then
-	exit_code=1
-fi
-echo "++++++ Upgrade check completed ++++++"
+show_status "Upgrade check" $?
 
 # check for openconfig issues
+# TODO: This tool will be decommissioned once we start reporting issues from community's linter 
 echo "Starting OpenConfig YANG style check ...."
 $PYANG -f stcheck --ignore-errors --extensiondir $YANGDIR_EXTENSIONS \
 	--plugindir $PYANG_PLUGIN_DIR \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_MOD_FILES \
 	$YANG_MOD_EXTENSION_FILES
-if [[ $? != 0 ]]; then
-	exit_code=1
-fi
-echo "++++++ OpenConfig style check completed ++++++"
+show_status "OpenConfig style check" $?
 
 # check for openconfig issues using OC Community Linter
 echo "Starting OpenConfig YANG validation using OC Community Linter ...."
-$PYANG --openconfig --report-errors-only-in $YANGDIR_EXTENSIONS \
+$PYANG --openconfig --logfile $REPO/models/yang/oc_lint_issues.log \
 	--plugindir $PYANG_COMMUNITY_PLUGIN_DIR \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $OPENCONFIG_YANG_MOD_FILES \
-	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES |& tee $REPO/models/yang/oc_lint_issues.log
-# Commenting below lines as we dont intent to error out build for now
-#if [[ $? != 0 ]]; then
-#	exit_code=1
-#fi
-echo "++++++ OpenConfig style validation using Community linter completed ++++++"
+	--ignorefile $YANGDIR_BASE/lint_ignore.ocstyle --patchdir $YANGDIR_BASE/patches \
+	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES
+show_status "OpenConfig style validation using Community linter" $? ignore
 
 # check for lint-strict issues
 echo "Starting YANG lint-strict check ...."
 $PYANG --strict --lint --extensiondir $YANGDIR_EXTENSIONS \
 	--plugindir $PYANG_PLUGIN_DIR -f strictlint \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS \
-	$YANG_MOD_EXTENSION_FILES 2> /dev/null
-if [[ $? != 0 ]]; then
-	exit_code=1
-fi
-echo "++++++ lint-check check completed ++++++"
+	--ignorefile $YANGDIR_BASE/lint_ignore.strict --patchdir $YANGDIR_BASE/patches \
+	$YANG_MOD_EXTENSION_FILES
+show_status "lint-strict check" $?
 
 # check for IETF issues
 echo "Starting YANG IETF check ...."
 $PYANG --ietf --plugindir $PYANG_PLUGIN_DIR -f strictlint \
-	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_IETF_MOD_EXT_FILES 2> /dev/null
-if [[ $? != 0 ]]; then
-	exit_code=1
-fi
-echo "++++++ IETF check completed ++++++"
+	--ignorefile $YANGDIR_BASE/lint_ignore.ietf --patchdir $YANGDIR_BASE/patches \
+	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_IETF_MOD_EXT_FILES
+show_status "IETF check" $?
 
 echo "Exiting with code $exit_code"
 exit $exit_code

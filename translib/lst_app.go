@@ -21,16 +21,17 @@ package translib
 
 import (
 	"errors"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -1009,6 +1010,8 @@ func (app *LstApp) processLstGroupsGet(dbs [db.MaxDB]*db.DB, grpPtr *ocbinds.Ope
 				diff = 0
 			}
 			grpPtr.State.BringupRemainingTime = &diff
+			log.Infof("processLstGroupsGet: bringuptime; epoch_str:%s, epoch:%v, timeout:%v, RemainingTime:%v", epoch_str, epoch, tmout_16,
+				diff)
 		}
 	}
 

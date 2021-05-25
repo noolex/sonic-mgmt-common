@@ -22,35 +22,36 @@ package cvl_test
 import (
 	"fmt"
 	"testing"
+
 	"github.com/Azure/sonic-mgmt-common/cvl"
 )
 
 // EditConfig(Create) with chained leafref from redis
 func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"VLAN" : map[string]interface{} {
-			"Vlan100": map[string]interface{} {
+	depDataMap := map[string]interface{}{
+		"VLAN": map[string]interface{}{
+			"Vlan100": map[string]interface{}{
 				"members@": "Ethernet1",
-				"vlanid": "100",
+				"vlanid":   "100",
 			},
 		},
-		"PORT" : map[string]interface{} {
-			"Ethernet1" : map[string]interface{} {
-				"alias":"hundredGigE1",
+		"PORT": map[string]interface{}{
+			"Ethernet1": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "81,82,83,84",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
-			"Ethernet2" : map[string]interface{} {
-				"alias":"hundredGigE1",
+			"Ethernet2": map[string]interface{}{
+				"alias": "hundredGigE1",
 				"lanes": "85,86,87,89",
-				"mtu": "9100",
+				"mtu":   "9100",
 			},
 		},
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL1": map[string] interface{} {
-				"stage": "INGRESS",
-				"type": "L3",
-				"ports@":"Ethernet2",
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL1": map[string]interface{}{
+				"stage":  "INGRESS",
+				"type":   "L3",
+				"ports@": "Ethernet2",
 			},
 		},
 	}
@@ -60,13 +61,13 @@ func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T
 
 	cvSess, _ := cvl.ValidationSessOpen()
 
-	cfgDataVlan := []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataVlan := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"VLAN_MEMBER|Vlan100|Ethernet1",
-			map[string]string {
-				"tagging_mode" : "tagged",
+			map[string]string{
+				"tagging_mode": "tagged",
 			},
 			false,
 		},
@@ -79,24 +80,23 @@ func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T
 		return
 	}
 
-	cfgDataAclRule :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgDataAclRule := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"ACL_RULE|TestACL1|Rule1",
-			map[string]string {
-				"PACKET_ACTION": "FORWARD",
-				"IP_TYPE": "IPV4",
-				"SRC_IP": "10.1.1.1/32",
-				"L4_SRC_PORT": "1909",
-				"IP_PROTOCOL": "103",
-				"DST_IP": "20.2.2.2/32",
+			map[string]string{
+				"PACKET_ACTION":     "FORWARD",
+				"IP_TYPE":           "IPV4",
+				"SRC_IP":            "10.1.1.1/32",
+				"L4_SRC_PORT":       "1909",
+				"IP_PROTOCOL":       "103",
+				"DST_IP":            "20.2.2.2/32",
 				"L4_DST_PORT_RANGE": "9000-12000",
 			},
 			false,
 		},
 	}
-
 
 	_, err = cvSess.ValidateEditConfig(cfgDataAclRule)
 
@@ -110,9 +110,9 @@ func TestValidateEditConfig_Create_Chained_Leafref_DepData_Positive(t *testing.T
 }
 
 func TestValidateEditConfig_Create_Leafref_To_NonKey_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"BGP_GLOBALS" : map[string]interface{} {
-			"default": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"BGP_GLOBALS": map[string]interface{}{
+			"default": map[string]interface{}{
 				"router_id": "1.1.1.1",
 				"local_asn": "12338",
 			},
@@ -122,14 +122,14 @@ func TestValidateEditConfig_Create_Leafref_To_NonKey_Positive(t *testing.T) {
 	//Prepare data in Redis
 	loadConfigDB(rclient, depDataMap)
 
-	cfgData :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"DEVICE_METADATA|localhost",
-			map[string]string {
+			map[string]string{
 				"vrf_name": "default",
-				"bgp_asn": "12338",
+				"bgp_asn":  "12338",
 			},
 			false,
 		},
@@ -148,9 +148,9 @@ func TestValidateEditConfig_Create_Leafref_To_NonKey_Positive(t *testing.T) {
 }
 
 func TestValidateEditConfig_Update_Leafref_To_NonKey_Negative(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"BGP_GLOBALS" : map[string]interface{} {
-			"default": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"BGP_GLOBALS": map[string]interface{}{
+			"default": map[string]interface{}{
 				"router_id": "1.1.1.1",
 				"local_asn": "12338",
 			},
@@ -160,14 +160,14 @@ func TestValidateEditConfig_Update_Leafref_To_NonKey_Negative(t *testing.T) {
 	//Prepare data in Redis
 	loadConfigDB(rclient, depDataMap)
 
-	cfgData :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_UPDATE,
 			"DEVICE_METADATA|localhost",
-			map[string]string {
+			map[string]string{
 				"vrf_name": "default",
-				"bgp_asn": "17698",
+				"bgp_asn":  "17698",
 			},
 			false,
 		},
@@ -186,29 +186,29 @@ func TestValidateEditConfig_Update_Leafref_To_NonKey_Negative(t *testing.T) {
 }
 
 func TestValidateEditConfig_Create_Leafref_Multi_Key_Positive(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL901": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL901": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
-			"TestACL902": map[string] interface{} {
+			"TestACL902": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
-		"ACL_RULE" : map[string]interface{} {
-			"TestACL901|Rule1": map[string] interface{} {
+		"ACL_RULE": map[string]interface{}{
+			"TestACL901|Rule1": map[string]interface{}{
 				"PACKET_ACTION": "FORWARD",
-				"IP_TYPE": "IPV4",
-				"SRC_IP": "10.1.1.1/32",
-				"DST_IP": "20.2.2.2/32",
+				"IP_TYPE":       "IPV4",
+				"SRC_IP":        "10.1.1.1/32",
+				"DST_IP":        "20.2.2.2/32",
 			},
-			"TestACL902|Rule1": map[string] interface{} {
+			"TestACL902|Rule1": map[string]interface{}{
 				"PACKET_ACTION": "FORWARD",
-				"IP_TYPE": "IPV4",
-				"SRC_IP": "10.1.1.2/32",
-				"DST_IP": "20.2.2.4/32",
+				"IP_TYPE":       "IPV4",
+				"SRC_IP":        "10.1.1.2/32",
+				"DST_IP":        "20.2.2.4/32",
 			},
 		},
 	}
@@ -216,14 +216,14 @@ func TestValidateEditConfig_Create_Leafref_Multi_Key_Positive(t *testing.T) {
 	//Prepare data in Redis
 	loadConfigDB(rclient, depDataMap)
 
-	cfgData :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"TAM_INT_IFA_FLOW_TABLE|Flow_1",
-			map[string]string {
+			map[string]string{
 				"acl-table-name": "TestACL901",
-				"acl-rule-name": "Rule1",
+				"acl-rule-name":  "Rule1",
 			},
 			false,
 		},
@@ -242,23 +242,23 @@ func TestValidateEditConfig_Create_Leafref_Multi_Key_Positive(t *testing.T) {
 }
 
 func TestValidateEditConfig_Create_Leafref_Multi_Key_Negative(t *testing.T) {
-	depDataMap := map[string]interface{} {
-		"ACL_TABLE" : map[string]interface{} {
-			"TestACL901": map[string] interface{} {
+	depDataMap := map[string]interface{}{
+		"ACL_TABLE": map[string]interface{}{
+			"TestACL901": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
-			"TestACL902": map[string] interface{} {
+			"TestACL902": map[string]interface{}{
 				"stage": "INGRESS",
-				"type": "L3",
+				"type":  "L3",
 			},
 		},
-		"ACL_RULE" : map[string]interface{} {
-			"TestACL902|Rule1": map[string] interface{} {
+		"ACL_RULE": map[string]interface{}{
+			"TestACL902|Rule1": map[string]interface{}{
 				"PACKET_ACTION": "FORWARD",
-				"IP_TYPE": "IPV4",
-				"SRC_IP": "10.1.1.2/32",
-				"DST_IP": "20.2.2.4/32",
+				"IP_TYPE":       "IPV4",
+				"SRC_IP":        "10.1.1.2/32",
+				"DST_IP":        "20.2.2.4/32",
 			},
 		},
 	}
@@ -266,14 +266,14 @@ func TestValidateEditConfig_Create_Leafref_Multi_Key_Negative(t *testing.T) {
 	//Prepare data in Redis
 	loadConfigDB(rclient, depDataMap)
 
-	cfgData :=  []cvl.CVLEditConfigData {
-		cvl.CVLEditConfigData {
+	cfgData := []cvl.CVLEditConfigData{
+		cvl.CVLEditConfigData{
 			cvl.VALIDATE_ALL,
 			cvl.OP_CREATE,
 			"TAM_INT_IFA_FLOW_TABLE|Flow_1",
-			map[string]string {
+			map[string]string{
 				"acl-table-name": "TestACL901",
-				"acl-rule-name": "Rule1", //This is not there in above depDataMap
+				"acl-rule-name":  "Rule1", //This is not there in above depDataMap
 			},
 			false,
 		},
@@ -311,14 +311,13 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Positive
 			cvl.OP_CREATE,
 			"STP_PORT|StpIntf10", //Non-leafref
 			map[string]string{
-				"enabled": "true",
+				"enabled":   "true",
 				"edge_port": "true",
 				"link_type": "shared",
 			},
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -351,14 +350,13 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Negative
 			cvl.OP_CREATE,
 			"STP_PORT|Test12", //Non-leafref
 			map[string]string{
-				"enabled": "true",
+				"enabled":   "true",
 				"edge_port": "true",
 				"link_type": "shared",
 			},
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -391,14 +389,13 @@ func TestValidateEditConfig_Create_Leafref_With_Other_DataType_In_Union_Non_Exis
 			cvl.OP_CREATE,
 			"STP_PORT|Ethernet3999", //Correct PORT format but not existing
 			map[string]string{
-				"enabled": "true",
+				"enabled":   "true",
 				"edge_port": "true",
 				"link_type": "shared",
 			},
 			false,
 		},
 	}
-
 
 	cvlErrInfo, err := cvSess.ValidateEditConfig(cfgData)
 
@@ -430,12 +427,12 @@ func TestValidateEditConfig_Delete_Leafref(t *testing.T) {
 		},
 		"ACL_TABLE": map[string]interface{}{
 			"TestACL1": map[string]interface{}{
-				"type":	  "L3",
+				"type":   "L3",
 				"stage":  "INGRESS",
 				"ports@": "PortChannel1",
 			},
 			"TestACL2": map[string]interface{}{
-				"type":	  "L3",
+				"type":   "L3",
 				"stage":  "INGRESS",
 				"ports@": "PortChannel3,PortChannel4",
 			},
@@ -454,7 +451,7 @@ func TestValidateEditConfig_Delete_Leafref(t *testing.T) {
 }
 
 func deletePO(poId int, expSuccess bool) func(*testing.T) {
-	return func (t *testing.T) {
+	return func(t *testing.T) {
 		session, _ := cvl.ValidationSessOpen()
 		defer cvl.ValidationSessClose(session)
 		validateDeletePO(t, session, nil, poId, expSuccess)
@@ -462,7 +459,7 @@ func deletePO(poId int, expSuccess bool) func(*testing.T) {
 }
 
 func deleteACLAndPO(aclName, ports string, poId int, bulk, expSuccess bool) func(*testing.T) {
-	return func (t *testing.T) {
+	return func(t *testing.T) {
 		session, _ := cvl.ValidationSessOpen()
 		defer cvl.ValidationSessClose(session)
 		var cfgData []cvl.CVLEditConfigData
@@ -471,7 +468,7 @@ func deleteACLAndPO(aclName, ports string, poId int, bulk, expSuccess bool) func
 			cvl.VALIDATE_ALL,
 			cvl.OP_DELETE,
 			fmt.Sprintf("ACL_TABLE|%s", aclName),
-			map[string]string{ },
+			map[string]string{},
 			false,
 		})
 
@@ -501,7 +498,7 @@ func validateDeletePO(t *testing.T, session *cvl.CVL, cfgData []cvl.CVLEditConfi
 		cvl.VALIDATE_ALL,
 		cvl.OP_DELETE,
 		fmt.Sprintf("PORTCHANNEL|PortChannel%d", poId),
-		map[string]string{ },
+		map[string]string{},
 		false,
 	})
 
@@ -513,4 +510,3 @@ func validateDeletePO(t *testing.T, session *cvl.CVL, cfgData []cvl.CVLEditConfi
 		t.Errorf("po%d delete validation should have failed", poId)
 	}
 }
-

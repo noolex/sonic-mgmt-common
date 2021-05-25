@@ -241,7 +241,12 @@ module sonic-snmp {
           "List of communities.";
 
         leaf index {
-          type identifier;
+          type string {
+              length "4..32";
+              pattern "[^ @,]*" {
+                  error-message 'Invalid snmp community string (Valid chars are ASCII printable except SPACE, "@", and ",")';
+              }
+          }
           description
             "Index into the community list which must be the community name.";
         }

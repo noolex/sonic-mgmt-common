@@ -19,60 +19,61 @@
 package transformer_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
-        "os/exec"
-	"encoding/json"
-	"github.com/openconfig/ygot/ytypes"
+	"os/exec"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/go-redis/redis/v7"
+	"github.com/openconfig/ygot/ytypes"
 
 	"testing"
 )
 
 var rclient *redis.Client
 var port_map map[string]interface{}
-var filehandle  *os.File
+var filehandle *os.File
 var ygSchema *ytypes.Schema
 
 var loadDeviceDataMap bool
-var deviceDataMap = map[string]interface{} {
-        "DEVICE_METADATA" : map[string]interface{} {
-                "localhost": map[string] interface{} {
-                        "hwsku": "Force10-S6000",
-                        "hostname": "sonic",
-                        "type": "LeafRouter",
-                        "platform": "x86_64-dell_s6000_s1220-r0",
-                        "mac": "00:de:11:01:06:02",
-                },
-        },
+var deviceDataMap = map[string]interface{}{
+	"DEVICE_METADATA": map[string]interface{}{
+		"localhost": map[string]interface{}{
+			"hwsku":    "Force10-S6000",
+			"hostname": "sonic",
+			"type":     "LeafRouter",
+			"platform": "x86_64-dell_s6000_s1220-r0",
+			"mac":      "00:de:11:01:06:02",
+		},
+	},
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
-        var opt db.Options
+	var opt db.Options
 
-        switch dbNo {
-        case db.ApplDB, db.CountersDB, db.AsicDB:
-                opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-                break
-        case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB:
-                opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
-                break
-        }
+	switch dbNo {
+	case db.ApplDB, db.CountersDB, db.AsicDB:
+		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
+		break
+	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB:
+		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
+		break
+	}
 
-        return opt
+	return opt
 }
 
 func getDBOptionsWithSeparator(dbNo db.DBNum, initIndicator string, tableSeparator string, keySeparator string, isWriteDisabled bool) db.Options {
-        return (db.Options{
-                DBNo:               dbNo,
-                InitIndicator:      initIndicator,
-                TableNameSeparator: tableSeparator,
-                KeySeparator:       keySeparator,
-                IsWriteDisabled:    isWriteDisabled,
-        })
+	return (db.Options{
+		DBNo:               dbNo,
+		InitIndicator:      initIndicator,
+		TableNameSeparator: tableSeparator,
+		KeySeparator:       keySeparator,
+		IsWriteDisabled:    isWriteDisabled,
+	})
 }
 
 func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
@@ -171,307 +172,290 @@ func closeAllDbs(dbs []*db.DB) {
 	}
 }
 
-
 func TestMain(t *testing.M) {
 	fmt.Println("----- Setting up transformer tests -----")
-        if err := setup(); err != nil {
-                fmt.Fprintf(os.Stderr, "Error setting up transformer testing state: %v.\n", err)
-                os.Exit(1)
-        }
-        t.Run()
+	if err := setup(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting up transformer testing state: %v.\n", err)
+		os.Exit(1)
+	}
+	t.Run()
 	teardown()
-        os.Exit(0)
+	os.Exit(0)
 }
 
 // setups state each of the tests uses
 func setup() error {
 	fmt.Println("----- Performing setup -----")
 	var err error
-        if ygSchema, err = ocbinds.Schema(); err != nil {
-                panic("Error in getting the schema: " + err.Error())
+	if ygSchema, err = ocbinds.Schema(); err != nil {
+		panic("Error in getting the schema: " + err.Error())
 		return err
-        }
+	}
+
+	if err := initDbConfig(); err != nil {
+		return err
+	}
 
 	//Clear all tables which are used for testing
-        clearDb()
+	clearDb()
 
-        /* Prepare the Redis database. */
-        prepareDb()
+	/* Prepare the Redis database. */
+	prepareDb()
 
 	return nil
 }
 
 func teardown() error {
+	if rclient == nil {
+		return nil
+	}
+
 	fmt.Println("----- Performing teardown -----")
-        unloadConfigDB(rclient, port_map)
-        if (loadDeviceDataMap == true) {
-                unloadConfigDB(rclient, deviceDataMap)
-        }
+	unloadConfigDB(rclient, port_map)
+	if loadDeviceDataMap == true {
+		unloadConfigDB(rclient, deviceDataMap)
+	}
 	clearDb()
-        rclient.Close()
-        rclient.FlushDB()
+	rclient.Close()
+	rclient.FlushDB()
 	return nil
 }
 
 /* Separator for keys. */
 func getSeparator() string {
-        return "|"
+	return "|"
 }
 
 /* Converts JSON config to map which can be loaded to Redis */
 func loadConfig(key string, in []byte) map[string]interface{} {
-        var fvp map[string]interface{}
+	var fvp map[string]interface{}
 
-        err := json.Unmarshal(in, &fvp)
-        if err != nil {
-                fmt.Printf("Failed to Unmarshal %v err: %v", in, err)
-        }
-        if key != "" {
-                kv := map[string]interface{}{}
-                kv[key] = fvp
-                return kv
-        }
-        return fvp
+	err := json.Unmarshal(in, &fvp)
+	if err != nil {
+		fmt.Printf("Failed to Unmarshal %v err: %v", in, err)
+	}
+	if key != "" {
+		kv := map[string]interface{}{}
+		kv[key] = fvp
+		return kv
+	}
+	return fvp
 }
 
 /* Unloads the Config DB based on JSON File. */
 func unloadConfigDB(rclient *redis.Client, mpi map[string]interface{}) {
-        for key, fv := range mpi {
-                switch fv.(type) {
-                case map[string]interface{}:
-                        for subKey, subValue := range fv.(map[string]interface{}) {
-                                newKey := key + getSeparator() + subKey
-                                _, err := rclient.Del(newKey).Result()
+	for key, fv := range mpi {
+		switch fv.(type) {
+		case map[string]interface{}:
+			for subKey, subValue := range fv.(map[string]interface{}) {
+				newKey := key + getSeparator() + subKey
+				_, err := rclient.Del(newKey).Result()
 
-                                if err != nil {
-                                        fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
-                                }
+				if err != nil {
+					fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
+				}
 
-                        }
-                default:
-                        fmt.Printf("Invalid data for db: %v : %v", key, fv)
-                }
-        }
+			}
+		default:
+			fmt.Printf("Invalid data for db: %v : %v", key, fv)
+		}
+	}
 
 }
 
 func unloadDB(dbNum int, mpi map[string]interface{}) {
 	client := getDbClient(dbNum)
 	opts := getDBOptions(db.ApplDB, false)
-        for key, fv := range mpi {
-                switch fv.(type) {
-                case map[string]interface{}:
-                        for subKey, subValue := range fv.(map[string]interface{}) {
-                                newKey := key + opts.KeySeparator + subKey
-                                _, err := client.Del(newKey).Result()
+	for key, fv := range mpi {
+		switch fv.(type) {
+		case map[string]interface{}:
+			for subKey, subValue := range fv.(map[string]interface{}) {
+				newKey := key + opts.KeySeparator + subKey
+				_, err := client.Del(newKey).Result()
 
-                                if err != nil {
-                                        fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
-                                }
+				if err != nil {
+					fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
+				}
 
-                        }
-                default:
-                        fmt.Printf("Invalid data for db: %v : %v", key, fv)
-                }
-        }
+			}
+		default:
+			fmt.Printf("Invalid data for db: %v : %v", key, fv)
+		}
+	}
 
 }
 
 /* Loads the Config DB based on JSON File. */
 func loadConfigDB(rclient *redis.Client, mpi map[string]interface{}) {
-        for key, fv := range mpi {
-                switch fv.(type) {
-                case map[string]interface{}:
-                        for subKey, subValue := range fv.(map[string]interface{}) {
-                                newKey := key + getSeparator() + subKey
-                                _, err := rclient.HMSet(newKey, subValue.(map[string]interface{})).Result()
+	for key, fv := range mpi {
+		switch fv.(type) {
+		case map[string]interface{}:
+			for subKey, subValue := range fv.(map[string]interface{}) {
+				newKey := key + getSeparator() + subKey
+				_, err := rclient.HMSet(newKey, subValue.(map[string]interface{})).Result()
 
-                                if err != nil {
-                                        fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
-                                }
+				if err != nil {
+					fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
+				}
 
-                        }
-                default:
-                        fmt.Printf("Invalid data for db: %v : %v", key, fv)
-                }
-        }
+			}
+		default:
+			fmt.Printf("Invalid data for db: %v : %v", key, fv)
+		}
+	}
 }
 
 /* Loads the redis DB based on JSON File. */
 func loadDB(dbNum int, mpi map[string]interface{}) {
 	client := getDbClient(dbNum)
 	opts := getDBOptions(db.ApplDB, false)
-        for key, fv := range mpi {
-                switch fv.(type) {
-                case map[string]interface{}:
-                        for subKey, subValue := range fv.(map[string]interface{}) {
-                                newKey := key + opts.KeySeparator + subKey
-                                _, err := client.HMSet(newKey, subValue.(map[string]interface{})).Result()
+	for key, fv := range mpi {
+		switch fv.(type) {
+		case map[string]interface{}:
+			for subKey, subValue := range fv.(map[string]interface{}) {
+				newKey := key + opts.KeySeparator + subKey
+				_, err := client.HMSet(newKey, subValue.(map[string]interface{})).Result()
 
-                                if err != nil {
-                                        fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
-                                }
+				if err != nil {
+					fmt.Printf("Invalid data for db: %v : %v %v", newKey, subValue, err)
+				}
 
-                        }
-                default:
-                        fmt.Printf("Invalid data for db: %v : %v", key, fv)
-                }
-        }
+			}
+		default:
+			fmt.Printf("Invalid data for db: %v : %v", key, fv)
+		}
+	}
 }
 
-func getRedisPassword(dbName string) string {
-	var dbConfigMap map[string]interface{}
-	var password string
-        dbConfigFile := "/run/redis/sonic-db/database_config.json"
-        dbConfigJson, err := ioutil.ReadFile(dbConfigFile)
-        if err != nil {
-                fmt.Errorf("read file %v err: %v", dbConfigFile, err)
-        }
-        err = json.Unmarshal(dbConfigJson, &dbConfigMap)
-        if err != nil {
-                fmt.Errorf("failed to unmarshal %v err: %v", dbConfigJson, err)
-        }
-        db, ok := dbConfigMap["DATABASES"].(map[string]interface{})[dbName]
-        if !ok {
-                fmt.Errorf("database name '%v' is not found", dbName)
-        }
-        instName, ok := db.(map[string]interface{})["instance"]
-        if !ok {
-                fmt.Errorf("'instance' is not a valid field")
-        }
-        inst, ok := dbConfigMap["INSTANCES"].(map[string]interface{})[instName.(string)]
-        if !ok {
-                fmt.Errorf("instance name '%v' is not found", instName)
-        }
-	pwdpath, ok := inst.(map[string]interface{})["password_path"]
-	if !ok {
-		fmt.Errorf("password_path '%v' is not found", pwdpath)
-	} else {
-		redisPwdFileName := pwdpath.(string)
-		fmt.Printf("redisPwdFileName: %v \n", redisPwdFileName)
+var dbConfig struct {
+	Instances map[string]map[string]interface{} `json:"INSTANCES"`
+	Databases map[string]map[string]interface{} `json:"DATABASES"`
+}
 
-		pwd, err := ioutil.ReadFile(redisPwdFileName)
-		if err != nil {
-			fmt.Printf("read file %v err: %v", redisPwdFileName, err)
-			return ""
-		}
-		password = string(pwd)
+func initDbConfig() error {
+	dbConfigFile := "/run/redis/sonic-db/database_config.json"
+	if path, ok := os.LookupEnv("DB_CONFIG_PATH"); ok {
+		dbConfigFile = path
 	}
-	return password
+
+	fmt.Println("dbConfigFile =", dbConfigFile)
+	dbConfigJson, err := ioutil.ReadFile(dbConfigFile)
+	if err == nil {
+		err = json.Unmarshal(dbConfigJson, &dbConfig)
+	}
+
+	return err
 }
 
 func getConfigDbClient() *redis.Client {
-
-	pwd := getRedisPassword("CONFIG_DB")
-	if pwd == "" {
-		return nil
-	}
-        rclient := redis.NewClient(&redis.Options{
-                Network:     "tcp",
-                Addr:        "localhost:6379",
-                Password:    pwd,
-                DB:          4,
-                DialTimeout: 0,
-        })
-	_, err := rclient.Ping().Result()
-        if err != nil {
-                fmt.Printf("failed to connect to redis server %v", err)
-        }
-        return rclient
+	return getDbClient(int(db.ConfigDB))
 }
 
 func getDbClient(dbNum int) *redis.Client {
-        rclient := redis.NewClient(&redis.Options{
-                Network:     "tcp",
-                Addr:        "localhost:6379",
-                Password:    "", // no password set
-                DB:          dbNum,
-                DialTimeout: 0,
-        })
-        _, err := rclient.Ping().Result()
-        if err != nil {
-                fmt.Printf("failed to connect to redis server %v", err)
-        }
-        return rclient
-}
+	addr := "localhost:6379"
+	pass := ""
+	for _, d := range dbConfig.Databases {
+		if id, ok := d["id"]; !ok || id != dbNum {
+			continue
+		}
 
+		dbi := dbConfig.Instances[d["instance"].(string)]
+		addr = fmt.Sprintf("%v:%v", dbi["hostname"], dbi["port"])
+		if p, ok := dbi["password_path"].(string); ok {
+			pwd, _ := ioutil.ReadFile(p) //TODO handle IO error
+			pass = string(pwd)
+		}
+		break
+	}
+
+	rclient := redis.NewClient(&redis.Options{
+		Network:     "tcp",
+		Addr:        addr,
+		Password:    pass,
+		DB:          dbNum,
+		DialTimeout: 0,
+	})
+	_, err := rclient.Ping().Result()
+	if err != nil {
+		fmt.Printf("failed to connect to redis server %v", err)
+	}
+	return rclient
+}
 
 /* Prepares the database in Redis Server. */
 func prepareDb() {
-        rclient = getConfigDbClient()
-	if (rclient == nil) {
-                fmt.Printf("error in getConfigDbClient")
+	rclient = getConfigDbClient()
+	if rclient == nil {
+		fmt.Printf("error in getConfigDbClient")
 		return
 	}
 
-        fileName := "testdata/port_table.json"
-        PortsMapByte, err := ioutil.ReadFile(fileName)
-        if err != nil {
-                fmt.Printf("read file %v err: %v", fileName, err)
-        }
+	fileName := "testdata/port_table.json"
+	PortsMapByte, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		fmt.Printf("read file %v err: %v", fileName, err)
+	}
 
-        //Load device data map on which application of deviation files depends
-        dm, err:= rclient.Keys("DEVICE_METADATA|localhost").Result()
-        if (err != nil) || (len(dm) == 0) {
-                loadConfigDB(rclient, deviceDataMap)
-                loadDeviceDataMap = true
-        }
+	//Load device data map on which application of deviation files depends
+	dm, err := rclient.Keys("DEVICE_METADATA|localhost").Result()
+	if (err != nil) || (len(dm) == 0) {
+		loadConfigDB(rclient, deviceDataMap)
+		loadDeviceDataMap = true
+	}
 
-        port_map = loadConfig("", PortsMapByte)
+	port_map = loadConfig("", PortsMapByte)
 
-        portKeys, err:= rclient.Keys("PORT|*").Result()
-        //Load only the port config which are not there in Redis
-        if err == nil {
-                portMapKeys := port_map["PORT"].(map[string]interface{})
-                for _, portKey := range portKeys {
-                        //Delete the port key which is already there in Redis
-                        delete(portMapKeys, portKey[len("PORTS|") - 1:])
-                }
-                port_map["PORT"] = portMapKeys
-        }
+	portKeys, err := rclient.Keys("PORT|*").Result()
+	//Load only the port config which are not there in Redis
+	if err == nil {
+		portMapKeys := port_map["PORT"].(map[string]interface{})
+		for _, portKey := range portKeys {
+			//Delete the port key which is already there in Redis
+			delete(portMapKeys, portKey[len("PORTS|")-1:])
+		}
+		port_map["PORT"] = portMapKeys
+	}
 
-        loadConfigDB(rclient, port_map)
+	loadConfigDB(rclient, port_map)
 }
-
 
 func clearDb() {
 
-        tblList := []string {
-                "ACL_RULE",
-                "ACL_TABLE",
-                "BGP_GLOBALS",
-                "BUFFER_PG",
-                "CABLE_LENGTH",
-                "CFG_L2MC_TABLE",
-                "INTERFACE",
-                "MIRROR_SESSION",
-                "PORTCHANNEL",
-                "PORTCHANNEL_MEMBER",
-                "PORT_QOS_MAP",
-                "QUEUE",
-                "SCHEDULER",
-                "STP",
-                "STP_PORT",
-                "STP_VLAN",
-                "TAM_COLLECTOR_TABLE",
-                "TAM_INT_IFA_FLOW_TABLE",
-                "VLAN",
-                "VLAN_INTERFACE",
-                "VLAN_MEMBER",
-                "VRF",
-                "VXLAN_TUNNEL",
-                "VXLAN_TUNNEL_MAP",
-                "WRED_PROFILE",
-        }
+	tblList := []string{
+		"ACL_RULE",
+		"ACL_TABLE",
+		"BGP_GLOBALS",
+		"BUFFER_PG",
+		"CABLE_LENGTH",
+		"CFG_L2MC_TABLE",
+		"INTERFACE",
+		"MIRROR_SESSION",
+		"PORTCHANNEL",
+		"PORTCHANNEL_MEMBER",
+		"PORT_QOS_MAP",
+		"QUEUE",
+		"SCHEDULER",
+		"STP",
+		"STP_PORT",
+		"STP_VLAN",
+		"TAM_COLLECTOR_TABLE",
+		"TAM_INT_IFA_FLOW_TABLE",
+		"VLAN",
+		"VLAN_INTERFACE",
+		"VLAN_MEMBER",
+		"VRF",
+		"VXLAN_TUNNEL",
+		"VXLAN_TUNNEL_MAP",
+		"WRED_PROFILE",
+	}
 
-        for _, tbl := range tblList {
+	for _, tbl := range tblList {
 		_, err := exec.Command("/bin/sh", "-c",
-                "sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '" +
-                tbl + "|*' | cut -d ' ' -f 2`").Output()
+			"sonic-db-cli CONFIG_DB del `sonic-db-cli CONFIG_DB keys '"+
+				tbl+"|*' | cut -d ' ' -f 2`").Output()
 
-                if err != nil {
-                        fmt.Println(err.Error())
-                }
-        }
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
 }
-

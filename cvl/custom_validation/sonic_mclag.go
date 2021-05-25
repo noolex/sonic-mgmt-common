@@ -20,49 +20,49 @@
 package custom_validation
 
 import (
-	"strings"
 	"strconv"
-	log "github.com/golang/glog"
+	"strings"
+
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-	)
+	log "github.com/golang/glog"
+)
 
-
-//ValidateMclagMac Check whether mclag mac is valid mac or not 
-//Purpose: Check correct mclag mac provided for config is valid mac 
+//ValidateMclagMac Check whether mclag mac is valid mac or not
+//Purpose: Check correct mclag mac provided for config is valid mac
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateMclagMac(vc *CustValidationCtxt) CVLErrorInfo {
-  var valid bool=true
-  mac :=  vc.YNodeVal
+	var valid bool = true
+	mac := vc.YNodeVal
 
 	log.Info("In MCLAG Mac custom validation:", mac)
-    if (mac != "") {
-	    if mac == "00:00:00:00:00:00" {
-            valid = false
-        } else if strings.EqualFold(mac, "ff:ff:ff:ff:ff:ff") { //broadcast mac
-            valid = false
+	if mac != "" {
+		if mac == "00:00:00:00:00:00" {
+			valid = false
+		} else if strings.EqualFold(mac, "ff:ff:ff:ff:ff:ff") { //broadcast mac
+			valid = false
 		} else { //multicast mac
-		    macSplit := strings.Split(mac, ":")
-            macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
+			macSplit := strings.Split(mac, ":")
+			macHi, err := strconv.ParseUint(macSplit[0], 16, 8)
 			if err != nil {
-			    valid = false
-			} else if macHi & 0x01 == 0x01 {
-		        valid = false
+				valid = false
+			} else if macHi&0x01 == 0x01 {
+				valid = false
 			} else {
-			    valid = true
+				valid = true
 			}
 		}
-    } 
+	}
 
-    if (!valid) {
-	    errStr:= "MCLAG MAC not valid, it shouldn't be zero, multicast, or broadcast"
-		util.CVL_LEVEL_LOG(util.ERROR,"%s",errStr)
+	if !valid {
+		errStr := "MCLAG MAC not valid, it shouldn't be zero, multicast, or broadcast"
+		util.CVL_LEVEL_LOG(util.ERROR, "%s", errStr)
 		return CVLErrorInfo{
-			ErrCode: CVL_SYNTAX_INVALID_INPUT_DATA,
-			TableName: "MCLAG_DOMAIN",
-			CVLErrDetails : errStr,
-			ConstraintErrMsg : errStr,
+			ErrCode:          CVL_SYNTAX_INVALID_INPUT_DATA,
+			TableName:        "MCLAG_DOMAIN",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
 		}
 	}
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }

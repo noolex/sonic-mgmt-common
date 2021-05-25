@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"testing"
+
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
 

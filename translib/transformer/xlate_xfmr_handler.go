@@ -20,10 +20,10 @@ package transformer
 
 import (
 	"github.com/Azure/sonic-mgmt-common/translib/db"
-    log "github.com/golang/glog"
+	log "github.com/golang/glog"
 )
 
-func xfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (error) {
+func xfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) error {
 	xfmrLogInfoAll("Received inParams %v Subtree function name %v", inParams, xfmrFuncNm)
 	if inParams.uri != inParams.requestUri {
 		_, yerr := xlateUnMarshallUri(inParams.ygRoot, inParams.uri)
@@ -36,7 +36,7 @@ func xfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (error) {
 		xfmrLogInfoAll("Failed to retrieve data for xpath(\"%v\") err(%v).", inParams.uri, err)
 		return err
 	}
-        if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		// db to yang subtree xfmr returns err as the only value in return data list from <xfmr_func>.Call()
 		if ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
 			err = ret[DBTY_SBT_XFMR_RET_ERR_INDX].Interface().(error)
@@ -44,7 +44,7 @@ func xfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (error) {
 				log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
 			}
 		}
-        }
+	}
 	return err
 }
 
@@ -57,52 +57,52 @@ func leafXfmrHandlerFunc(inParams XfmrParams, xfmrFieldFuncNm string) (map[strin
 	if err != nil {
 		return fldValMap, err
 	}
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == DBTY_FLD_XFMR_RET_ARGS {
 			// field xfmr returns err as second value in return data list from <xfmr_func>.Call()
-                        if ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
-                                err = ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface().(error)
-                                if err != nil {
-                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFieldFuncNm, err)
-                                }
-                        }
-                }
+			if ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[DBTY_FLD_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFieldFuncNm, err)
+				}
+			}
+		}
 
-                if ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
-                        fldValMap = ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
-                }
-        }
+		if ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface() != nil {
+			fldValMap = ret[DBTY_FLD_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+		}
+	}
 	return fldValMap, err
 }
 
 func keyXfmrHandlerFunc(inParams XfmrParams, xfmrFuncNm string) (map[string]interface{}, error) {
-        xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrFuncNm)
-        ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrFuncNm), inParams)
-        retVal := make(map[string]interface{})
-        if err != nil {
-                return retVal, err
-        }
+	xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrFuncNm)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrFuncNm), inParams)
+	retVal := make(map[string]interface{})
+	if err != nil {
+		return retVal, err
+	}
 
-        if ((ret != nil) && (len(ret)>0)) {
-                if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
-                        // key xfmr returns err as second value in return data list from <xfmr_func>.Call()
-                        if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
-                                err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
-                                if err != nil {
-                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
-                                        return retVal, err
-                                }
-                        }
-                }
-                if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
-                        retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
-                        return retVal, nil
-                }
-        }
-        return retVal, nil
+	if (ret != nil) && (len(ret) > 0) {
+		if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
+			// key xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrFuncNm, err)
+					return retVal, err
+				}
+			}
+		}
+		if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+			return retVal, nil
+		}
+	}
+	return retVal, nil
 }
 
-func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) (bool) {
+func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) bool {
 	xfmrLogInfoAll("Received inParams %v, validate transformer function name %v", inParams, validateFuncNm)
 	ret, err := XlateFuncCall(validateFuncNm, inParams)
 	if err != nil {
@@ -114,7 +114,7 @@ func validateHandlerFunc(inParams XfmrParams, validateFuncNm string) (bool) {
 func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache map[string]tblKeyCache) ([]string, error) {
 
 	xfmrLogInfoAll("Received inParams %v, table transformer function name %v", inParams, xfmrTblFunc)
-	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
+	if inParams.oper == GET && xfmrTblKeyCache != nil {
 		if tkCache, _ok := xfmrTblKeyCache[inParams.uri]; _ok {
 			if len(tkCache.dbTblList) > 0 {
 				return tkCache.dbTblList, nil
@@ -127,7 +127,7 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache
 	if err != nil {
 		return retTblLst, err
 	}
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == TBL_XFMR_RET_ARGS {
 			// table xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[TBL_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -143,7 +143,7 @@ func xfmrTblHandlerFunc(xfmrTblFunc string, inParams XfmrParams, xfmrTblKeyCache
 			retTblLst = ret[TBL_XFMR_RET_VAL_INDX].Interface().([]string)
 		}
 	}
-	if (inParams.oper == GET && xfmrTblKeyCache != nil) {
+	if inParams.oper == GET && xfmrTblKeyCache != nil {
 		if _, _ok := xfmrTblKeyCache[inParams.uri]; !_ok {
 			xfmrTblKeyCache[inParams.uri] = tblKeyCache{}
 		}
@@ -163,7 +163,7 @@ func valueXfmrHandler(inParams XfmrDbParams, xfmrValueFuncNm string) (string, er
 		return "", err
 	}
 
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == YTDB_FLD_XFMR_RET_ARGS {
 			// value xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -190,7 +190,7 @@ func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]st
 	if err != nil {
 		return nil, err
 	}
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == YTDB_FLD_XFMR_RET_ARGS {
 			// field xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[YTDB_FLD_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -207,7 +207,7 @@ func leafXfmrHandler(inParams XfmrParams, xfmrFieldFuncNm string) (map[string]st
 			return fldValMap, nil
 		}
 	} else {
-		retFldValMap := map[string]string{"NULL":"NULL"}
+		retFldValMap := map[string]string{"NULL": "NULL"}
 		return retFldValMap, nil
 	}
 
@@ -221,7 +221,7 @@ func xfmrHandler(inParams XfmrParams, xfmrFuncNm string) (map[string]map[string]
 		return nil, err
 	}
 
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == YTDB_SBT_XFMR_RET_ARGS {
 			// subtree xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[YTDB_SBT_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -248,7 +248,7 @@ func keyXfmrHandler(inParams XfmrParams, xfmrFuncNm string) (string, error) {
 		return retVal, err
 	}
 
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == YTDB_KEY_XFMR_RET_ARGS {
 			// key xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[YTDB_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -275,7 +275,7 @@ func postXfmrHandlerFunc(xfmrPost string, inParams XfmrParams) (map[string]map[s
 	if err != nil {
 		return nil, err
 	}
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if len(ret) == POST_XFMR_RET_ARGS {
 			// post xfmr returns err as second value in return data list from <xfmr_func>.Call()
 			if ret[POST_XFMR_RET_ERR_INDX].Interface() != nil {
@@ -302,7 +302,7 @@ func preXfmrHandlerFunc(xfmrPre string, inParams XfmrParams) error {
 		log.Warningf("Pre-transformer function(\"%v\") returned error - %v.", xfmrPre, err)
 		return err
 	}
-	if ((ret != nil) && (len(ret)>0)) {
+	if (ret != nil) && (len(ret) > 0) {
 		if ret[PRE_XFMR_RET_ERR_INDX].Interface() != nil {
 			err = ret[PRE_XFMR_RET_ERR_INDX].Interface().(error)
 			if err != nil {
@@ -315,28 +315,28 @@ func preXfmrHandlerFunc(xfmrPre string, inParams XfmrParams) error {
 }
 
 func sonicKeyXfmrHandlerFunc(inParams SonicXfmrParams, xfmrKeyNm string) (map[string]interface{}, error) {
-        xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrKeyNm)
-        ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrKeyNm), inParams)
-        retVal := make(map[string]interface{})
-        if err != nil {
-                return retVal, err
-        }
+	xfmrLogInfoAll("Received inParams %v key transformer function name %v", inParams, xfmrKeyNm)
+	ret, err := XlateFuncCall(dbToYangXfmrFunc(xfmrKeyNm), inParams)
+	retVal := make(map[string]interface{})
+	if err != nil {
+		return retVal, err
+	}
 
-        if ((ret != nil) && (len(ret)>0)) {
-                if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
-                        // key xfmr returns err as second value in return data list from <xfmr_func>.Call()
-                        if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
-                                err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
-                                if err != nil {
-                                        log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrKeyNm, err)
-                                        return retVal, err
-                                }
-                        }
-                }
-                if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
-                        retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
-                        return retVal, nil
-                }
-        }
-        return retVal, nil
+	if (ret != nil) && (len(ret) > 0) {
+		if len(ret) == DBTY_KEY_XFMR_RET_ARGS {
+			// key xfmr returns err as second value in return data list from <xfmr_func>.Call()
+			if ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface() != nil {
+				err = ret[DBTY_KEY_XFMR_RET_ERR_INDX].Interface().(error)
+				if err != nil {
+					log.Warningf("Transformer function(\"%v\") returned error - %v.", xfmrKeyNm, err)
+					return retVal, err
+				}
+			}
+		}
+		if ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface() != nil {
+			retVal = ret[DBTY_KEY_XFMR_RET_VAL_INDX].Interface().(map[string]interface{})
+			return retVal, nil
+		}
+	}
+	return retVal, nil
 }

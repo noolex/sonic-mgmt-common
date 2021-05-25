@@ -1,0 +1,36 @@
+diff --git a/models/yang/openconfig-lldp.yang b/models/yang/openconfig-lldp.yang
+index e687b7c6..1449cabc 100644
+--- a/models/yang/openconfig-lldp.yang
++++ b/models/yang/openconfig-lldp.yang
+@@ -587,13 +587,6 @@ module openconfig-lldp {
+         "System level state of the LLDP protocol.";
+     }
+ 
+-    leaf hello-timer {
+-      type uint64;
+-      units "seconds";
+-      description
+-        "System level hello timer for the LLDP protocol.";
+-    }
+-
+     leaf-list suppress-tlv-advertisement {
+       type identityref {
+         base oc-lldp-types:LLDP_TLV;
+@@ -627,6 +620,17 @@ module openconfig-lldp {
+       description
+         "Top-level container for LLDP configuration and state data";
+ 
++      container sample {
++        description
++          "Configuration data ";
++    leaf enabled {
++      type boolean;
++      default "true";
++      description
++        "Sample node status.";
++    }
++      }
++
+       container config {
+         description
+           "Configuration data ";

@@ -134,14 +134,15 @@ type BulkResponse struct {
 	CreateResponse  []SetResponse
 }
 
+// SubscribeRequest holds the request data for Subscribe and Stream APIs.
 type SubscribeRequest struct {
 	Paths         []string
-	FmtType       TranslibFmtType
 	Q             *queue.PriorityQueue
 	Stop          chan struct{}
 	User          UserRoles
 	AuthEnabled   bool
 	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type SubscribeResponse struct {
@@ -165,6 +166,7 @@ type IsSubscribeRequest struct {
 	User          UserRoles
 	AuthEnabled   bool
 	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type IsSubscribeResponse struct {
@@ -850,29 +852,30 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	return resp, err
 }
 
-//Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
-func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
-	var err error
-	var sErr error
+// NewSubscribeSession creates a new SubscribeSession. Caller
+// MUST close the session object through CloseSubscribeSession
+// call at the end.
+func NewSubscribeSession() *SubscribeSession {
+	return &SubscribeSession{
+		ID: fmt.Sprintf("%d", subscribeCounter.Next()),
+	}
+}
 
+// CloseSubscribeSession closes a SubscribeSession and release
+// any resources it held. API client MUST close the sessions it
+// creates; and not reuse the session after closing.
+func CloseSubscribeSession(ss *SubscribeSession) {
+	// nothing for now!
+}
+
+//Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
+func Subscribe(req SubscribeRequest) error {
 	paths := req.Paths
 	q := req.Q
 	stop := req.Stop
 
-	dbNotificationMap := make(map[db.DBNum][]*notificationInfo)
-
-	resp := make([]*IsSubscribeResponse, len(paths))
-
-	for i := range resp {
-		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: true,
-			MinInterval:         minSubsInterval,
-			PreferredType:       OnChange,
-			Err:                 nil}
-	}
-
 	if !isAuthorizedForSubscribe(req) {
-		return resp, tlerr.AuthorizationError{
+		return tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
 	}
@@ -883,10 +886,10 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
-		return resp, err
+		return err
 	}
 
-	sInfo := &subscribeInfo{syncDone: false,
+	sInfo := &subscribeInfo{
 		id:   subscribeCounter.Next(),
 		q:    q,
 		stop: stop,
@@ -894,70 +897,83 @@ func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
 	}
 
 	sCtx := subscribeContext{
-		sInfo: sInfo,
+		sInfo:   sInfo,
+		dbs:     dbs,
+		mode:    OnChange,
+		version: req.ClientVersion,
+		session: req.Session,
 	}
 
-	for i, path := range paths {
-
-		app, appInfo, err := getAppModule(path, req.ClientVersion)
-
+	for _, path := range paths {
+		err = sCtx.translateAndAddPath(path)
 		if err != nil {
-
-			if sErr == nil {
-				sErr = err
-			}
-
-			resp[i].Err = err
-			continue
+			closeAllDbs(dbs[:])
+			return err
 		}
-
-		nAppSubInfo, errApp := (*app).translateSubscribe(
-			&translateSubRequest{
-				ctxID: sInfo.id,
-				path:  path,
-				dbs:   dbs,
-			})
-
-		if nAppSubInfo != nil {
-			collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgt, resp[i])
-			collectNotificationPreferences(nAppSubInfo.ntfAppInfoTrgtChlds, resp[i])
-		} else if errApp == nil {
-			log.Warningf("%T.translateSubscribe returned nil for path: %s", *app, path)
-			errApp = fmt.Errorf("Error processing path: %s", path)
-		}
-
-		if errApp != nil {
-			resp[i].Err = errApp
-
-			if sErr == nil {
-				sErr = errApp
-			}
-
-			continue
-		} else {
-			if len(nAppSubInfo.ntfAppInfoTrgt) == 0 && len(nAppSubInfo.ntfAppInfoTrgtChlds) == 0 {
-				sErr = tlerr.NotSupportedError{
-					Format: "Subscribe not supported", Path: path}
-				resp[i].Err = sErr
-				continue
-			}
-		}
-
-		sCtx.appInfo = appInfo
-		sCtx.app = app
-		sCtx.add(path, nAppSubInfo)
 	}
 
-	// Close the db pointers only on error. Otherwise keep them
-	// open till subscription is active.
-	if sErr != nil {
-		closeAllDbs(dbs[:])
-	} else {
-		log.V(1).Info("dbNotificationMap =", dbNotificationMap)
-		sErr = sCtx.startSubscribe()
+	// Start db subscription and exit. DB objects will be
+	// closed automatically when the subscription ends.
+	err = sCtx.startSubscribe()
+
+	return err
+}
+
+// Stream function streams the value for requested paths through a queue.
+// Unlike Get, this function can return smaller chunks of response separately.
+// Individual chunks are packed in a SubscribeResponse object and pushed to the req.Q.
+// Pushes a SubscribeResponse with SyncComplete=true after data are pushed.
+// Function will block until all values are returned. This can be used for
+// handling "Sample" subscriptions (NotificationType.Sample).
+// Client should be authorized to perform "subscribe" operation.
+func Stream(req SubscribeRequest) error {
+
+	if !isAuthorizedForSubscribe(req) {
+		return tlerr.AuthorizationError{
+			Format: "User is unauthorized for Action Operation",
+		}
 	}
 
-	return resp, sErr
+	sid := subscribeCounter.Next()
+	log.Infof("[%v] Stream request rcvd for paths %v", sid, req.Paths)
+
+	dbs, err := getAllDbs(true)
+	if err != nil {
+		return err
+	}
+	defer closeAllDbs(dbs[:])
+
+	sc := subscribeContext{
+		id:      sid,
+		dbs:     dbs,
+		version: req.ClientVersion,
+		session: req.Session,
+	}
+
+	for _, path := range req.Paths {
+		err := sc.translateAndAddPath(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	sInfo := &subscribeInfo{
+		id:  sid,
+		q:   req.Q,
+		dbs: dbs,
+	}
+
+	for _, nInfo := range sc.tgtInfos {
+		err = sendInitialUpdate(sInfo, nInfo)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Push a SyncComplete message at the end
+	sInfo.syncDone = true
+	sendSyncNotification(sInfo, false)
+	return nil
 }
 
 //IsSubscribeSupported - Check if subscribe is supported on the given paths
@@ -992,29 +1008,24 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 	defer closeAllDbs(dbs[:])
 
+	sc := subscribeContext{
+		id:      reqID,
+		dbs:     dbs,
+		version: req.ClientVersion,
+		session: req.Session,
+	}
+
 	for i, path := range paths {
-
-		app, _, err := getAppModule(path, req.ClientVersion)
-
-		if err != nil {
-			resp[i].Err = err
-			continue
-		}
-
-		nAppInfos, errApp := (*app).translateSubscribe(
-			&translateSubRequest{
-				ctxID: reqID,
-				path:  path,
-				dbs:   dbs,
-			})
+		nAppInfos, trData, errApp := sc.translatePath(path)
 
 		r := resp[i]
+
 		if nAppInfos != nil {
 			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
 			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
-		} else if errApp == nil {
-			log.Warningf("%T.translateSubscribe returned nil for path: %s", *app, path)
-			errApp = fmt.Errorf("Error processing path: %s", path)
+		}
+		if trData != nil {
+			sc.saveTranslatedData(path, trData)
 		}
 
 		log.Infof("IsSubscribeResponse[%d]: onChg=%v, pref=%v, minInt=%d, err=%v",
@@ -1023,8 +1034,6 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 		if errApp != nil {
 			resp[i].Err = errApp
 			err = errApp
-
-			continue
 		}
 	}
 

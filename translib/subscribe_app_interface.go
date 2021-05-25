@@ -122,6 +122,7 @@ type processSubRequest struct {
 	dbno  db.DBNum
 	table *db.TableSpec
 	key   *db.Key
+	entry *db.Value // updated or deleted db entry. DO NOT MODIFY
 
 	// List of all DB objects. Apps should only use these DB objects
 	// to query db if they need additional data for translation.
@@ -148,7 +149,7 @@ type processSubResponse struct {
 func (ni *notificationAppInfo) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "{path='%s'", path.String(ni.path))
-	fmt.Fprintf(&b, ", db=%s, ts=%v, key=%v", ni.dbno, ni.table, ni.key)
+	fmt.Fprintf(&b, ", db=%s, ts=%v, key=%v", ni.dbno, tableInfo(ni.table), keyInfo(ni.key))
 	fmt.Fprintf(&b, ", fields={")
 	for i, fi := range ni.dbFldYgPathInfoList {
 		if i != 0 {
@@ -190,4 +191,32 @@ func (ni *notificationAppInfo) isLeafPath() bool {
 
 func (r processSubResponse) String() string {
 	return fmt.Sprintf("{path=\"%s\", keyGrp=%v}", path.String(r.path), r.keyGroupComps)
+}
+
+// dbInfo returns display information for a db object
+func dbInfo(d *db.DB) interface{} {
+	if d != nil {
+		return d.Opts.DBNo
+	}
+	return nil
+}
+
+// keyInfo returns display information for a db key object
+func keyInfo(k *db.Key) interface{} {
+	if k != nil {
+		return k.Comp
+	}
+	return nil
+}
+
+// tableInfo returns display information for a db table object
+func tableInfo(t *db.TableSpec) interface{} {
+	switch {
+	case t == nil:
+		return nil
+	case t.CompCt == 0:
+		return t.Name
+	default:
+		return fmt.Sprintf("%s.%d", t.Name, t.CompCt)
+	}
 }

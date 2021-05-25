@@ -19,17 +19,18 @@
 package transformer
 
 import (
+	"bufio"
 	"fmt"
-	"github.com/openconfig/goyang/pkg/yang"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
-        "bufio"
-        "path/filepath"
-        "io/ioutil"
+
+	"github.com/openconfig/goyang/pkg/yang"
 )
 
 var YangPath = "/usr/models/yang/" // OpenConfig-*.yang and sonic yang models path
-var ModelsListFile  = "models_list"
+var ModelsListFile = "models_list"
 var TblInfoJsonFile = "sonic_table_info.json"
 
 func reportIfError(errs []error) {
@@ -40,53 +41,53 @@ func reportIfError(errs []error) {
 	}
 }
 
-func getOcModelsList () ([]string) {
-    var fileList []string
-    file, err := os.Open(YangPath + ModelsListFile)
-    if err != nil {
-        return fileList
-    }
-    defer file.Close()
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        fileEntry := scanner.Text()
-        if !strings.HasPrefix(fileEntry, "#") {
-            _, err := os.Stat(YangPath + fileEntry)
-            if err != nil {
-                continue
-            }
-            fileList = append(fileList, fileEntry)
-        }
-    }
-    return fileList
+func getOcModelsList() []string {
+	var fileList []string
+	file, err := os.Open(YangPath + ModelsListFile)
+	if err != nil {
+		return fileList
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		fileEntry := scanner.Text()
+		if !strings.HasPrefix(fileEntry, "#") {
+			_, err := os.Stat(YangPath + fileEntry)
+			if err != nil {
+				continue
+			}
+			fileList = append(fileList, fileEntry)
+		}
+	}
+	return fileList
 }
 
-func getDefaultModelsList () ([]string) {
-    var files []string
-    fileInfo, err := ioutil.ReadDir(YangPath)
-    if err != nil {
-        return files
-    }
+func getDefaultModelsList() []string {
+	var files []string
+	fileInfo, err := ioutil.ReadDir(YangPath)
+	if err != nil {
+		return files
+	}
 
-    for _, file := range fileInfo {
-        if strings.HasPrefix(file.Name(), "sonic-") && !strings.HasSuffix(file.Name(), "-dev.yang") &&  filepath.Ext(file.Name()) == ".yang" {
-            files = append(files, file.Name())
-        }
-    }
-    return files
+	for _, file := range fileInfo {
+		if strings.HasPrefix(file.Name(), "sonic-") && !strings.HasSuffix(file.Name(), "-dev.yang") && filepath.Ext(file.Name()) == ".yang" {
+			files = append(files, file.Name())
+		}
+	}
+	return files
 }
 
 func init() {
 	initYangModelsPath()
 	initRegex()
-        ocList := getOcModelsList()
+	ocList := getOcModelsList()
 	yangFiles := getDefaultModelsList()
-        yangFiles = append(yangFiles, ocList...)
-        fmt.Println("Yang model List:", yangFiles)
+	yangFiles = append(yangFiles, ocList...)
+	fmt.Println("Yang model List:", yangFiles)
 	err := loadYangModules(yangFiles...)
-    if err != nil {
-	    fmt.Fprintln(os.Stderr, err)
-    }
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
 
 func initYangModelsPath() {
@@ -139,9 +140,9 @@ func loadYangModules(files ...string) error {
 		}
 	}
 
-	sonic_entries       := make([]*yang.Entry, 0)
-	oc_entries          := make(map[string]*yang.Entry)
-	oc_annot_entries    := make([]*yang.Entry, 0)
+	sonic_entries := make([]*yang.Entry, 0)
+	oc_entries := make(map[string]*yang.Entry)
+	oc_annot_entries := make([]*yang.Entry, 0)
 	sonic_annot_entries := make([]*yang.Entry, 0)
 
 	for _, n := range names {
@@ -161,12 +162,12 @@ func loadYangModules(files ...string) error {
 	}
 
 	// populate model capabilities data
-	for yngMdlNm := range(xMdlCpbltMap) {
+	for yngMdlNm := range xMdlCpbltMap {
 		org := ""
 		ver := ""
 		ocVerSet := false
 		yngEntry := oc_entries[yngMdlNm]
-		if (yngEntry != nil) {
+		if yngEntry != nil {
 			// OC yang has version in standard extension oc-ext:openconfig-version
 			if strings.HasPrefix(yngMdlNm, "openconfig-") {
 				for _, ext := range yngEntry.Exts {
@@ -178,13 +179,13 @@ func loadYangModules(files ...string) error {
 						if len(strings.TrimSpace(ver)) > 0 {
 							ocVerSet = true
 						}
-					break
+						break
 					}
 
 				}
 			}
 		}
-		if ((strings.HasPrefix(yngMdlNm, "ietf-")) || (!ocVerSet)) {
+		if (strings.HasPrefix(yngMdlNm, "ietf-")) || (!ocVerSet) {
 			// as per RFC7895 revision date to be used as version
 			ver = mods[yngMdlNm].Current() //gives the most recent revision date for yang module
 		}

@@ -541,7 +541,7 @@ module openconfig-interfaces-annot {
         }
     }
 
-    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config" {
+    deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list" {
         deviate add {
             sonic-ext:table-name "PORT_STORM_CONTROL";
             sonic-ext:key-transformer "storm_type_key_xfmr";
@@ -562,13 +562,13 @@ module openconfig-interfaces-annot {
 
     deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:config/oc-eth-ext:ifname" {
         deviate add {
-            sonic-ext:field-transformer "storm_value_xfmr";
+            sonic-ext:field-transformer "storm_ifname_xfmr";
         }
     }
 
     deviation "/oc-intf:interfaces/oc-intf:interface/oc-eth:ethernet/oc-eth-ext:storm-control/oc-eth-ext:storm-control-list/oc-eth-ext:state/oc-eth-ext:ifname" {
         deviate add {
-            sonic-ext:field-transformer "storm_value_xfmr";
+            sonic-ext:field-transformer "storm_ifname_xfmr";
         }
     }
 
