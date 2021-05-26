@@ -473,11 +473,12 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
 		log.Errorf("Retrieval of entry for %s failed from port table", key0)
 		return
 	}
-	mac,ok := entry.Field["mac"]
+	mac, ok := entry.Field["mac"]
 	if !ok {
 		log.Info("couldn't retrieve MAC address")
 		return
 	}
+	macAddress = mac
 	aliasVal, ok := entry.Field["intf_naming_mode"]
 	if !ok {
 		// don't return error, keep populating data structures

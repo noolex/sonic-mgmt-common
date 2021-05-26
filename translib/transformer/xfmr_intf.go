@@ -2026,11 +2026,13 @@ var DbToYang_intf_eth_auto_neg_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams
 	return result, err
 }
 
-var DbToYang_intf_mac_address_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{},error) {
+var DbToYang_intf_mac_address_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
+
 	macAddress := utils.GetMacAddress()
 	result["mac-address"] = macAddress
-	return result,nil
+
+	return result, nil
 }
 
 var DbToYang_intf_eth_port_speed_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
