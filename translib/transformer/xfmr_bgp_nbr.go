@@ -2053,30 +2053,30 @@ var DbToYang_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrDbToYang = func(inParams
 	return err
 }
 
-var DbToYangPath_bgp_nbr_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+var DbToYangPath_bgp_nbr_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
 	niRoot := "/openconfig-network-instance:network-instances/network-instance"
 	bgp_nbr_addr := niRoot + "/protocols/protocol/bgp/neighbors/neighbor"
 	bgp_nbr_af := bgp_nbr_addr + "/afi-safis/afi-safi"
 
-	log.Info("DbToYangPath_bgp_nbr_path_xfmr: tbl:",params.tblName, " params: ", params)
+	log.Info("DbToYangPath_bgp_nbr_path_xfmr: tbl:", params.tblName, " params: ", params)
 
-	if ((params.tblName != "BGP_NEIGHBOR")&& (params.tblName != "BGP_NEIGHBOR_AF")) {
+	if (params.tblName != "BGP_NEIGHBOR") && (params.tblName != "BGP_NEIGHBOR_AF") {
 		oper_err := errors.New("wrong config DB table sent")
-		log.Errorf ("BGP neighbor Path-xfmr: table name %s not in BGP neighbor/af view", params.tblKeyComp );
+		log.Errorf("BGP neighbor Path-xfmr: table name %s not in BGP neighbor/af view", params.tblKeyComp)
 		return oper_err
 	} else {
-		params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
-		params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
-		params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
-		params.ygPathKeys[bgp_nbr_addr + "/neighbor-address"] = params.tblKeyComp[1]
-		if (params.tblName == "BGP_NEIGHBOR_AF") {
-			afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[2])
-			if (afi == "") {
+		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
+		params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
+		params.ygPathKeys[niRoot+"/protocols/protocol/name"] = "bgp"
+		params.ygPathKeys[bgp_nbr_addr+"/neighbor-address"] = params.tblKeyComp[1]
+		if params.tblName == "BGP_NEIGHBOR_AF" {
+			afi := bgp_afi_convert_to_yang(params.tblKeyComp[2])
+			if afi == "" {
 				oper_err := errors.New("Invalid address family")
-				log.Errorf ("bgp_nbr_path_xfmr: Unknown address family key %s", params.tblKeyComp[2])
+				log.Errorf("bgp_nbr_path_xfmr: Unknown address family key %s", params.tblKeyComp[2])
 				return oper_err
 			}
-			params.ygPathKeys[bgp_nbr_af + "/afi-safi-name"] = afi
+			params.ygPathKeys[bgp_nbr_af+"/afi-safi-name"] = afi
 		}
 	}
 
@@ -2084,7 +2084,7 @@ var DbToYangPath_bgp_nbr_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
 	return nil
 }
 
-var Subscribe_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+var Subscribe_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 	var result XfmrSubscOutParams
 	var vrfName = "*"
 	var nbrAddr = "*"
@@ -2092,23 +2092,23 @@ var Subscribe_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrSubscribe = func (inPar
 	pathInfo := NewPathInfo(inParams.uri)
 	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 	log.Infof("Subscribe_bgp_nbrs_nbr_auth_password_xfmr path:%s; template:%s targetUriPath:%s",
-	pathInfo.Path, pathInfo.Template, targetUriPath)
+		pathInfo.Path, pathInfo.Template, targetUriPath)
 
 	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
-		if  pathInfo.HasVar("name") {
-			vrfName   =  pathInfo.Var("name")
+		if pathInfo.HasVar("name") {
+			vrfName = pathInfo.Var("name")
 		}
-		if  pathInfo.HasVar("neighbor-address") {
-			nbrAddr   = pathInfo.Var("neighbor-address")
+		if pathInfo.HasVar("neighbor-address") {
+			nbrAddr = pathInfo.Var("neighbor-address")
 		}
-		util_bgp_get_native_ifname_from_ui_ifname (&nbrAddr)
+		util_bgp_get_native_ifname_from_ui_ifname(&nbrAddr)
 		var pNbrKey string = vrfName + "|" + nbrAddr
 
 		result.dbDataMap = make(RedisDbSubscribeMap)
 		log.Infof("Subscribe_bgp_nbrs_nbr_auth_password_xfmr path:%s; key:%s",
-		pathInfo.Path, pNbrKey)
+			pathInfo.Path, pNbrKey)
 
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB:{"BGP_NEIGHBOR":{pNbrKey:{"auth_password":"password"}}}}
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_NEIGHBOR": {pNbrKey: {"auth_password": "password"}}}}
 		result.onChange = OnchangeEnable
 		result.nOpts = new(notificationOpts)
 		result.nOpts.pType = OnChange
