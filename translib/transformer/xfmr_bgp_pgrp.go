@@ -295,7 +295,7 @@ var DbToYang_bgp_peer_group_mbrs_state_xfmr SubTreeXfmrDbToYang = func(inParams 
 	return err
 }
 
-var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
 
 	oper_err := errors.New("wrong config DB table sent")
 	niRoot := "/openconfig-network-instance:network-instances/network-instance"
@@ -303,24 +303,24 @@ var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params Xfm
 	bgp_peer_grp_af := bgp_peer_grp + "/afi-safis/afi-safi"
 
 	log.Info("DbToYangPath_bgp_peer_group_path_Xfmr: params: ", params)
-	if (params.tblName == "BGP_PEER_GROUP" || params.tblName ==  "BGP_PEER_GROUP_AF") {
-		params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
+	if params.tblName == "BGP_PEER_GROUP" || params.tblName == "BGP_PEER_GROUP_AF" {
+		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
 	} else {
-		log.Errorf ("BGP peer group  Path-xfmr: table name %s not in view", params.tblKeyComp );
+		log.Errorf("BGP peer group  Path-xfmr: table name %s not in view", params.tblKeyComp)
 		return oper_err
 	}
-	params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
-	params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
-	params.ygPathKeys[bgp_peer_grp + "/peer-group-name"] = params.tblKeyComp[1]
+	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
+	params.ygPathKeys[niRoot+"/protocols/protocol/name"] = "bgp"
+	params.ygPathKeys[bgp_peer_grp+"/peer-group-name"] = params.tblKeyComp[1]
 
-	if (params.tblName ==  "BGP_PEER_GROUP_AF") {
-		log.Errorf ("address family key %s", params.tblKeyComp[2])
-		afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[2])
-		if (afi == "") {
-			log.Errorf ("Unknown address family key %s", params.tblKeyComp[2])
+	if params.tblName == "BGP_PEER_GROUP_AF" {
+		log.Errorf("address family key %s", params.tblKeyComp[2])
+		afi := bgp_afi_convert_to_yang(params.tblKeyComp[2])
+		if afi == "" {
+			log.Errorf("Unknown address family key %s", params.tblKeyComp[2])
 			return oper_err
 		}
-		params.ygPathKeys[bgp_peer_grp_af + "/afi-safi-name"]  = afi
+		params.ygPathKeys[bgp_peer_grp_af+"/afi-safi-name"] = afi
 	}
 	log.Info("DbToYangPath_bgp_peer_group_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
 	return nil
@@ -329,21 +329,21 @@ var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params Xfm
 var Subscribe_bgp_pgrp_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 
 	var result XfmrSubscOutParams
-	log.Info("Subscribe_bgp_pgrp_auth_password_xfmr: inParams.subscProc: ",inParams.subscProc)
+	log.Info("Subscribe_bgp_pgrp_auth_password_xfmr: inParams.subscProc: ", inParams.subscProc)
 	pathInfo := NewPathInfo(inParams.uri)
 	var vrf_name = "*"
 	var pgrp_name = "*"
 
 	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
 
-		if  pathInfo.HasVar("name") {
+		if pathInfo.HasVar("name") {
 			vrf_name = pathInfo.Var("name")
 		}
 		if pathInfo.HasVar("peer-group-name") {
 			pgrp_name = pathInfo.Var("peer-group-name")
 		}
 		pgrp_key := vrf_name + "|" + pgrp_name
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_PEER_GROUP": {pgrp_key:{"auth_password":"password"}}}}
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_PEER_GROUP": {pgrp_key: {"auth_password": "password"}}}}
 		result.onChange = OnchangeEnable
 		result.nOpts = &notificationOpts{}
 		result.nOpts.pType = OnChange
@@ -352,7 +352,6 @@ var Subscribe_bgp_pgrp_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams X
 	}
 	return result, nil
 }
-
 
 var YangToDb_bgp_pgrp_auth_password_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	var err error

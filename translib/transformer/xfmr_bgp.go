@@ -201,44 +201,44 @@ func utl_bgp_fetch_and_cache_frr_json(inParams *XfmrParams, niName string) {
 	inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
 }
 
-var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) (error) {
+var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
 
 	oper_err := errors.New("wrong config DB table sent")
 	niRoot := "/openconfig-network-instance:network-instances/network-instance"
-	bgp_glb_dyn_neig :=  niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix"
+	bgp_glb_dyn_neig := niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix"
 	bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
 	bgp_glb_aggr_addr := bgp_glb_afi_safi + "/openconfig-bgp-ext:aggregate-address-config/aggregate-address"
-	bgp_glb_af_network :=  bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
+	bgp_glb_af_network := bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
 
 	log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
-	if (params.tblName == "BGP_GLOBALS" || params.tblName ==  "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||
-		params.tblName == "BGP_GLOBALS_AF_NETWORK" ||  params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX") {
-		params.ygPathKeys[niRoot + "/name"]  = params.tblKeyComp[0]
+	if params.tblName == "BGP_GLOBALS" || params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||
+		params.tblName == "BGP_GLOBALS_AF_NETWORK" || params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
+		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
 	} else {
-		log.Errorf ("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp );
+		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp)
 		return oper_err
 	}
-	params.ygPathKeys[niRoot + "/protocols/protocol/identifier"] = "BGP"
-	params.ygPathKeys[niRoot + "/protocols/protocol/name"] = "bgp"
+	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
+	params.ygPathKeys[niRoot+"/protocols/protocol/name"] = "bgp"
 
-	if (params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" ||
-		params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
+	if params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" ||
+		params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" {
 
-		afi :=  bgp_afi_convert_to_yang(params.tblKeyComp[1])
-		if (afi == "") {
-			log.Errorf ("Unknown address family key %s", params.tblKeyComp[1])
+		afi := bgp_afi_convert_to_yang(params.tblKeyComp[1])
+		if afi == "" {
+			log.Errorf("Unknown address family key %s", params.tblKeyComp[1])
 			return oper_err
 		}
-		params.ygPathKeys[bgp_glb_afi_safi + "/afi-safi-name"]  = afi
+		params.ygPathKeys[bgp_glb_afi_safi+"/afi-safi-name"] = afi
 	}
 
-	if (params.tblName == "BGP_GLOBALS_AF_NETWORK") {
-		log.Errorf ("BGP_GLOBALS_AF_NETWORK key %s", params.tblKeyComp[1])
-		params.ygPathKeys[bgp_glb_af_network + "/prefix"] = params.tblKeyComp[2]
-	} else if (params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR") {
-		params.ygPathKeys[bgp_glb_aggr_addr + "/prefix"] = params.tblKeyComp[2]
-	} else if (params.tblName == "BGP_GLOBALS_LISTEN_PREFIX") {
-		params.ygPathKeys[bgp_glb_dyn_neig + "/prefix"] = params.tblKeyComp[1]
+	if params.tblName == "BGP_GLOBALS_AF_NETWORK" {
+		log.Errorf("BGP_GLOBALS_AF_NETWORK key %s", params.tblKeyComp[1])
+		params.ygPathKeys[bgp_glb_af_network+"/prefix"] = params.tblKeyComp[2]
+	} else if params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" {
+		params.ygPathKeys[bgp_glb_aggr_addr+"/prefix"] = params.tblKeyComp[2]
+	} else if params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
+		params.ygPathKeys[bgp_glb_dyn_neig+"/prefix"] = params.tblKeyComp[1]
 	}
 
 	log.Info("DbToYangPath_bgp_glb_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
