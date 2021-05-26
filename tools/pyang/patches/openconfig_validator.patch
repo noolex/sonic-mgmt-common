@@ -1,5 +1,5 @@
 diff --git a/openconfig_pyang/plugins/openconfig.py b/openconfig_pyang/plugins/openconfig.py
-index ebf84f4..7ceb722 100644
+index ebf84f4..45c28d1 100644
 --- a/openconfig_pyang/plugins/openconfig.py
 +++ b/openconfig_pyang/plugins/openconfig.py
 @@ -22,6 +22,7 @@ modules according the YANG usage guidelines in RFC 6087.
@@ -18,7 +18,7 @@ index ebf84f4..7ceb722 100644
  from util import yangpath
  
  # Keywords which result in data nodes being created in a YANG tree
-@@ -42,6 +42,38 @@ LEAFNODE_KEYWORDS = [u"leaf", u"leaf-list"]
+@@ -42,6 +42,41 @@ LEAFNODE_KEYWORDS = [u"leaf", u"leaf-list"]
  # YANG types that should not be used in OpenConfig models.
  BAD_TYPES = [u"empty", u"bits"]
  
@@ -42,11 +42,14 @@ index ebf84f4..7ceb722 100644
 +        ignore_file_dict[mod_name].add(int(line_num.strip()))
 +
 +def prepare_patched_mods_list(ctx, patched_mods):
-+  patch_dir = ctx.opts.patch_dir
-+  for patch_file in os.listdir(patch_dir):
-+    if patch_file.endswith('.patch'):
-+      mod_name = patch_file.replace('.patch','').replace('.yang','')
-+      patched_mods.add(mod_name)
++  patch_listfile = ctx.opts.patch_listfile
++  with open(patch_listfile) as fp:
++    lines = fp.readlines()
++    for patch_file in lines:
++      patch_file = patch_file.strip()
++      if patch_file.endswith('.yang'):
++        mod_name = patch_file.replace('.yang','')
++        patched_mods.add(mod_name)
 +
 +def get_error_flags(elevel,error_seen):
 +  kind = "warning"
@@ -57,7 +60,7 @@ index ebf84f4..7ceb722 100644
  
  class ErrorLevel(IntEnum):
    """An enumeration of the Pyang error levels.
-@@ -114,6 +146,61 @@ class OpenConfigPlugin(lint.LintPlugin):
+@@ -114,6 +149,61 @@ class OpenConfigPlugin(lint.LintPlugin):
      lint.LintPlugin.__init__(self)
      self.modulename_prefixes = ["openconfig"]
  
@@ -119,14 +122,14 @@ index ebf84f4..7ceb722 100644
    def add_opts(self, optparser):
      optlist = [
          optparse.make_option("--openconfig",
-@@ -126,6 +213,18 @@ class OpenConfigPlugin(lint.LintPlugin):
+@@ -126,6 +216,18 @@ class OpenConfigPlugin(lint.LintPlugin):
                               action="store_true",
                               help="""Do not include standard lint (RFC 6087)
                               checking"""),
-+        optparse.make_option("--patchdir",
++        optparse.make_option("--patchlistfile",
 +                              type="string",
-+                              dest="patch_dir",
-+                              help="YANG Patch files directory"),
++                              dest="patch_listfile",
++                              help="File path containing list of patched yangs"),
 +        optparse.make_option("--ignorefile",
 +                              type="string",
 +                              dest="ignore_file",
@@ -138,7 +141,7 @@ index ebf84f4..7ceb722 100644
          ]
      g = optparser.add_option_group(optparse.OptionGroup(optparser, "OpenConfig specific options"))
      g.add_options(optlist)
-@@ -839,6 +938,8 @@ class OCLintFunctions(object):
+@@ -839,6 +941,8 @@ class OCLintFunctions(object):
                  stmt.arg)
  
        keypath = keytype.search_one("path")
