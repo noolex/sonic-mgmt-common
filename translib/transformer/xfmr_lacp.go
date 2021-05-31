@@ -205,7 +205,7 @@ func fillLacpMembers(inParams XfmrParams, lag string, members *ocbinds.Openconfi
         }
 
         ygot.BuildEmptyTree(lacpMemberObj)
-        err = _fillLacpMemberHelper(inParams, lag, *ifName, lacpMemberObj)
+        err = _fillLacpMemberHelper(inParams, lag, ifName_str, lacpMemberObj)
     }
 
     return err
