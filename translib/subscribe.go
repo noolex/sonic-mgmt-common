@@ -322,6 +322,7 @@ func (sc *subscribeContext) translatePath(path string) (*translateSubResponse, *
 		&translateSubRequest{
 			ctxID: sid,
 			path:  path,
+			mode:  sc.mode,
 			dbs:   sc.dbs,
 		})
 
