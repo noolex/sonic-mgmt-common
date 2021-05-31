@@ -771,6 +771,7 @@ module openconfig-system-annot {
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
@@ -784,18 +785,21 @@ module openconfig-system-annot {
         deviate add {
             sonic-ext:table-name "DNS_SERVER";
             sonic-ext:key-transformer "server_dns_key_xfmr";
+            sonic-ext:path-transformer "server_dns_path_xfmr";
         }
     }
 
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
+            sonic-ext:field-name "ipaddress";
         }
     }
 
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
@@ -808,6 +812,7 @@ module openconfig-system-annot {
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:vrf-name" {
         deviate add {
             sonic-ext:field-name "vrf_name";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
