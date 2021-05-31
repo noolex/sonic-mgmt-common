@@ -65,7 +65,6 @@ openconfig-bfd-ext.yang
 openconfig-bfd-annot.yang
 sonic-bfd-clear.yang
 sonic-bfd-clear-annot.yang
-openconfig-rib-bgp-ext.yang
 openconfig-mclag.yang
 openconfig-mclag-annot.yang
 sonic-bgp-clear.yang
