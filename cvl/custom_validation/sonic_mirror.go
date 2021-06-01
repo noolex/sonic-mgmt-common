@@ -7,6 +7,70 @@ import (
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
  )
 
+//ValidateDstIp validates whether dst_ip is configured in any other session
+func (t *CustomValidation) ValidateDstIp(vc *CustValidationCtxt) CVLErrorInfo {
+    if (vc.CurCfg.VOp == OP_DELETE) {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+    keys, err := vc.RClient.Keys("MIRROR_SESSION|*").Result()
+    if err == nil {
+        for _, key := range keys {
+            /* for each mirror session */
+            if key == vc.CurCfg.Key {
+                log.Info("ValidateDstIp: Skip current session ", key)
+                continue
+            }
+
+            entry, err := vc.RClient.HGet(key, "dst_ip").Result()
+            if (err == nil) && (entry == vc.YNodeVal) {
+                log.Error("ValidateDstIp: ", vc.YNodeVal, " already configured: ")
+                errStr := "Destination IP already configured in other mirror session"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "MIRROR_SESSION",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        }
+    }
+
+    log.Info("ValidateDstIp ", vc.YNodeVal, " success")
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
+//ValidateSrcPort validates all soruce port validations
+func (t *CustomValidation) ValidateSrcPort(vc *CustValidationCtxt) CVLErrorInfo {
+
+    if (vc.CurCfg.VOp == OP_DELETE) {
+        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+    keys, err := vc.RClient.Keys("MIRROR_SESSION|*").Result()
+    if err == nil {
+        for _, key := range keys {
+            /* for each mirror session */
+            if key == vc.CurCfg.Key {
+                log.Info("ValidateSrcPort: Skip current session ", key)
+                continue
+            }
+
+            entry, err := vc.RClient.HGet(key, "dst_port").Result()
+            if (err == nil) && (entry == vc.YNodeVal) {
+                log.Error("ValidateSrcPort: ", vc.YNodeVal, " already configured in ", key)
+                errStr := "Source port already configured as destination in other mirror session"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "MIRROR_SESSION",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        }
+    }
+    log.Info("ValidateSrcPort ", vc.YNodeVal, " success")
+    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}
+
 //ValidateDstPort validates whether destination port has any VLAN configuration
 func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo {
 
@@ -40,6 +104,42 @@ func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo 
     }
 
     log.Info("ValidateDstPortVlanMember: ", vc.YNodeVal, " has no vlan configuration: ", s.Len())
+
+    // Verify if port is already member of any portchannel
+    pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + vc.YNodeVal).Result()
+    if len(pomemberKeys) > 0 {
+        log.Error("ValidateDstPortVlanMember: ", vc.YNodeVal, " has vlans configuration: ", s.Len())
+        errStr := "Destination port is part of portchannel"
+        return CVLErrorInfo {
+            ErrCode: CVL_SEMANTIC_ERROR,
+            TableName: "VLAN_MEMBER",
+            CVLErrDetails : errStr,
+            ConstraintErrMsg : errStr,
+        }
+    }
+
+    keys, err := vc.RClient.Keys("MIRROR_SESSION|*").Result()
+    if err == nil {
+        for _, key := range keys {
+            /* for each mirror session */
+            if key == vc.CurCfg.Key {
+                log.Info("ValidateDstIp: Skip current session ", key)
+                continue
+            }
+
+            entry, err := vc.RClient.HGet(key, "src_port").Result()
+            if (err == nil) && (entry == vc.YNodeVal) {
+                log.Error("ValidateDstPort: ", vc.YNodeVal, " already configured in ", key)
+                errStr := "Destination port already configured as source in other mirror session"
+                return CVLErrorInfo{
+                    ErrCode: CVL_SEMANTIC_ERROR,
+                    TableName: "MIRROR_SESSION",
+                    CVLErrDetails : errStr,
+                    ConstraintErrMsg : errStr,
+                }
+            }
+        }
+    }
 
     /* Disabling LLDP validation until FT scripts are taken care 
     // check if LLDP is disabled on port
