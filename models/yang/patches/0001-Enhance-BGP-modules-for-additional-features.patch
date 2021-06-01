@@ -1,6 +1,6 @@
-From 9be7b423b76b03cdf41cd9551aeab9508d2202a4 Mon Sep 17 00:00:00 2001
+From 39c7113618a02364cedd059720514cfdbc34a26f Mon Sep 17 00:00:00 2001
 From: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
-Date: Fri, 28 May 2021 17:15:15 -0700
+Date: Tue, 1 Jun 2021 10:23:03 -0700
 Subject: [PATCH] Enhance BGP modules for additional features.
 
 Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
@@ -10,7 +10,7 @@ Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
  common/openconfig-bgp-common.yang               | 359 ++++++++++++++-
  common/openconfig-bgp-global.yang               | 561 +++++++++++++++++++++++-
  common/openconfig-bgp-neighbor.yang             |  49 ++-
- common/openconfig-bgp-peer-group.yang           |  86 +++-
+ common/openconfig-bgp-peer-group.yang           |  85 +++-
  common/openconfig-bgp-types.yang                | 140 +++++-
  common/openconfig-bgp.yang                      |   8 +-
  common/openconfig-rib-bgp-table-attributes.yang |  20 +-
@@ -18,7 +18,7 @@ Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
  openconfig-bfd.yang                             |  14 +-
  openconfig-bgp-policy.yang                      |  14 +-
  openconfig-routing-policy.yang                  | 112 ++++-
- 13 files changed, 1604 insertions(+), 42 deletions(-)
+ 13 files changed, 1603 insertions(+), 42 deletions(-)
 
 diff --git a/common/openconfig-bgp-common-multiprotocol.yang b/common/openconfig-bgp-common-multiprotocol.yang
 index b97ecaa..4072f68 100644
@@ -1542,10 +1542,18 @@ index dbdd765..f7e0d29 100644
      uses oc-rpol:apply-policy-group;
  
 diff --git a/common/openconfig-bgp-peer-group.yang b/common/openconfig-bgp-peer-group.yang
-index 78f747c..cdcfce6 100644
+index 78f747c..d09e880 100644
 --- a/common/openconfig-bgp-peer-group.yang
 +++ b/common/openconfig-bgp-peer-group.yang
-@@ -25,9 +25,14 @@ submodule openconfig-bgp-peer-group {
+@@ -7,6 +7,7 @@ submodule openconfig-bgp-peer-group {
+   import openconfig-extensions { prefix oc-ext; }
+   import openconfig-routing-policy { prefix oc-rpol; }
+   import openconfig-bfd { prefix oc-bfd; }
++  import openconfig-bgp-types { prefix oc-bgp-types; }
+ 
+   // Include the common submodule
+   include openconfig-bgp-common;
+@@ -25,9 +26,14 @@ submodule openconfig-bgp-peer-group {
      "This sub-module contains groupings that are specific to the
      peer-group context of the OpenConfig BGP module.";
  
@@ -1562,7 +1570,7 @@ index 78f747c..cdcfce6 100644
    revision "2021-03-17" {
      description
        "Add bfd support without augmentation.";
-@@ -107,6 +112,63 @@ submodule openconfig-bgp-peer-group {
+@@ -107,6 +113,61 @@ submodule openconfig-bgp-peer-group {
          "Name of the BGP peer-group";
      }
  
@@ -1584,9 +1592,7 @@ index 78f747c..cdcfce6 100644
 +      description
 +          "Operational data for neighbors of the peer group";
 +      leaf neighbor {
-+          type leafref {
-+              path "../../../../../../neighbors/neighbor/neighbor-address";
-+          }
++          type oc-bgp-types:bgp-neighbor-address;
 +          description
 +              "Indicates neighbor address or interface.";
 +      }
@@ -1626,7 +1632,7 @@ index 78f747c..cdcfce6 100644
    }
  
    grouping bgp-peer-group-afi-safi-list {
-@@ -133,12 +195,14 @@ submodule openconfig-bgp-peer-group {
+@@ -133,12 +194,14 @@ submodule openconfig-bgp-peer-group {
          description
            "Configuration parameters for the AFI-SAFI";
          uses bgp-common-mp-afi-safi-config;
@@ -1641,7 +1647,7 @@ index 78f747c..cdcfce6 100644
        }
  
        container graceful-restart {
-@@ -160,6 +224,13 @@ submodule openconfig-bgp-peer-group {
+@@ -160,6 +223,13 @@ submodule openconfig-bgp-peer-group {
        uses bgp-common-structure-neighbor-group-add-paths;
        uses bgp-common-global-group-use-multiple-paths;
        uses bgp-common-mp-all-afi-safi-list-contents;
@@ -1655,7 +1661,7 @@ index 78f747c..cdcfce6 100644
      }
    }
  
-@@ -181,6 +252,7 @@ submodule openconfig-bgp-peer-group {
+@@ -181,6 +251,7 @@ submodule openconfig-bgp-peer-group {
        uses bgp-peer-group-config;
        uses bgp-common-neighbor-group-config;
        uses bgp-common-state;
@@ -1663,7 +1669,7 @@ index 78f747c..cdcfce6 100644
      }
  
      container timers {
-@@ -257,13 +329,21 @@ submodule openconfig-bgp-peer-group {
+@@ -257,13 +328,21 @@ submodule openconfig-bgp-peer-group {
        }
      }
  
