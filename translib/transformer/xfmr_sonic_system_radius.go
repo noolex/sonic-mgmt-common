@@ -20,24 +20,23 @@
 package transformer
 
 import (
-//        "strings"
-//        "errors"
-//        "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-        "github.com/Azure/sonic-mgmt-common/translib/db"
-//        "github.com/Azure/sonic-mgmt-common/translib/tlerr"
-        log "github.com/golang/glog"
+	//        "strings"
+	//        "errors"
+	//        "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	//        "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	log "github.com/golang/glog"
 )
 
-func init () {
-    XlateFuncBind("rpc_clear_radius", rpc_clear_radius)
+func init() {
+	XlateFuncBind("rpc_clear_radius", rpc_clear_radius)
 }
 
 var rpc_clear_radius RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
-    var err error
-    log.Infof("rpc_clear_radius: Input: %s\n", string(body))
+	var err error
+	log.Infof("rpc_clear_radius: Input: %s\n", string(body))
 
-    dbs[db.CountersDB].SetEntry( &db.TableSpec{Name: "RADIUS"},  db.Key{Comp: []string{"clear"}}, db.Value{map[string]string {"NULL":"NULL"}})
+	dbs[db.CountersDB].SetEntry(&db.TableSpec{Name: "RADIUS"}, db.Key{Comp: []string{"clear"}}, db.Value{map[string]string{"NULL": "NULL"}})
 
-    return nil, err
+	return nil, err
 }
-

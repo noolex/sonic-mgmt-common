@@ -1,124 +1,124 @@
 package custom_validation
 
 import (
-    util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
-    "strings"
-    log "github.com/golang/glog"
- )
+	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	log "github.com/golang/glog"
+)
 
 //ValidateDpbConfigs Purpose: Check correct for correct agent_id
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbConfigs(
-       vc *CustValidationCtxt) CVLErrorInfo {
+	vc *CustValidationCtxt) CVLErrorInfo {
 
-       log.Info("DpbValidateInterfaceConfigs operation: ", vc.CurCfg.VOp, 
-                " Key: ", vc.CurCfg.Key, " Data: ", vc.CurCfg.Data,
-                " Req Data: ", vc.ReqData)
+	log.Info("DpbValidateInterfaceConfigs operation: ", vc.CurCfg.VOp,
+		" Key: ", vc.CurCfg.Key, " Data: ", vc.CurCfg.Data,
+		" Req Data: ", vc.ReqData)
 
-       log.Info("DpbValidateInterfaceConfigs YNodeVal: ", vc.YNodeVal)
+	log.Info("DpbValidateInterfaceConfigs YNodeVal: ", vc.YNodeVal)
 
-       /* check if input passed is found in ConfigDB PORT|* */
-       tableKeys, err:= vc.RClient.Keys("PORT|*").Result()
+	/* check if input passed is found in ConfigDB PORT|* */
+	tableKeys, err := vc.RClient.Keys("PORT|*").Result()
 
-       if (err != nil) || (vc.SessCache == nil) {
-               log.Info("DpbValidateInterfaceConfigs PORT is empty or invalid argument")
-               errStr := "ConfigDB PORT list is empty"
-               return CVLErrorInfo{
-                       ErrCode: CVL_SEMANTIC_ERROR,
-                       TableName: "PORT",
-                       CVLErrDetails : errStr,
-                       ConstraintErrMsg : errStr,
-               }
-       }
-       found := false
-       for _, dbKey := range tableKeys {
-               tmp := strings.Replace(dbKey, "PORT|", "", 1)
-               if (tmp == vc.YNodeVal) {
-                    log.Info("DpbValidateInterfaceConfigs dbKey ", tmp)
-                    found = true
-               }
-       }
-       if !found {
-            errStr := "Interface not found"
-            return CVLErrorInfo{
-                       ErrCode: CVL_SEMANTIC_ERROR,
-                       TableName: "PORT",
-                       CVLErrDetails : errStr,
-                       ConstraintErrMsg : errStr,
-            }
-       }
+	if (err != nil) || (vc.SessCache == nil) {
+		log.Info("DpbValidateInterfaceConfigs PORT is empty or invalid argument")
+		errStr := "ConfigDB PORT list is empty"
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "PORT",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
+	found := false
+	for _, dbKey := range tableKeys {
+		tmp := strings.Replace(dbKey, "PORT|", "", 1)
+		if tmp == vc.YNodeVal {
+			log.Info("DpbValidateInterfaceConfigs dbKey ", tmp)
+			found = true
+		}
+	}
+	if !found {
+		errStr := "Interface not found"
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "PORT",
+			CVLErrDetails:    errStr,
+			ConstraintErrMsg: errStr,
+		}
+	}
 
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 
 }
-
 
 //ValidateDpbStatus Purpose: Check if DPB is in progress
 //vc : Custom Validation Context
 //Returns -  CVL Error object
 func (t *CustomValidation) ValidateDpbStatus(
-       vc *CustValidationCtxt) CVLErrorInfo {
+	vc *CustValidationCtxt) CVLErrorInfo {
 
-    key := strings.Replace(vc.CurCfg.Key, "PORT|", "BREAKOUT_PORTS|", 1)
-    log.Info("ValidateDpbStatus: ", vc.CurCfg.VOp, 
-                " Key: ", vc.CurCfg.Key, " Data: ", vc.CurCfg.Data,
-                " Req Data: ", vc.ReqData)
-    entry, err := vc.RClient.HGetAll(key).Result()
-    if (err == nil && len(entry) > 0 && len(entry["master"]) > 0) {
-        key = "PORT_BREAKOUT|" + entry["master"]
-    } else {
-        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
-    log.Info("Master port for ", key, " is ", entry["master"])
-    _, ok := vc.CurCfg.Data["lanes"]
-    if (vc.CurCfg.VOp == OP_CREATE) && (!ok) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            TableName: "PORT",
-            Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: "Port does not exist",
-            CVLErrDetails: "Config Validation Error",
-            ErrAppTag:  "invalid-port",
-        }
-    }
+	key := strings.Replace(vc.CurCfg.Key, "PORT|", "BREAKOUT_PORTS|", 1)
+	log.Info("ValidateDpbStatus: ", vc.CurCfg.VOp,
+		" Key: ", vc.CurCfg.Key, " Data: ", vc.CurCfg.Data,
+		" Req Data: ", vc.ReqData)
+	entry, err := vc.RClient.HGetAll(key).Result()
+	if err == nil && len(entry) > 0 && len(entry["master"]) > 0 {
+		key = "PORT_BREAKOUT|" + entry["master"]
+	} else {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	log.Info("Master port for ", key, " is ", entry["master"])
+	_, ok := vc.CurCfg.Data["lanes"]
+	if (vc.CurCfg.VOp == OP_CREATE) && (!ok) {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "PORT",
+			Keys:             strings.Split(vc.CurCfg.Key, "|"),
+			ConstraintErrMsg: "Port does not exist",
+			CVLErrDetails:    "Config Validation Error",
+			ErrAppTag:        "invalid-port",
+		}
+	}
 
-    /* Check STATE_DB if port state of the port s getting deleted is OK */
-    rclient := util.NewDbClient("STATE_DB")
-    defer func() {
-        if (rclient != nil) {
-            rclient.Close()
-        }
-    }()
+	/* Check STATE_DB if port state of the port s getting deleted is OK */
+	rclient := util.NewDbClient("STATE_DB")
+	defer func() {
+		if rclient != nil {
+			rclient.Close()
+		}
+	}()
 
-    if (rclient == nil) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            TableName: "BREAKOUT_PORTS",
-            Keys: strings.Split(vc.CurCfg.Key, "|"),
-            ConstraintErrMsg: "Failed to connect to STATE_DB",
-            CVLErrDetails: "Config Validation Error",
-            ErrAppTag:  "capability-unsupported",
-        }
-    }
+	if rclient == nil {
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "BREAKOUT_PORTS",
+			Keys:             strings.Split(vc.CurCfg.Key, "|"),
+			ConstraintErrMsg: "Failed to connect to STATE_DB",
+			CVLErrDetails:    "Config Validation Error",
+			ErrAppTag:        "capability-unsupported",
+		}
+	}
 
-    entry, err1 := rclient.HGetAll(key).Result()
-    log.Info("[DPB-CVL] STATE_DB DPB key ", key, " Entry: ", entry, " ", err1)
-    if ((err1 == nil) && (len(entry) > 0) && (len(entry["status"]) > 0) && (entry["status"] == "InProgress")) {
-        util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "STATE_DB DPB table has entry. DPB in-progress")
-        return CVLErrorInfo{
-                ErrCode: CVL_SEMANTIC_ERROR,
-                TableName: "BREAKOUT_CFG",
-                Keys: strings.Split(vc.CurCfg.Key, ":"),
-                ConstraintErrMsg: "Port breakout is in progress. Try later.",
-                CVLErrDetails: "Config Validation Error",
-                ErrAppTag:  "breakout-in-progress",
-        }
-    }
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	entry, err1 := rclient.HGetAll(key).Result()
+	log.Info("[DPB-CVL] STATE_DB DPB key ", key, " Entry: ", entry, " ", err1)
+	if (err1 == nil) && (len(entry) > 0) && (len(entry["status"]) > 0) && (entry["status"] == "InProgress") {
+		util.CVL_LEVEL_LOG(util.TRACE_SEMANTIC, "STATE_DB DPB table has entry. DPB in-progress")
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        "BREAKOUT_CFG",
+			Keys:             strings.Split(vc.CurCfg.Key, ":"),
+			ConstraintErrMsg: "Port breakout is in progress. Try later.",
+			CVLErrDetails:    "Config Validation Error",
+			ErrAppTag:        "breakout-in-progress",
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) CheckDpbInProgressForPortConfig(vc *CustValidationCtxt) CVLErrorInfo {
 	// Skipping DELETE op as DELETE is already taken care during cascade delete
 	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -137,7 +137,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	// Determine if node is a leaf-list node
 	var isNodeLeafList bool
 	for nodeLeaf := node.FirstChild; nodeLeaf != nil; nodeLeaf = nodeLeaf.NextSibling {
-		if (yangNodeName != nodeLeaf.Data) {
+		if yangNodeName != nodeLeaf.Data {
 			continue
 		}
 		if (len(nodeLeaf.Attr) > 0) && (nodeLeaf.Attr[0].Name.Local == "leaf-list") {
@@ -156,7 +156,7 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 			correctNodeName := yangNodeName
 			fldVal, exists := vc.CurCfg.Data[yangNodeName]
 			if !exists {
-				fldVal, exists = vc.CurCfg.Data[yangNodeName + "@"]
+				fldVal, exists = vc.CurCfg.Data[yangNodeName+"@"]
 				if exists {
 					correctNodeName = yangNodeName + "@"
 				}
@@ -196,7 +196,6 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
-
 	// Some yang nodes have union type and so value can be PortChannel or Vlan also
 	// Check if the interface is from PORT table. Otherwise return success
 	portTblKey, _ := vc.RClient.Keys("PORT|" + intfNameToCheck).Result()
@@ -217,19 +216,19 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	/* Check STATE_DB if any DPB in progress */
 	rclient := util.NewDbClient("STATE_DB")
 	defer func() {
-		if (rclient != nil) {
+		if rclient != nil {
 			rclient.Close()
 		}
 	}()
 
 	statusData, dbErr := rclient.HGetAll("PORT_BREAKOUT|" + masterPortName).Result()
 	if dbErr != nil {
-		return CVLErrorInfo {
-			ErrCode: CVL_FAILURE,
-			TableName: "PORT_BREAKOUT",
+		return CVLErrorInfo{
+			ErrCode:          CVL_FAILURE,
+			TableName:        "PORT_BREAKOUT",
 			ConstraintErrMsg: "Failed to retrieve Port breakout status",
-			CVLErrDetails: "Data retrievel Error",
-			ErrAppTag:  "dpb-progress-status",
+			CVLErrDetails:    "Data retrievel Error",
+			ErrAppTag:        "dpb-progress-status",
 		}
 	}
 
@@ -241,13 +240,13 @@ func (t *CustomValidation) CheckDpbInProgressForPortConfig (vc *CustValidationCt
 	// if DPB status is InProgress, return error
 	if dpbStatus == "InProgress" {
 		util.CVL_LEVEL_LOG(util.WARNING, "[DPB-CVL] Operation failed on: %v|%v for node: %v[%v] as breakout of %s in progress\n", tableName, tableKey, yangNodeName, yangNodeVal, masterPortName)
-		return CVLErrorInfo {
-			ErrCode: CVL_SEMANTIC_ERROR,
-			TableName: tableName,
-			Keys: strings.Split(tableKey, "|"),
+		return CVLErrorInfo{
+			ErrCode:          CVL_SEMANTIC_ERROR,
+			TableName:        tableName,
+			Keys:             strings.Split(tableKey, "|"),
 			ConstraintErrMsg: "Breakout of port in progress",
-			CVLErrDetails: "Config Validation Semantic Error",
-			ErrAppTag:  "breakout-in-progress",
+			CVLErrDetails:    "Config Validation Semantic Error",
+			ErrAppTag:        "breakout-in-progress",
 		}
 	}
 

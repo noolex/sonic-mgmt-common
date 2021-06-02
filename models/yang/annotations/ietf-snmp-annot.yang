@@ -91,6 +91,7 @@ module ietf-snmp-annot {
       deviate add {
         sonic-ext:table-name "SNMP_AGENT_ADDRESS_CONFIG";
         sonic-ext:subtree-transformer "snmp_listen_subtree_xfmr";
+        sonic-ext:path-transformer "snmp_listen_path_xfmr";
       }
     }
 

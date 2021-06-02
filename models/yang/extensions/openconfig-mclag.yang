@@ -352,8 +352,12 @@ module openconfig-mclag {
             description
               "Remote Interface operational status down";
           }
+          enum OPER_UNKNOWN {
+              description
+                  "Remote Interface operational status unknown when remote node isdown";
+          }
        }
-       default OPER_DOWN;
+       default OPER_UNKNOWN;
        description
          "MCLAG Remote Interface Operational status";
       }
@@ -471,6 +475,71 @@ module openconfig-mclag {
     }
   }
 
+  grouping mclag-peer-gateway-config {
+    description
+      "Configuration data for mclag peer gateway";
+
+    leaf name {
+      type oc-if:base-interface-ref;
+      description
+        "Reference to the vlan routed Interface (SVI)";
+    }
+
+    leaf peer-gateway-enable {
+        type enumeration {
+            enum ENABLE {
+                description
+                    "Enable MCLAG Peer Gateway";
+            }
+        }
+        description
+            "peer gateway enable, default : not enabled";
+    }
+  }
+
+  grouping mclag-peer-gateway-top {
+    description
+      "Top-level grouping for MCLAG Peer Gateway specific data";
+
+    container vlan-if {
+      description
+        "Enclosing container for the list of routed vlan
+        interfaces on which MCLAG Peer Gateway are enabled";
+
+      list vlan-interface {
+        key "name";
+        description
+          "List of interfaces on which MCLAG Peer Gateway is configured";
+
+        leaf name {
+          type leafref {
+            path "../config/name";
+          }
+          description
+            "Reference to the interface id list key";
+        }
+
+        container config {
+          description
+            "Configuration for MCLAG Peer Gateway per vlan interface data";
+
+          uses mclag-peer-gateway-config;
+        }
+
+        container state {
+
+          config false;
+
+          description
+            "Operational state for MCLAG Peer Gateway per
+            vlan interface data";
+
+          uses mclag-peer-gateway-config;
+        }
+      }
+    }
+  }
+
   grouping mclag-config {
     description
       "Global configuration data for MCLAG";
@@ -512,6 +581,7 @@ module openconfig-mclag {
       uses mclag-interfaces-top;
       uses mclag-unique-ip-top;
       uses mclag-gateway-mac-top;
+      uses mclag-peer-gateway-top;
     }
   }
 

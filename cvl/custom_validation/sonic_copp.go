@@ -20,8 +20,9 @@
 package custom_validation
 
 import (
-	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 
 var reserved_names = []string{

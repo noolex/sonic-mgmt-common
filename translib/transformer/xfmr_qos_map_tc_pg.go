@@ -1,282 +1,274 @@
 package transformer
 
 import (
-    "strings"
-    "strconv"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    log "github.com/golang/glog"
-    "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-    "github.com/openconfig/ygot/ygot"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"strconv"
+	"strings"
+
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/ygot"
 )
-func init () {
-    XlateFuncBind("YangToDb_qos_tc_pg_xfmr", YangToDb_qos_tc_pg_xfmr)
-    XlateFuncBind("DbToYang_qos_tc_pg_xfmr", DbToYang_qos_tc_pg_xfmr)
-    XlateFuncBind("Subscribe_qos_tc_pg_xfmr", Subscribe_qos_tc_pg_xfmr)
-    XlateFuncBind("YangToDb_qos_tc_to_pg_map_fld_xfmr", YangToDb_qos_tc_to_pg_map_fld_xfmr)
-    XlateFuncBind("DbToYang_qos_tc_to_pg_map_fld_xfmr", DbToYang_qos_tc_to_pg_map_fld_xfmr)
+
+func init() {
+	XlateFuncBind("YangToDb_qos_tc_pg_xfmr", YangToDb_qos_tc_pg_xfmr)
+	XlateFuncBind("DbToYang_qos_tc_pg_xfmr", DbToYang_qos_tc_pg_xfmr)
+	XlateFuncBind("Subscribe_qos_tc_pg_xfmr", Subscribe_qos_tc_pg_xfmr)
+	XlateFuncBind("YangToDb_qos_tc_to_pg_map_fld_xfmr", YangToDb_qos_tc_to_pg_map_fld_xfmr)
+	XlateFuncBind("DbToYang_qos_tc_to_pg_map_fld_xfmr", DbToYang_qos_tc_to_pg_map_fld_xfmr)
 
 }
 
-
-
-var Subscribe_qos_tc_pg_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-    map_type := "TC_TO_PRIORITY_GROUP_MAP"
-    return Subscribe_qos_map_xfmr(inParams, map_type)
+var Subscribe_qos_tc_pg_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	map_type := "TC_TO_PRIORITY_GROUP_MAP"
+	return Subscribe_qos_map_xfmr(inParams, map_type)
 }
-
 
 var YangToDb_qos_tc_pg_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 
-    map_type := "TC_TO_PRIORITY_GROUP_MAP"
+	map_type := "TC_TO_PRIORITY_GROUP_MAP"
 
-    if inParams.oper == DELETE {
-        return qos_map_delete_xfmr(inParams, map_type) 
-    }
+	if inParams.oper == DELETE {
+		return qos_map_delete_xfmr(inParams, map_type)
+	}
 
-    var err error
-    res_map := make(map[string]map[string]db.Value)
+	var err error
+	res_map := make(map[string]map[string]db.Value)
 
-    log.Info("YangToDb_qos_tc_pg_xfmr: ", inParams.ygRoot, inParams.uri)
-    log.Info("inParams: ", inParams)
+	log.Info("YangToDb_qos_tc_pg_xfmr: ", inParams.ygRoot, inParams.uri)
+	log.Info("inParams: ", inParams)
 
-    pathInfo := NewPathInfo(inParams.uri)
-    name := pathInfo.Var("name")
-    targetUriPath, err := getYangPathFromUri(inParams.uri)
+	pathInfo := NewPathInfo(inParams.uri)
+	name := pathInfo.Var("name")
+	targetUriPath, err := getYangPathFromUri(inParams.uri)
 
-    log.Info("YangToDb: name: ", name)
-    log.Info("targetUriPath:",  targetUriPath)
+	log.Info("YangToDb: name: ", name)
+	log.Info("targetUriPath:", targetUriPath)
 
-    /* parse the inParams */
-    qosObj := getQosRoot(inParams.ygRoot)
-    if qosObj == nil {
-        return res_map, err
-    }
+	/* parse the inParams */
+	qosObj := getQosRoot(inParams.ygRoot)
+	if qosObj == nil {
+		return res_map, err
+	}
 
-    mapObj, ok := qosObj.ForwardingGroupPriorityGroupMaps.ForwardingGroupPriorityGroupMap[name]
-    if !ok {
-        return res_map, err
-    }
+	mapObj, ok := qosObj.ForwardingGroupPriorityGroupMaps.ForwardingGroupPriorityGroupMap[name]
+	if !ok {
+		return res_map, err
+	}
 
-    d :=  inParams.d
-    if d == nil  {
-        log.Infof("unable to get configDB")
-        return res_map, err
-    }
+	d := inParams.d
+	if d == nil {
+		log.Infof("unable to get configDB")
+		return res_map, err
+	}
 
-    map_entry := make(map[string]db.Value)
-    map_key := name
-    map_entry[map_key] = db.Value{Field: make(map[string]string)}
-    log.Info("map_key : ", map_key)
+	map_entry := make(map[string]db.Value)
+	map_key := name
+	map_entry[map_key] = db.Value{Field: make(map[string]string)}
+	log.Info("map_key : ", map_key)
 
-    if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") &&
-       !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") {
-        log.Info("YangToDb: map entry unspecified, return the map")
+	if !strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") &&
+		!strings.HasPrefix(targetUriPath, "/openconfig-qos:qos/openconfig-qos-maps-ext:forwarding-group-priority-group-maps/forwarding-group-priority-group-map/forwarding-group-priority-group-map-entries/forwarding-group-priority-group-map-entry") {
+		log.Info("YangToDb: map entry unspecified, return the map")
 
-        res_map[map_type] = map_entry
-        return res_map, err
-    }
+		res_map[map_type] = map_entry
+		return res_map, err
+	}
 
-    str := qos_map_oc_yang_key_map[map_type]
-    log.Info("key string: " , str)
-    entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
-    log.Info("entry_key : ", entry_key)
-    if entry_key == "" {
-        return res_map, err
-    }
+	str := qos_map_oc_yang_key_map[map_type]
+	log.Info("key string: ", str)
+	entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
+	log.Info("entry_key : ", entry_key)
+	if entry_key == "" {
+		return res_map, err
+	}
 
-    if (inParams.oper == CREATE || inParams.oper == UPDATE ) && 
-        strings.Contains(inParams.requestUri, "-entry[" + str + "=") {
-        mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
-        if err == nil { 
-            _, ok := mapCfg.Field[entry_key]
-            if !ok {
-                log.Info("Entry not exist; cannot create it with key in URI itself")
-                err = tlerr.NotFound("Resource not found")
-                return res_map, err
-            }
-        }
-    }
+	if (inParams.oper == CREATE || inParams.oper == UPDATE) &&
+		strings.Contains(inParams.requestUri, "-entry["+str+"=") {
+		mapCfg, err := get_map_entry_by_map_name(inParams.d, map_type, map_key)
+		if err == nil {
+			_, ok := mapCfg.Field[entry_key]
+			if !ok {
+				log.Info("Entry not exist; cannot create it with key in URI itself")
+				err = tlerr.NotFound("Resource not found")
+				return res_map, err
+			}
+		}
+	}
 
-    entry, ok := mapObj.ForwardingGroupPriorityGroupMapEntries.ForwardingGroupPriorityGroupMapEntry[entry_key]
-    if !ok  {
-        log.Info("entry is nil.")
-        return res_map, err
-    }
+	entry, ok := mapObj.ForwardingGroupPriorityGroupMapEntries.ForwardingGroupPriorityGroupMapEntry[entry_key]
+	if !ok {
+		log.Info("entry is nil.")
+		return res_map, err
+	}
 
-    val :=  *(entry.Config.PriorityGroupIndex)
+	val := *(entry.Config.PriorityGroupIndex)
 
-    map_entry[map_key].Field[entry_key] = strconv.Itoa(int(val))
+	map_entry[map_key].Field[entry_key] = strconv.Itoa(int(val))
 
-    log.Info("map key : ", map_key, " entry_key: ", entry_key)
-    res_map[map_type] = map_entry
+	log.Info("map key : ", map_key, " entry_key: ", entry_key)
+	res_map[map_type] = map_entry
 
-    return res_map, err
+	return res_map, err
 }
 
+func fill_tc_pg_map_info_by_name(inParams XfmrParams, forwardingGroupPriorityGroupMaps *ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps, name string) error {
 
-func fill_tc_pg_map_info_by_name(inParams XfmrParams, forwardingGroupPriorityGroupMaps * ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps, name string) error {
+	map_type := "TC_TO_PRIORITY_GROUP_MAP"
 
-    map_type := "TC_TO_PRIORITY_GROUP_MAP"
+	mapObj, ok := forwardingGroupPriorityGroupMaps.ForwardingGroupPriorityGroupMap[name]
+	if !ok {
+		mapObj, _ = forwardingGroupPriorityGroupMaps.NewForwardingGroupPriorityGroupMap(name)
+		ygot.BuildEmptyTree(mapObj)
+		mapObj.Name = &name
 
-    mapObj, ok := forwardingGroupPriorityGroupMaps.ForwardingGroupPriorityGroupMap[name]
-    if !ok {
-        mapObj, _ = forwardingGroupPriorityGroupMaps.NewForwardingGroupPriorityGroupMap(name)
-        ygot.BuildEmptyTree(mapObj)
-        mapObj.Name = &name
+	}
 
-    }
+	var mapEntries ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries
+	if mapObj.ForwardingGroupPriorityGroupMapEntries == nil {
+		mapObj.ForwardingGroupPriorityGroupMapEntries = &mapEntries
+	}
 
-    var mapEntries ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries
-    if mapObj.ForwardingGroupPriorityGroupMapEntries == nil {
-        mapObj.ForwardingGroupPriorityGroupMapEntries = &mapEntries
-    }
+	var mapObjCfg ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_Config
+	if mapObj.Config == nil {
+		mapObj.Config = &mapObjCfg
+	}
 
-    var mapObjCfg ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_Config
-    if mapObj.Config == nil {
-        mapObj.Config = &mapObjCfg
-    }
+	var mapObjSta ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_State
+	if mapObj.State == nil {
+		mapObj.State = &mapObjSta
+	}
 
-    var mapObjSta ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_State
-    if mapObj.State == nil {
-        mapObj.State = &mapObjSta
-    }
+	key := db.Key{Comp: []string{name}}
+	log.Info("key: ", key)
 
+	dbSpec := &db.TableSpec{Name: map_type}
+	mapCfg, err := inParams.d.GetEntry(dbSpec, key)
+	if err != nil {
+		log.Info("No map with a name of : ", name)
+		return nil
+	}
 
-    key :=db.Key{Comp: []string{name}}
-    log.Info("key: ", key)
+	log.Info("current entry: ", mapCfg)
 
-    dbSpec := &db.TableSpec{Name: map_type}
-    mapCfg, err := inParams.d.GetEntry(dbSpec, key) 
-    if  err != nil {
-        log.Info("No map with a name of : ", name)
-        return nil
-    }
+	mapObj.Config.Name = &name
+	mapObj.State.Name = &name
 
-    log.Info("current entry: ", mapCfg)
+	pathInfo := NewPathInfo(inParams.uri)
+	entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
+	log.Info("pathInfo.Var: ", pathInfo.Var)
+	var tmp_cfg ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries_ForwardingGroupPriorityGroupMapEntry_Config
+	var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries_ForwardingGroupPriorityGroupMapEntry_State
+	entry_added := 0
+	for k, v := range mapCfg.Field {
+		if k == "NULL" {
+			continue
+		}
 
-    mapObj.Config.Name = &name
-    mapObj.State.Name = &name
+		if entry_key != "" && k != entry_key {
+			continue
+		}
 
+		key := k
+		tmp, _ := strconv.ParseUint(v, 10, 8)
+		value := uint8(tmp)
 
-    pathInfo := NewPathInfo(inParams.uri)
-    entry_key := pathInfo.Var(qos_map_oc_yang_key_map[map_type])
-    log.Info("pathInfo.Var: ", pathInfo.Var)
-    var tmp_cfg ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries_ForwardingGroupPriorityGroupMapEntry_Config
-    var tmp_sta ocbinds.OpenconfigQos_Qos_ForwardingGroupPriorityGroupMaps_ForwardingGroupPriorityGroupMap_ForwardingGroupPriorityGroupMapEntries_ForwardingGroupPriorityGroupMapEntry_State
-    entry_added :=  0
-    for k, v := range mapCfg.Field {
-        if k == "NULL" {
-            continue
-        }
+		entryObj, ok := mapObj.ForwardingGroupPriorityGroupMapEntries.ForwardingGroupPriorityGroupMapEntry[key]
+		if !ok {
+			entryObj, _ = mapObj.ForwardingGroupPriorityGroupMapEntries.NewForwardingGroupPriorityGroupMapEntry(key)
+			ygot.BuildEmptyTree(entryObj)
+			ygot.BuildEmptyTree(entryObj.Config)
+			ygot.BuildEmptyTree(entryObj.State)
+		}
 
-        if entry_key != "" && k!= entry_key {
-            continue
-        }
+		entryObj.FwdGroup = &key
 
-        key := k
-        tmp, _ := strconv.ParseUint(v, 10, 8)
-        value := uint8(tmp)
+		if entryObj.Config == nil {
+			entryObj.Config = &tmp_cfg
+		}
+		entryObj.Config.FwdGroup = &key
+		entryObj.Config.PriorityGroupIndex = &value
 
-        entryObj, ok := mapObj.ForwardingGroupPriorityGroupMapEntries.ForwardingGroupPriorityGroupMapEntry[key]
-        if !ok {
-            entryObj, _ = mapObj.ForwardingGroupPriorityGroupMapEntries.NewForwardingGroupPriorityGroupMapEntry(key)
-            ygot.BuildEmptyTree(entryObj)
-            ygot.BuildEmptyTree(entryObj.Config)
-            ygot.BuildEmptyTree(entryObj.State)
-        }
+		if entryObj.State == nil {
+			entryObj.State = &tmp_sta
+		}
+		entryObj.State.FwdGroup = &key
+		entryObj.State.PriorityGroupIndex = &value
 
-        entryObj.FwdGroup = &key
+		entry_added = entry_added + 1
 
-        if entryObj.Config == nil {
-            entryObj.Config = &tmp_cfg
-        }
-        entryObj.Config.FwdGroup = &key
-        entryObj.Config.PriorityGroupIndex = &value
+		log.Info("Added entry: ", entryObj)
+	}
 
+	log.Info("Done fetching forwarding-group-queue-map : ", name)
 
-        if entryObj.State == nil {
-            entryObj.State = &tmp_sta
-        }
-        entryObj.State.FwdGroup = &key
-        entryObj.State.PriorityGroupIndex = &value
+	if entry_key != "" && entry_added == 0 {
+		err = tlerr.NotFoundError{Format: "Resource not found"}
+		log.Info("Resource not found.")
+		return err
+	}
 
-        entry_added = entry_added + 1
-
-        log.Info("Added entry: ", entryObj)
-    }
-
-    log.Info("Done fetching forwarding-group-queue-map : ", name)
-
-    if entry_key != "" && entry_added == 0 {
-        err = tlerr.NotFoundError{Format:"Resource not found"}
-        log.Info("Resource not found.")
-        return err
-    }
-
-    return nil
+	return nil
 }
-
 
 var DbToYang_qos_tc_pg_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
-    var err error
+	var err error
 
-    pathInfo := NewPathInfo(inParams.uri)
+	pathInfo := NewPathInfo(inParams.uri)
 
-    name := pathInfo.Var("name")
+	name := pathInfo.Var("name")
 
-    log.Info("inParams: ", inParams)
+	log.Info("inParams: ", inParams)
 
-    qosObj := getQosRoot(inParams.ygRoot)
+	qosObj := getQosRoot(inParams.ygRoot)
 
-    if qosObj == nil {
-        ygot.BuildEmptyTree(qosObj)
-    }
+	if qosObj == nil {
+		ygot.BuildEmptyTree(qosObj)
+	}
 
-    if qosObj.ForwardingGroupPriorityGroupMaps == nil {
-        ygot.BuildEmptyTree(qosObj.ForwardingGroupPriorityGroupMaps)
-    }
+	if qosObj.ForwardingGroupPriorityGroupMaps == nil {
+		ygot.BuildEmptyTree(qosObj.ForwardingGroupPriorityGroupMaps)
+	}
 
-    dbSpec := &db.TableSpec{Name: "TC_TO_PRIORITY_GROUP_MAP"}
+	dbSpec := &db.TableSpec{Name: "TC_TO_PRIORITY_GROUP_MAP"}
 
-    map_added := 0
-    var keyPattern string
-    if name != "" {
-        keyPattern = name
-    } else {
-        keyPattern = "*"
-    }
+	map_added := 0
+	var keyPattern string
+	if name != "" {
+		keyPattern = name
+	} else {
+		keyPattern = "*"
+	}
 
-    keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
-    for _, key := range keys {
-        log.Info("key: ", key)
+	keys, _ := inParams.d.GetKeysByPattern(dbSpec, keyPattern)
+	for _, key := range keys {
+		log.Info("key: ", key)
 
-        map_name := key.Comp[0]
+		map_name := key.Comp[0]
 
-        map_added = map_added + 1 
+		map_added = map_added + 1
 
-        err = fill_tc_pg_map_info_by_name(inParams, qosObj.ForwardingGroupPriorityGroupMaps, map_name)
+		err = fill_tc_pg_map_info_by_name(inParams, qosObj.ForwardingGroupPriorityGroupMaps, map_name)
 
-        if err != nil {
-           return err
-        }
-    }
+		if err != nil {
+			return err
+		}
+	}
 
-    if name != "" && map_added == 0 {
-        err = tlerr.NotFoundError{Format:"Resource not found"}
-        log.Info("Resource not found.")
-        return err
-    }
+	if name != "" && map_added == 0 {
+		err = tlerr.NotFoundError{Format: "Resource not found"}
+		log.Info("Resource not found.")
+		return err
+	}
 
-    return err
+	return err
 }
 
-
 var DbToYang_qos_tc_to_pg_map_fld_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
-    return DbToYang_qos_intf_qos_map_xfmr(inParams, "TC_TO_PRIORITY_GROUP_MAP")
+	return DbToYang_qos_intf_qos_map_xfmr(inParams, "TC_TO_PRIORITY_GROUP_MAP")
 }
 
 var YangToDb_qos_tc_to_pg_map_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
-    return YangToDb_qos_intf_qos_map_xfmr(inParams, "TC_TO_PRIORITY_GROUP_MAP")
+	return YangToDb_qos_intf_qos_map_xfmr(inParams, "TC_TO_PRIORITY_GROUP_MAP")
 }
-

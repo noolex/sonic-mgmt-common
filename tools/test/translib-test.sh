@@ -30,11 +30,12 @@ PKG=translib/...
 while [[ $# -gt 0 ]]; do
     case "$1" in
     -h|-help|--help)
-        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME] [-json] [ARGS...]"
+        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME|-bench PATTERN] [-json] [ARGS...]"
         exit 0;;
     -p|-pkg|-package) PKG=$2; shift 2;;
-    -r|-run)  TARGS+=( -run $2 ); shift 2;;
-    -j|-json) TARGS+=( -json ); shift;;
+    -r|-run)   TARGS+=( -run $2 ); shift 2;;
+    -b|-bench) TARGS+=( -bench $2 -run XXX ); shift 2;;
+    -j|-json)  TARGS+=( -json ); shift;;
     *) PARGS+=( "$1"); shift;;
     esac
 done
@@ -61,15 +62,7 @@ fi
 # yang files
 if [[ -z ${YANG_MODELS_PATH} ]]; then
     export YANG_MODELS_PATH=${TOPDIR}/build/all_test_yangs
-    mkdir -p ${YANG_MODELS_PATH}
-    pushd ${YANG_MODELS_PATH} > /dev/null
-    rm -f *
-    RELPATH=$(realpath ${TOPDIR} --relative-to=${PWD})
-    find $RELPATH/models/yang -name "*.yang" -not -path "*/testdata/*" -exec ln -sf {} \;
-    ln -sf $RELPATH/models/yang/version.xml
-    ln -sf $RELPATH/config/transformer/models_list
-    ln -sf $RELPATH/build/yang/api_ignore
-    popd > /dev/null
+    ${TOPDIR}/tools/test/yangpath_init.sh
 fi
 
 [[ "${PARGS[@]}" =~ -(also)?log* ]] || PARGS+=( -logtostderr )

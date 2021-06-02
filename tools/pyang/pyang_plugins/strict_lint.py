@@ -41,6 +41,39 @@ except ImportError:
 issues = []
 extensionModulesList = []
 
+def prepare_ignore_list(ctx,ignore_file_dict):
+    ignore_file = ctx.opts.ignore_file
+    with open(ignore_file, "r") as ignore_fh:
+        for entry in ignore_fh:
+            entry = entry.strip()
+            if entry.startswith('#'):
+                continue
+            entry_list = list(filter(None,entry.split(' ')))
+            if len(entry_list) == 0:
+                continue
+            mod_name = entry_list[0]
+            if mod_name not in ignore_file_dict:
+                ignore_file_dict[mod_name] = set()
+            for line_num in entry_list[1:]:
+                ignore_file_dict[mod_name].add(int(line_num.strip()))
+
+def prepare_patched_mods_list(ctx,patched_mods):
+    patch_listfile = ctx.opts.patch_listfile
+    with open(patch_listfile) as fp:
+        lines = fp.readlines()
+        for patch_file in lines:
+            patch_file = patch_file.strip()
+            if patch_file.endswith('.yang'):
+                mod_name = patch_file.replace('.yang','')
+                patched_mods.add(mod_name)
+
+def get_error_flags(elevel,error_seen):
+    kind = "warning"
+    if not error.is_warning(elevel):
+        kind = "error"
+        error_seen = True
+    return kind,error_seen
+
 def pyang_plugin_init():
     plugin.register_plugin(CheckStrictLintPlugin())
 
@@ -51,7 +84,16 @@ class CheckStrictLintPlugin(plugin.PyangPlugin):
         fmts['strictlint'] = self
 
     def add_opts(self, optparser):
-        optlist = []
+        optlist = [
+            optparse.make_option("--patchlistfile",
+                                 type="string",
+                                 dest="patch_listfile",
+                                 help="File path containing list of patched yangs"),
+            optparse.make_option("--ignorefile",
+                                 type="string",
+                                 dest="ignore_file",
+                                 help="File path containing ignore list of modules"), 
+        ]
         g = optparser.add_option_group("CheckStrictLintPlugin options")
         g.add_options(optlist)
 
@@ -59,21 +101,34 @@ class CheckStrictLintPlugin(plugin.PyangPlugin):
         ctx.implicit_errors = False
 
     def emit(self, ctx, modules, fd):
-
         error_seen = False
+        ignore_file_dict = dict()
+        patched_mods = set()
+        prepare_ignore_list(ctx,ignore_file_dict)
+        prepare_patched_mods_list(ctx,patched_mods)
         if ctx.opts.outfile is not None:
             fd = open(ctx.opts.outfile, "w")        
         for (epos, etag, eargs) in ctx.errors:
             elevel = error.err_level(etag)
             
             if "/extensions/" not in str(epos):
-                continue
-
-            if error.is_warning(elevel):
-                kind = "warning"
+                mod_name = epos.ref.split('/')[-1].split('.')[0]
+                if mod_name in patched_mods:
+                    if mod_name in ignore_file_dict:
+                        if len(ignore_file_dict[mod_name]) == 0:
+                            kind = "ignored"
+                        else:
+                            line_num = epos.line
+                            if line_num in ignore_file_dict[mod_name]:
+                                kind = "ignored"
+                            else:
+                                kind,error_seen = get_error_flags(elevel,error_seen)
+                    else:
+                        kind,error_seen = get_error_flags(elevel,error_seen)
+                else:
+                    kind = "ignored"
             else:
-                kind = "error"
-                error_seen = True
+                kind,error_seen = get_error_flags(elevel,error_seen)
                 
             fd.write(str(epos) + ': %s: ' % kind + \
                                     error.err_to_str(etag, eargs) + '\n')

@@ -114,9 +114,9 @@ import (
 	"time"
 
 	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/go-redis/redis/v7"
 	"github.com/golang/glog"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 const (
@@ -156,14 +156,14 @@ type Options struct {
 	InitIndicator      string
 	TableNameSeparator string //Overriden by the DB config file's separator.
 	KeySeparator       string //Overriden by the DB config file's separator.
-	IsWriteDisabled    bool //Is write/set mode disabled ?
-	IsCacheEnabled     bool //Is cache (Per Connection) allowed?
+	IsWriteDisabled    bool   //Is write/set mode disabled ?
+	IsCacheEnabled     bool   //Is cache (Per Connection) allowed?
 
 	// OnChange caching for the DBs passed from Translib's Subscribe Infra
 	// to the Apps. SDB is the SubscribeDB() returned handle on which
 	// notifications of change are received.
-	IsEnableOnChange   bool //SubscribeDB *SDB notifs update OnChange cache
-	SDB                *DB  //The subscribeDB handle (Future Use)
+	IsEnableOnChange bool //SubscribeDB *SDB notifs update OnChange cache
+	SDB              *DB  //The subscribeDB handle (Future Use)
 
 	DisableCVLCheck bool
 }
@@ -203,12 +203,12 @@ func (s _txState) String() string {
 }
 
 const (
-	InitialTxPipelineSize int = 100
-	InitialTablesCount int = 20
-	InitialTableEntryCount int = 50
+	InitialTxPipelineSize    int = 100
+	InitialTablesCount       int = 20
+	InitialTableEntryCount   int = 50
 	InitialTablePatternCount int = 5
-	InitialMapsCount int = 10
-	InitialMapKeyCount int = 50
+	InitialMapsCount         int = 10
+	InitialMapKeyCount       int = 50
 )
 
 // TableSpec gives the name of the table, and other per-table customizations.
@@ -266,20 +266,19 @@ type DB struct {
 	cv                *cvl.CVL
 	cvlEditConfigData []cvl.CVLEditConfigData
 
-	sPubSub *redis.PubSub // PubSub. non-Nil implies SubscribeDB
-	sCIP    bool          // Close in Progress
-	sOnCCacheDB *DB       // Update this DB for PubSub notifications
+	sPubSub     *redis.PubSub // PubSub. non-Nil implies SubscribeDB
+	sCIP        bool          // Close in Progress
+	sOnCCacheDB *DB           // Update this DB for PubSub notifications
 
 	dbStatsConfig DBStatsConfig
 	dbCacheConfig DBCacheConfig
 
 	// DBStats is used by both PerConnection cache, and OnChange cache
 	// On a DB handle, the two are mutually exclusive.
-	stats   DBStats
-	cache	DBCache
+	stats DBStats
+	cache DBCache
 
-	onCReg	dbOnChangeReg
-
+	onCReg dbOnChangeReg
 }
 
 func (d DB) String() string {
@@ -287,7 +286,7 @@ func (d DB) String() string {
 		d.client, d.Opts, d.txState, d.txCmds)
 }
 
-func getDBInstName (dbNo DBNum) string {
+func getDBInstName(dbNo DBNum) string {
 	switch dbNo {
 	case ApplDB:
 		return "APPL_DB"
@@ -322,12 +321,12 @@ func NewDB(opt Options) (*DB, error) {
 
 	// Time Start
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	now = time.Now()
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(opt.DBNo)
-	dbPassword :=""
+	dbPassword := ""
 	if dbInstName := getDBInstName(opt.DBNo); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
@@ -336,7 +335,7 @@ func NewDB(opt Options) (*DB, error) {
 			dbPassword = getDbPassword(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
-					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
+					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the"+
 						" one configured in the Db config. file for the Db name %v", opt.TableNameSeparator, dbInstName))
 				}
 				opt.KeySeparator = dbSepStr
@@ -374,9 +373,9 @@ func NewDB(opt Options) (*DB, error) {
 		txCmds:            make([]_txCmd, 0, InitialTxPipelineSize),
 		cvlEditConfigData: make([]cvl.CVLEditConfigData, 0, InitialTxPipelineSize),
 		dbStatsConfig:     getDBStatsConfig(),
-		stats:             DBStats{Tables:make(map[string]Stats, InitialTablesCount), Maps:make(map[string]Stats, InitialMapsCount)},
+		stats:             DBStats{Tables: make(map[string]Stats, InitialTablesCount), Maps: make(map[string]Stats, InitialMapsCount)},
 		dbCacheConfig:     getDBCacheConfig(),
-		cache:             DBCache{Tables:make(map[string]Table, InitialTablesCount), Maps:make(map[string]MAP, InitialMapsCount)},
+		cache:             DBCache{Tables: make(map[string]Table, InitialTablesCount), Maps: make(map[string]MAP, InitialMapsCount)},
 	}
 
 	if !d.Opts.IsWriteDisabled {
@@ -394,7 +393,7 @@ func NewDB(opt Options) (*DB, error) {
 	}
 
 	if opt.IsEnableOnChange {
-		d.onCReg = dbOnChangeReg{CacheTables:make(map[string]bool, InitialTablesCount)}
+		d.onCReg = dbOnChangeReg{CacheTables: make(map[string]bool, InitialTablesCount)}
 	}
 
 	if d.client == nil {
@@ -498,7 +497,7 @@ func (d *DB) ts2redisUpdated(ts *TableSpec) string {
 
 // GetEntry retrieves an entry(row) from the table.
 func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
-	return d.getEntry(ts,key,false)
+	return d.getEntry(ts, key, false)
 }
 func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
@@ -510,7 +509,7 @@ func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 	// Time Start
 	var cacheHit bool
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	var stats Stats
 	if d.dbStatsConfig.TimeStats {
 		now = time.Now()
@@ -523,13 +522,13 @@ func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 	// If cache GetFromCache (CacheHit?)
 	if (d.dbCacheConfig.PerConnection &&
-			d.dbCacheConfig.isCacheTable(ts.Name)) ||
+		d.dbCacheConfig.isCacheTable(ts.Name)) ||
 		(d.Opts.IsEnableOnChange && d.onCReg.isCacheTable(ts.Name) &&
 			!forceReadDB) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
 			if value, ok = table.entry[d.key2redis(ts, key)]; ok {
-				cacheHit = true;
+				cacheHit = true
 			}
 		}
 	}
@@ -543,11 +542,11 @@ func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 			// If cache SetCache (i.e. a cache miss)
 			if (d.dbCacheConfig.PerConnection &&
-					d.dbCacheConfig.isCacheTable(ts.Name)) ||
+				d.dbCacheConfig.isCacheTable(ts.Name)) ||
 				(d.Opts.IsEnableOnChange &&
 					d.onCReg.isCacheTable(ts.Name)) {
-				if _, ok := d.cache.Tables[ts.Name] ; !ok {
-					d.cache.Tables[ts.Name] = Table {
+				if _, ok := d.cache.Tables[ts.Name]; !ok {
+					d.cache.Tables[ts.Name] = Table{
 						ts:       ts,
 						entry:    make(map[string]Value, InitialTableEntryCount),
 						complete: false,
@@ -608,7 +607,7 @@ func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 // GetKeys retrieves all entry/row keys.
 func (d *DB) GetKeys(ts *TableSpec) ([]Key, error) {
-	return d.GetKeysPattern(ts, Key{Comp: []string{"*"}});
+	return d.GetKeysPattern(ts, Key{Comp: []string{"*"}})
 }
 
 func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
@@ -621,7 +620,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	// Time Start
 	var cacheHit bool
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	var stats Stats
 	if d.dbStatsConfig.TimeStats {
 		now = time.Now()
@@ -635,14 +634,14 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 	if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
 		var ok bool
 		if table, ok = d.cache.Tables[ts.Name]; ok {
-			if keys, ok = table.patterns[d.key2redis(ts,pat)]; ok {
-				cacheHit = true;
+			if keys, ok = table.patterns[d.key2redis(ts, pat)]; ok {
+				cacheHit = true
 			}
 		}
 	}
 
 	if !cacheHit {
-		redisKeys, e := d.client.Keys(d.key2redis(ts,pat)).Result()
+		redisKeys, e := d.client.Keys(d.key2redis(ts, pat)).Result()
 		if glog.V(4) {
 			glog.Info("GetKeys: redisKeys: ", redisKeys, " e: ", e)
 		}
@@ -654,8 +653,8 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 
 		// If cache SetCache (i.e. a cache miss)
 		if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheTable(ts.Name) {
-			if _, ok := d.cache.Tables[ts.Name] ; !ok {
-				d.cache.Tables[ts.Name] = Table {
+			if _, ok := d.cache.Tables[ts.Name]; !ok {
+				d.cache.Tables[ts.Name] = Table{
 					ts:       ts,
 					entry:    make(map[string]Value, InitialTableEntryCount),
 					complete: false,
@@ -663,7 +662,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 					db:       d,
 				}
 			}
-			d.cache.Tables[ts.Name].patterns[d.key2redis(ts,pat)] = keys
+			d.cache.Tables[ts.Name].patterns[d.key2redis(ts, pat)] = keys
 		}
 	}
 
@@ -781,9 +780,9 @@ func (d *DB) doCVL(ts *TableSpec, cvlOps []cvl.CVLOperation, key Key, vals []Val
 	for i := 0; i < len(cvlOps); i++ {
 
 		cvlEditConfigData := cvl.CVLEditConfigData{
-			VType: cvl.VALIDATE_ALL,
-			VOp:   cvlOps[i],
-			Key:   d.key2redis(ts, key),
+			VType:     cvl.VALIDATE_ALL,
+			VOp:       cvlOps[i],
+			Key:       d.key2redis(ts, key),
 			ReplaceOp: isReplaceOp,
 		}
 
@@ -1043,7 +1042,7 @@ func (d *DB) Publish(channel string, message interface{}) error {
 }
 
 func (d *DB) RunScript(script *redis.Script, keys []string, args ...interface{}) *redis.Cmd {
-    return script.Run(d.client, keys, args...)
+	return script.Run(d.client, keys, args...)
 }
 
 // DeleteEntry deletes an entry(row) in the table.
@@ -1142,7 +1141,7 @@ func (d *DB) DeleteTable(ts *TableSpec) error {
 	// For each key in Keys
 	// 	Delete the entry
 	for i := 0; i < len(keys); i++ {
-    // Don't define/declare a nested scope ``e''
+		// Don't define/declare a nested scope ``e''
 		e = d.DeleteEntry(ts, keys[i])
 		if e != nil {
 			glog.Warning("DeleteTable: DeleteEntry: " + e.Error())
@@ -1363,6 +1362,9 @@ func (d *DB) performWatch(w []WatchKeys, tss []*TableSpec) error {
 	}
 
 	// Issue the WATCH
+	if glog.V(4) {
+		glog.Info("performWatch: Do: ", args)
+	}
 	_, e = d.client.Do(args...).Result()
 
 	if e != nil {
@@ -1410,6 +1412,9 @@ func (d *DB) CommitTx() error {
 	}
 
 	// Issue MULTI
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: MULTI")
+	}
 	_, e = d.client.Do("MULTI").Result()
 
 	if e != nil {
@@ -1482,12 +1487,19 @@ func (d *DB) CommitTx() error {
 
 	// Flag the Tables as updated.
 	for ts := range tsmap {
+		if glog.V(4) {
+			glog.Info("CommitTx: Do: SET ", d.ts2redisUpdated(&ts), " 1")
+		}
 		_, e = d.client.Do("SET", d.ts2redisUpdated(&ts), "1").Result()
 		if e != nil {
 			glog.Warning("CommitTx: Do: SET ",
 				d.ts2redisUpdated(&ts), " 1: e: ",
 				e.Error())
 		}
+	}
+
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: SET ", d.ts2redisUpdated(&TableSpec{Name: "*"}), " 1")
 	}
 	_, e = d.client.Do("SET", d.ts2redisUpdated(&TableSpec{Name: "*"}),
 		"1").Result()
@@ -1497,6 +1509,9 @@ func (d *DB) CommitTx() error {
 	}
 
 	// Issue EXEC
+	if glog.V(4) {
+		glog.Info("CommitTx: Do: EXEC")
+	}
 	_, e = d.client.Do("EXEC").Result()
 
 	if e != nil {
@@ -1554,6 +1569,9 @@ func (d *DB) AbortTx() error {
 	}
 
 	// Issue UNWATCH
+	if glog.V(4) {
+		glog.Info("AbortTx: Do: UNWATCH")
+	}
 	_, e = d.client.Do("UNWATCH").Result()
 
 	if e != nil {
@@ -1577,4 +1595,3 @@ AbortTxExit:
 	}
 	return e
 }
-

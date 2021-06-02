@@ -20,17 +20,18 @@
 package custom_validation
 
 import (
-	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 	"fmt"
-	"strings"
-	log "github.com/golang/glog"
 	"net"
 	"strconv"
+	"strings"
+
+	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	log "github.com/golang/glog"
 )
 
 const (
-  //Default MTU of interface
-  DEFAULT_MTU = "9100"
+	//Default MTU of interface
+	DEFAULT_MTU = "9100"
 )
 
 //ValidateIpv4UnnumIntf Custom validation for Unnumbered interface
@@ -73,44 +74,44 @@ func (t *CustomValidation) ValidateIpv4UnnumIntf(vc *CustValidationCtxt) CVLErro
 		}
 	}
 
-    key_split := strings.Split(vc.CurCfg.Key, "|")
-    if_name := key_split[1]
+	key_split := strings.Split(vc.CurCfg.Key, "|")
+	if_name := key_split[1]
 
-    if strings.Contains(if_name, "Vlan") {
-        sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+	if strings.Contains(if_name, "Vlan") {
+		sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
 
-        sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
-        if (err != nil) || (vc.SessCache == nil) {
-            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
+		sag_keys, err := vc.RClient.Keys(sag_tbl_name).Result()
+		if (err != nil) || (vc.SessCache == nil) {
+			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+		}
 
-        if len(sag_keys) >= 1 {
-            errStr := "IP Unnumbered not allowed when anycast IP is already configured"
-            log.Error(errStr)
-            return CVLErrorInfo {
-                ErrCode: CVL_SEMANTIC_ERROR,
-                TableName: vc.CurCfg.Key,
-                CVLErrDetails: errStr,
-                ConstraintErrMsg: errStr,
-            }
-        }
-    }
+		if len(sag_keys) >= 1 {
+			errStr := "IP Unnumbered not allowed when anycast IP is already configured"
+			log.Error(errStr)
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        vc.CurCfg.Key,
+				CVLErrDetails:    errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
 func getSubInterfaceTruncatedName(longName *string) *string {
-    var truncatedName string
+	var truncatedName string
 
-    if strings.Contains(*longName, "Ethernet") {
-        truncatedName = strings.Replace(*longName, "Ethernet", "Eth", -1)
-    } else if strings.Contains(*longName, "PortChannel") {
-        truncatedName = strings.Replace(*longName, "PortChannel", "Po", -1)
-    } else {
-        truncatedName = *longName
-    }
+	if strings.Contains(*longName, "Ethernet") {
+		truncatedName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+	} else if strings.Contains(*longName, "PortChannel") {
+		truncatedName = strings.Replace(*longName, "PortChannel", "Po", -1)
+	} else {
+		truncatedName = *longName
+	}
 
-    return &truncatedName
+	return &truncatedName
 }
 
 //ValidateMtuForPOMemberCount Custom validation for MTU configuration on PortChannel
@@ -134,33 +135,33 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
 				}
 
-                                portChannelMemberName := *getSubInterfaceTruncatedName(&intfName)
-                                subIntfKeys, err2 := vc.RClient.Keys("VLAN_SUB_INTERFACE|" + portChannelMemberName + ".*").Result()
-                                if err2 != nil {
-                                   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
-                                }
+				portChannelMemberName := *getSubInterfaceTruncatedName(&intfName)
+				subIntfKeys, err2 := vc.RClient.Keys("VLAN_SUB_INTERFACE|" + portChannelMemberName + ".*").Result()
+				if err2 != nil {
+					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+				}
 
-                                if len(subIntfKeys) > 0 {
-                                        return CVLErrorInfo{
-                                                ErrCode:          CVL_SEMANTIC_ERROR,
-                                                TableName:        "VLAN_SUB_INTERFACE",
-                                                Keys:             strings.Split(vc.CurCfg.Key, "|"),
-                                                ConstraintErrMsg: fmt.Sprintf("Cannot configure %s as member of %s as sub-interface is created on %s.", intfName, poName, intfName),
-                                        }
-                                }
+				if len(subIntfKeys) > 0 {
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "VLAN_SUB_INTERFACE",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+						ConstraintErrMsg: fmt.Sprintf("Cannot configure %s as member of %s as sub-interface is created on %s.", intfName, poName, intfName),
+					}
+				}
 
 				poMtu := poData["mtu"]
 
 				// If PO MTU is not configured, choose default MTU.
 				if len(poMtu) == 0 {
-                                        poMtu = DEFAULT_MTU
-				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Setting default MTU for PO MTU=%v", poMtu)
-                                }
+					poMtu = DEFAULT_MTU
+					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Setting default MTU for PO MTU=%v", poMtu)
+				}
 
 				intfMtu := intfData["mtu"]
 				util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "ValidateMtuForPOMemberCount: PO MTU=%v and Intf MTU=%v", poMtu, intfMtu)
 
-                                if poMtu != intfMtu {
+				if poMtu != intfMtu {
 					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member MTU not same as portchannel MTU")
 					return CVLErrorInfo{
 						ErrCode:          CVL_SEMANTIC_ERROR,
@@ -173,7 +174,7 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 
 				poMembersKeys, err := vc.RClient.Keys("PORTCHANNEL_MEMBER|" + poName + "|*").Result()
 				if err != nil {
-				   return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
 				}
 
 				if len(poMembersKeys) > 0 {
@@ -194,11 +195,11 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 					if intfHasSpeed && poMemHasSpeed && intfSpeed != poMemSpeed {
 						util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Members can't be added to portchannel when member speed is not same as existing members")
 						return CVLErrorInfo{
-								ErrCode:          CVL_SEMANTIC_ERROR,
-								TableName:        "PORT",
-								Keys:             strings.Split(vc.CurCfg.Key, "|"),
-								ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
-								ErrAppTag:        "speed-invalid",
+							ErrCode:          CVL_SEMANTIC_ERROR,
+							TableName:        "PORT",
+							Keys:             strings.Split(vc.CurCfg.Key, "|"),
+							ConstraintErrMsg: "Configuration not allowed when port speed is different than existing member of Portchannel.",
+							ErrAppTag:        "speed-invalid",
 						}
 					}
 
@@ -209,13 +210,13 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 				isTrunkVlanCfg := intfData["tagged_vlans@"]
 
 				// Prevent interfaces with VLAN configuration from being added to PO.
-				if (len(isAccessVlanCfg) > 0 || len(isTrunkVlanCfg) > 0) {
+				if len(isAccessVlanCfg) > 0 || len(isTrunkVlanCfg) > 0 {
 					return CVLErrorInfo{
-							ErrCode:          CVL_SEMANTIC_ERROR,
-							TableName:        "PORT",
-							Keys:             strings.Split(vc.CurCfg.Key, "|"),
-							ConstraintErrMsg: fmt.Sprintf("Configuration not allowed as Vlan configuration exists on %s.", intfName),
-							ErrAppTag:        "member-invalid",
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "PORT",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+						ConstraintErrMsg: fmt.Sprintf("Configuration not allowed as Vlan configuration exists on %s.", intfName),
+						ErrAppTag:        "member-invalid",
 					}
 				}
 			}
@@ -225,50 +226,49 @@ func (t *CustomValidation) ValidateMtuForPOMemberCount(vc *CustValidationCtxt) C
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-
 //ValidatePortChannelCreationDeletion Custom validation for PortChannel creation or deletion
 func (t *CustomValidation) ValidatePortChannelCreationDeletion(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp == OP_CREATE {
 
-	        keys := strings.Split(vc.CurCfg.Key, "|")
-	        if len(keys) > 0 {
-		        if keys[0] == "PORTCHANNEL" {
-			        poKeys, err := vc.RClient.Keys("PORTCHANNEL" + "|*").Result()
-			        if err != nil {
-				         return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
-			        }
+		keys := strings.Split(vc.CurCfg.Key, "|")
+		if len(keys) > 0 {
+			if keys[0] == "PORTCHANNEL" {
+				poKeys, err := vc.RClient.Keys("PORTCHANNEL" + "|*").Result()
+				if err != nil {
+					return CVLErrorInfo{ErrCode: CVL_SEMANTIC_KEY_NOT_EXIST}
+				}
 
-			        if len(poKeys) >= 128 {
-				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Maximum number of portchannels already created.")
-				        return CVLErrorInfo{
-					        ErrCode:          CVL_SEMANTIC_ERROR,
-					        TableName:        "PORTCHANNEL",
-					        Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					        ConstraintErrMsg: "Maximum number(128) of portchannels already created in the system. Cannot create new portchannel.",
-					        ErrAppTag:        "max-reached",
-				        }
-			        }
+				if len(poKeys) >= 128 {
+					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Maximum number of portchannels already created.")
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "PORTCHANNEL",
+						Keys:             strings.Split(vc.CurCfg.Key, "|"),
+						ConstraintErrMsg: "Maximum number(128) of portchannels already created in the system. Cannot create new portchannel.",
+						ErrAppTag:        "max-reached",
+					}
+				}
 
 				total := len(poKeys) + len(vc.ReqData)
 				if total > 128 {
-				        util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Cannot create more than supported number of portchannels in the system.")
+					util.TRACE_LEVEL_LOG(util.TRACE_SEMANTIC, "Cannot create more than supported number of portchannels in the system.")
 					errStr := "Number of portchannels already created in the system are " + strconv.Itoa(len(poKeys)) + ". Maximum number of portchannel that can be supported are 128."
-				        return CVLErrorInfo{
-					        ErrCode:          CVL_SEMANTIC_ERROR,
-					        TableName:        "PORTCHANNEL",
+					return CVLErrorInfo{
+						ErrCode:          CVL_SEMANTIC_ERROR,
+						TableName:        "PORTCHANNEL",
 						Keys:             strings.Split(vc.CurCfg.Key, "|"),
-					        ConstraintErrMsg: errStr,
-					        ErrAppTag:        "max-reached",
-				        }
-			        }
-                       }
-                }
-        }
+						ConstraintErrMsg: errStr,
+						ErrAppTag:        "max-reached",
+					}
+				}
+			}
+		}
+	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
-func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorInfo {
+func (t *CustomValidation) ValidateVlanMember(vc *CustValidationCtxt) CVLErrorInfo {
 	if vc.CurCfg.VOp == OP_DELETE {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
@@ -320,12 +320,12 @@ func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorI
 					for _, ky := range pomemberKeys {
 						pomemberName := ky[strings.LastIndex(ky, "|")+1:]
 						if strings.Contains(membersInReq, pomemberName+",") || strings.HasSuffix(membersInReq, pomemberName) {
-							return CVLErrorInfo {
-								ErrCode: CVL_SEMANTIC_ERROR,
-								TableName: tableName,
-								Keys: strings.Split(tableKey, "|"),
+							return CVLErrorInfo{
+								ErrCode:          CVL_SEMANTIC_ERROR,
+								TableName:        tableName,
+								Keys:             strings.Split(tableKey, "|"),
 								ConstraintErrMsg: "A vlan interface member cannot be part of portchannel which is already a vlan member",
-								CVLErrDetails: "Config Validation Semantic Error",
+								CVLErrDetails:    "Config Validation Semantic Error",
 							}
 						}
 					}
@@ -333,12 +333,12 @@ func (t *CustomValidation) ValidateVlanMember (vc *CustValidationCtxt) CVLErrorI
 					// Verify if port is already member of any portchannel
 					pomemberKeys, _ := vc.RClient.Keys("PORTCHANNEL_MEMBER|*|" + memberName).Result()
 					if len(pomemberKeys) > 0 {
-						return CVLErrorInfo {
-							ErrCode: CVL_SEMANTIC_ERROR,
-							TableName: tableName,
-							Keys: strings.Split(tableKey, "|"),
+						return CVLErrorInfo{
+							ErrCode:          CVL_SEMANTIC_ERROR,
+							TableName:        tableName,
+							Keys:             strings.Split(tableKey, "|"),
 							ConstraintErrMsg: "A Portchannel member cannot be added as vlan member",
-							CVLErrDetails: "Config Validation Semantic Error",
+							CVLErrDetails:    "Config Validation Semantic Error",
 						}
 					}
 				}
@@ -365,20 +365,19 @@ func validateDstPortOfMirrorSession(vc *CustValidationCtxt, tableName, tableKey,
 	if entries != nil {
 		entriesJson := string(entries.(string))
 		if strings.Contains(entriesJson, portName) {
-			return CVLErrorInfo {
-				ErrCode: CVL_SEMANTIC_ERROR,
-				TableName: tableName,
-				Keys: strings.Split(tableKey, "|"),
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        tableName,
+				Keys:             strings.Split(tableKey, "|"),
 				ConstraintErrMsg: "Port has mirror session config",
-				CVLErrDetails: "Config Validation Semantic Error",
-				ErrAppTag:  "portlist-configured-as-dst-port-in-mirror-session",
+				CVLErrDetails:    "Config Validation Semantic Error",
+				ErrAppTag:        "portlist-configured-as-dst-port-in-mirror-session",
 			}
 		}
 	}
 
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
-
 
 func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	var vrrp_table string
@@ -398,30 +397,29 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
+	if vc.CurCfg.VOp != OP_DELETE {
+		if strings.Contains(if_name, "Vlan") {
+			sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
 
-    if vc.CurCfg.VOp != OP_DELETE {
-        if strings.Contains(if_name, "Vlan") {
-            sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
+			sag_keys, err := vc.RClient.Keys(sag_tbl_name).Result()
+			if (err != nil) || (vc.SessCache == nil) {
+				return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+			}
 
-            sag_keys, err:= vc.RClient.Keys(sag_tbl_name).Result()
-            if (err != nil) || (vc.SessCache == nil) {
-                return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-            }
-
-            if len(sag_keys) >= 1 {
-                errStr := "Interface IP not allowed when anycast IP is already configured"
-                log.Error(errStr)
-                return CVLErrorInfo {
-                    ErrCode: CVL_SEMANTIC_ERROR,
-                    TableName: key,
-                    CVLErrDetails: errStr,
-                    ConstraintErrMsg: errStr,
-                }
-            }
-        } else {
-            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-        }
-    }
+			if len(sag_keys) >= 1 {
+				errStr := "Interface IP not allowed when anycast IP is already configured"
+				log.Error(errStr)
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        key,
+					CVLErrDetails:    errStr,
+					ConstraintErrMsg: errStr,
+				}
+			}
+		} else {
+			return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+		}
+	}
 
 	if strings.Contains(if_ip, ":") {
 		vrrp_table = "VRRP6"
@@ -433,7 +431,7 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 	tbl_name_ext := vrrp_table + "|" + if_name + "|" + "*"
 
-	vrrp_keys, err:= vc.RClient.Keys(tbl_name_ext).Result()
+	vrrp_keys, err := vc.RClient.Keys(tbl_name_ext).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
@@ -452,7 +450,7 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	// Interface IP add and delete is not allowed if VRRP has to transition from/to owner
 	// VRRP checks ensure that interface IP is configured before VIP, hence check just delete
 
-  vrrp_del_count := 0
+	vrrp_del_count := 0
 
 	for _, db_key := range vrrp_keys {
 
@@ -470,11 +468,11 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 			}
 
 			if found {
-				continue;
+				continue
 			}
 		}
 
-		vrrp_data, err:= vc.RClient.HGetAll(db_key).Result()
+		vrrp_data, err := vc.RClient.HGetAll(db_key).Result()
 
 		log.Info("vrrp_data: ", vrrp_data)
 
@@ -485,13 +483,13 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 		vip_string := vrrp_data["vip@"]
 
 		vips := strings.Split(vip_string, ",")
-		for _, vip := range(vips)	{
+		for _, vip := range vips {
 
 			vip = vip + vip_suffix
 			vip_prefix, _, perr := net.ParseCIDR(vip)
 
 			if vip_prefix == nil || perr != nil {
-					continue
+				continue
 			}
 
 			if ip_net_ll.Contains(vip_prefix) {
@@ -501,19 +499,19 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 			if if_ip_net.Contains(vip_prefix) {
 				log.Info("ValidateIp deleting last IP overlapping VIP")
 				errStr := "Interface IP is being used by VRRP instance, please delete VRRP virtual IP before deleting/changing interface IP"
-				return CVLErrorInfo {
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: vrrp_table,
-					CVLErrDetails: errStr,
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        vrrp_table,
+					CVLErrDetails:    errStr,
 					ConstraintErrMsg: errStr,
 				}
 			}
 		}
 	}
 
-	if (vc.CurCfg.VOp == OP_DELETE) {
+	if vc.CurCfg.VOp == OP_DELETE {
 
-		if (vrrp_table == "VRRP") {
+		if vrrp_table == "VRRP" {
 
 			if_ip_data, _ := vc.RClient.HGetAll(vc.CurCfg.Key).Result()
 
@@ -521,25 +519,25 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 			log.Info("ValidateIntfIp if_ip_data:", if_ip_data, " secondary:", has_data, " vrrp_keys:", vrrp_keys)
 
-			if ((!has_data) && ((len(vrrp_keys) - vrrp_del_count) > 0)) {
+			if (!has_data) && ((len(vrrp_keys) - vrrp_del_count) > 0) {
 				log.Info("Primary IP is deleted, no VRRP instance should be present")
 				errStr := "Remove all the VRRP instances before removing interface IP"
-				return CVLErrorInfo {
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: vrrp_table,
-					CVLErrDetails: errStr,
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        vrrp_table,
+					CVLErrDetails:    errStr,
 					ConstraintErrMsg: errStr,
-	                       }
-                	}
+				}
+			}
 		} else {
 
 			ipaddr_table := table_name + "|" + if_name + "|" + "*"
 
-			ip_addr_keys, _:= vc.RClient.Keys(ipaddr_table).Result()
+			ip_addr_keys, _ := vc.RClient.Keys(ipaddr_table).Result()
 
 			log.Info("ValidateIntfIp ipaddr_table:", ip_addr_keys, " vrrp_keys:", vrrp_keys)
 
-      count := 0
+			count := 0
 			for _, ip_key := range ip_addr_keys {
 				ip_split := strings.Split(ip_key, "|")
 				if strings.Contains(ip_split[2], ":") {
@@ -549,13 +547,13 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 
 			log.Info("ValidateIntfIp IPv6 count:", count)
 
-			if ((count-1 <= 0) && ((len(vrrp_keys) - vrrp_del_count) > 0)) {
+			if (count-1 <= 0) && ((len(vrrp_keys) - vrrp_del_count) > 0) {
 				log.Info("IPv6 address are removed, no VRRP instance should be present")
 				errStr := "Remove all the VRRP instances before removing interface IP"
-				return CVLErrorInfo {
-					ErrCode: CVL_SEMANTIC_ERROR,
-					TableName: vrrp_table,
-					CVLErrDetails: errStr,
+				return CVLErrorInfo{
+					ErrCode:          CVL_SEMANTIC_ERROR,
+					TableName:        vrrp_table,
+					CVLErrDetails:    errStr,
 					ConstraintErrMsg: errStr,
 				}
 			}
