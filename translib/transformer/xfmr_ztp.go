@@ -8,6 +8,7 @@ import (
     "github.com/openconfig/ygot/ygot"
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+    "github.com/Azure/sonic-mgmt-common/translib/utils"
     "encoding/json"
     "fmt"
 	//"github.com/golang/glog"
@@ -92,7 +93,19 @@ func getZtpStatusFromHost(statusCache * ztpStatusCache, hostData map[string] int
 	    case ZTP_STATUS_STATUS:
     		statusCache.ztpStatusMap[ZTP_STATUS_STATUS] = fmt.Sprintf("%v",val)
 	    case ZTP_STATUS_SOURCE:
-    		statusCache.ztpStatusMap[ZTP_STATUS_SOURCE] = fmt.Sprintf("%v",val)
+                var ui_intf *string
+                status := fmt.Sprintf("%v",val)
+	        i1 := strings.Index(status, "(")
+	        i2 := strings.Index(status, ")")
+	        if i1 != -1 && i2 != -1 && i2 > i1 {
+	            source_intf := string(status[i1+1:i2])
+                    if strings.HasPrefix(source_intf, "Ethernet") {
+   	               source_prefix := string(status[0:i1])
+                       ui_intf = utils.GetUINameFromNativeName(&source_intf)
+                      status = fmt.Sprintf("%s(%s)", source_prefix, *ui_intf)
+                    }
+	        }
+                statusCache.ztpStatusMap[ZTP_STATUS_SOURCE] = status
 	    case ZTP_STATUS_RUNTIME:
     		statusCache.ztpStatusMap[ZTP_STATUS_RUNTIME] = fmt.Sprintf("%v",val)
 	    case ZTP_STATUS_TIMESTAMP:
