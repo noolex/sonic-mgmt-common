@@ -1289,6 +1289,8 @@ func (data *appData) setOptions(opts *appOptions) {
 
 func (nt NotificationType) String() string {
 	switch nt {
+	case TargetDefined:
+		return "TargetDefined"
 	case Sample:
 		return "Sample"
 	case OnChange:
