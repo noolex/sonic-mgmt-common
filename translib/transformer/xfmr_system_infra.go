@@ -10,6 +10,7 @@ import (
     "github.com/Azure/sonic-mgmt-common/translib/db"
     "io/ioutil"
     "os"
+    "unicode"
 )
 
 func init () {
@@ -28,6 +29,7 @@ func init () {
     XlateFuncBind("rpc_infra_sys_in_memory_log_count_cb",  rpc_infra_sys_in_memory_log_count_cb)
     XlateFuncBind("rpc_infra_logger_cb",  rpc_infra_logger_cb)
 }
+
 
 var DbToYang_sys_infra_state_clock_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
         log.Info("DbToYang_sys_infra_state_clock_xfmr uri: ", inParams.uri)
@@ -438,6 +440,7 @@ var rpc_infra_get_loglevel_severity_cb RpcCallpoint = func(body []byte, dbs [db.
 
 }
 
+
 func loglevel_severity_operation(ops_cmd string, exec_cmd string) ([]byte, error) {
 
         log.Info("loglevel_severity_operation cmd:", exec_cmd)
@@ -478,6 +481,7 @@ func loglevel_severity_operation(ops_cmd string, exec_cmd string) ([]byte, error
         result, err := json.Marshal(&exec)
         return result, err
 }
+
 var rpc_infra_show_sys_in_memory_log_cb RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
         log.Info("rpc_infra_show_sys_in_memory_log body:", string(body))
 
@@ -527,7 +531,14 @@ var rpc_infra_show_sys_in_memory_log_cb RpcCallpoint = func(body []byte, dbs [db
         }
 
         output, _ = host_output.Body[1].(string)
-        out_list = strings.Split(output,"\n")
+        _output := strings.Map(func(r rune) rune {
+	        if r > unicode.MaxASCII {
+		        return -1
+	         }
+	         return r
+        } , output)
+
+        out_list = strings.Split(_output,"\n")
         total := len(out_list)
         if num_lines > 0 && num_lines < total {
               exec.Output.Result = out_list[total-num_lines:]
