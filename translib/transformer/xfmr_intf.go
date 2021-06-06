@@ -686,11 +686,19 @@ func rpc_intf_ip_delete(d *db.DB, ifName *string, ipPrefix *string, intTbl IntfT
         intfEntryMap := intfEntry.Field
         _, nullValPresent := intfEntryMap["NULL"]
         llVal, llValPresent := intfEntryMap["ipv6_use_link_local_only"]
-
+        _, natZoneValPresent := intfEntryMap["nat_zone"]
 
         /* Note: Unbinding shouldn't happen if VRF or link-local config is associated with interface.
         Hence, we check for map length to be 1 and only if either NULL or ipv6_use_link_local_only with "disable" value is present */
-        if len(intfEntryMap) == 1 && (nullValPresent || (llValPresent && llVal == "disable")) {
+        if len(intfEntryMap) == 1 && (nullValPresent || (llValPresent && llVal == "disable") || natZoneValPresent) {
+            // Deleting the INTERFACE|<ifName> entry from DB
+            err = d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
+            if err != nil {
+                log.Error(err.Error())
+                return err
+            }
+        } else if len(intfEntryMap) == 2 && ((nullValPresent && natZoneValPresent) || (natZoneValPresent && llValPresent && llVal == "disable") ||
+                  (nullValPresent && llValPresent && llVal == "disable")) {
             // Deleting the INTERFACE|<ifName> entry from DB
             err = d.DeleteEntry(&db.TableSpec{Name:intTbl.cfgDb.intfTN}, db.Key{Comp: []string{*ifName}})
             if err != nil {
