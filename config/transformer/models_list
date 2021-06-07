@@ -20,6 +20,7 @@ openconfig-ztp.yang
 openconfig-ztp-annot.yang
 openconfig-network-instance.yang
 openconfig-bgp-ext.yang
+openconfig-bgp-deviation.yang
 openconfig-bgp-evpn-ext.yang
 openconfig-network-instance-annot.yang
 openconfig-ospfv2-ext.yang
