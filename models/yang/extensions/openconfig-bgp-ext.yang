@@ -15,6 +15,7 @@ module openconfig-bgp-ext {
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-rib-bgp { prefix oc-rib-bgp; }
   import openconfig-policy-types { prefix "oc-pol-types"; }
+  import openconfig-rib-bgp-ext { prefix "oc-bgprib-ext"; }
 
   organization
     "SONiC";
@@ -131,33 +132,6 @@ module openconfig-bgp-ext {
               "Operational state data for route entries in the
               BGP LOC-RIB";
 
-            leaf origin {
-              type union {
-                type oc-inet:ip-address;
-                type identityref {
-                  base oc-pol-types:INSTALL_PROTOCOL_TYPE;
-                }
-              }
-              description
-                "Indicates the origin of the route.  If the route is learned
-                from a neighbor, this value is the neighbor address.  If
-                the route was injected or redistributed from another
-                protocol, the origin indicates the source protocol for the
-                route.";
-            }
-
-            leaf path-id {
-              type uint32;
-              default 0;
-              description
-                "If the route is learned from a neighbor, the path-id
-                corresponds to the path-id for the route in the
-                corresponding adj-rib-in-post table.  If the route is
-                injected from another protocol, or the neighbor does not
-                support BGP add-paths, the path-id should be set
-                to zero, also the default value.";
-            }
-
             leaf remote-router-id {
               type oc-yang:dotted-quad;
               description
@@ -172,10 +146,12 @@ module openconfig-bgp-ext {
                 "Current path was selected as the best path.";
             }
 
+            uses oc-rib-bgp:bgp-loc-rib-common-keys;
             uses oc-rib-bgp:bgp-loc-rib-common-attr-refs;
             uses oc-rib-bgp:bgp-loc-rib-attr-state;
             uses oc-rib-bgp:bgp-common-route-annotations-state;
             uses oc-rib-bgp:bgp-loc-rib-route-annotations-state;
+            uses oc-bgprib-ext:rib-ext-route-annotations;
           }
           uses oc-rib-bgp:bgp-unknown-attr-top;
         }
