@@ -27,6 +27,7 @@ import (
     log "github.com/golang/glog"
     "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
     "github.com/Azure/sonic-mgmt-common/translib/utils"
+    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 func init () {
@@ -114,7 +115,7 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
         }
 
 
-        if len(intfKey) != 1 {               // Indicates other L3 configurations using INTERFACE table (like IP address config)
+        if len(intfKey) != 0 {               // Indicates other L3 configurations using INTERFACE table (like IP address config)
             data.Set("nat_zone", "")
         } else if len(sagTblKey) != 0 {      // Indicates IP anycast address configuration
             data.Set("nat_zone", "")
@@ -129,6 +130,20 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 
         natZoneMap[tblName][*ifName] = data
     } else {
+
+        // NAT Zone is an L3 attribute, allow configuration only when IP address is configured */
+        intfKey, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: tblName}, *ifName+"|*")
+        log.Info("INTERFACE Table Keys: %v, Length : %v", intfKey, len(intfKey))
+
+        sagTblKey, _ := inParams.d.GetKeysByPattern(&db.TableSpec{Name: "SAG"},*ifName+"|*")
+        log.Infof("SAG Table Keys: %v, Length : %v", sagTblKey, len(sagTblKey))
+
+        if len(intfKey) == 0 && len(sagTblKey) == 0 {
+            errStr := "Configure interface IP before configuring NAT Zone"
+            log.Info("YangToDb_intf_nat_zone_xfmr : " + errStr)
+            return natZoneMap, tlerr.InvalidArgsError{Format: errStr}
+        }
+
         m := make(map[string]string)
         data := db.Value{Field: m}
         data.Set("nat_zone", strconv.Itoa(int(*intfObj.NatZone.Config.NatZone)))

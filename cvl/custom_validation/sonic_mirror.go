@@ -39,12 +39,31 @@ func (t *CustomValidation) ValidateDstIp(vc *CustValidationCtxt) CVLErrorInfo {
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
 
+//ValidateMirrorCapability verify whether mirror config validations are enabled or not
+func validateMirrorCapability(vc *CustValidationCtxt) CVLErrorInfo {
+    key := "MIRROR_SESSION_CAPABILITY|validation"
+    error_check, err := vc.RClient.HGet(key, "error_check").Result()
+
+    if (err == nil) {
+        if (error_check == "disabled") {
+            return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+        }
+    }
+    return CVLErrorInfo{ErrCode: CVL_FAILURE}
+}
+
 //ValidateSrcPort validates all soruce port validations
 func (t *CustomValidation) ValidateSrcPort(vc *CustValidationCtxt) CVLErrorInfo {
 
     if (vc.CurCfg.VOp == OP_DELETE) {
         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
     }
+
+    errInf := validateMirrorCapability(vc)
+    if errInf.ErrCode == CVL_SUCCESS {
+        return errInf
+    }
+
     keys, err := vc.RClient.Keys("MIRROR_SESSION|*").Result()
     if err == nil {
         for _, key := range keys {
@@ -76,6 +95,11 @@ func (t *CustomValidation) ValidateDstPort(vc *CustValidationCtxt) CVLErrorInfo 
 
     if (vc.CurCfg.VOp == OP_DELETE) {
         return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+    }
+
+    errInf := validateMirrorCapability(vc)
+    if errInf.ErrCode == CVL_SUCCESS {
+        return errInf
     }
 
     /* check if input passed is found in ConfigDB VLAN_MEMBER|* */
