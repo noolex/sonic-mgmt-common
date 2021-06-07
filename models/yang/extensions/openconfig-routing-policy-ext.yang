@@ -25,7 +25,13 @@ module openconfig-routing-policy-ext {
         "This module describes a YANG model for routing policy
         configuration extensions.";
 
-    oc-ext:openconfig-version "0.1.4";
+    oc-ext:openconfig-version "0.1.5";
+
+    revision "2021-06-04" {
+        description
+            "Moved the openconfig standard model deviations to deviation file.";
+        reference "0.1.5";
+    }
 
     revision "2020-09-11" {
         description
@@ -275,38 +281,7 @@ module openconfig-routing-policy-ext {
           "Policy definition extensions for conditions";
         uses routing-policy-ext-match-src-network-instance-top;
     }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:community-count {
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:as-path-length {
-        deviate not-supported;
-    }
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config/oc-bgp-pol:afi-safi-in {
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:state/oc-bgp-pol:afi-safi-in {
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config/oc-bgp-pol:next-hop-in {
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:state/oc-bgp-pol:next-hop-in {
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config/oc-bgp-pol:route-type {
-        deviate not-supported;
-    }
- 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:state/oc-bgp-pol:route-type {
-        deviate not-supported;
-    }
-    
+   
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:config {
       description
           "Policy definition extensions for neighbor match configs";
@@ -319,26 +294,6 @@ module openconfig-routing-policy-ext {
         uses routing-policy-ext-neighbor-set-config;
     }
    
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:config/oc-rpol:neighbor-set {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:config/oc-rpol:match-set-options {
-        deviate not-supported;
-    }
-     
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:state/oc-rpol:neighbor-set {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-neighbor-set/oc-rpol:state/oc-rpol:match-set-options {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:neighbor-sets{
-        deviate not-supported;
-    }
- 
     augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config {
       description
           "Policy definition extensions for tag match configs";
@@ -361,34 +316,6 @@ module openconfig-routing-policy-ext {
       description
           "Policy definition extensions for prefix match configs";
         uses routing-policy-ext-prefix-set-config;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config/oc-rpol:tag-set {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:config/oc-rpol:match-set-options {
-        deviate not-supported;
-    }
-     
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:state/oc-rpol:tag-set {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:match-tag-set/oc-rpol:state/oc-rpol:match-set-options {
-        deviate not-supported;
-    }
-     
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:set-tag {
-        deviate not-supported;
-    }
-    
-    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:tag-sets{
-        deviate not-supported;
-    }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:prefixes {
-        deviate not-supported;
     }
 
     augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-rpol:prefix-sets/oc-rpol:prefix-set {
