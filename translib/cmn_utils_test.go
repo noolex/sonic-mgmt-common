@@ -21,27 +21,10 @@ package translib
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
 )
-
-func TestMain(m *testing.M) {
-	if err := clearLagDataFromDb(); err != nil {
-		os.Exit(-1)
-	}
-	fmt.Println("+++++  Removed All PortChannel Data from Db before tests  +++++")
-
-	ret := m.Run()
-
-	if err := clearLagDataFromDb(); err != nil {
-		os.Exit(-1)
-	}
-	fmt.Println("+++++  Removed All PortChannel Data from Db after the tests +++++")
-
-	os.Exit(ret)
-}
 
 func processGetRequest(url string, expectedRespJson string, errorCase bool) func(*testing.T) {
 	return func(t *testing.T) {
@@ -97,3 +80,22 @@ func getConfigDb() *db.DB {
 }
 
 var emptyJson string = "{}"
+
+// getNPorts returns random N eth port names from PORT table.
+func getNPorts(n int) ([]string, error) {
+	d := getConfigDb()
+	defer d.DeleteDB()
+
+	keys, err := d.GetKeys(&db.TableSpec{Name: "PORT"})
+	if err != nil {
+		return nil, err
+	}
+	if len(keys) < n {
+		return nil, fmt.Errorf("Not enough PORT entries; %d requested, %d present", n, len(keys))
+	}
+	ports := make([]string, n)
+	for i := 0; i < n; i++ {
+		ports[i] = keys[i].Get(0)
+	}
+	return ports, nil
+}

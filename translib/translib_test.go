@@ -17,15 +17,61 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-package translib_test
+package translib
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	fmt.Println("Cleanup before tests..")
+	invokeCleanupFuncs(true)
+
+	ret := m.Run()
+
+	fmt.Println("Cleanup after tests..")
+	invokeCleanupFuncs(false)
+
+	os.Exit(ret)
+}
+
+// CleanupFunc is the callback function for the cleanup tasks to be performed
+// before and after tests. Should be registered via addCleanupFunc.
+type CleanupFunc func() error
+
+var cleanupFuncs map[string]CleanupFunc
+
+// addCleanupFunc registers a cleanup function.
+// These functions are invoked at the beginning and end of TestMain.
+func addCleanupFunc(f CleanupFunc) {
+	if f == nil {
+		return
+	}
+	if cleanupFuncs == nil {
+		cleanupFuncs = map[string]CleanupFunc{}
+	}
+	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	cleanupFuncs[name] = f
+}
+
+func invokeCleanupFuncs(exitOnError bool) {
+	for name, f := range cleanupFuncs {
+		if err := f(); err != nil {
+			fmt.Printf("%s failed; err=%v\n", name, err)
+			if exitOnError {
+				os.Exit(-1)
+			}
+		}
+	}
+}
 
 // assert fails the test if the condition is false.
 func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
@@ -54,6 +100,10 @@ func equals(tb testing.TB, exp, act interface{}) {
 	}
 }
 
-func Test_Create(t *testing.T) {
-
+func BenchmarkGetAppModule(b *testing.B) {
+	var v Version
+	path := "/benchmark/common_app/creation"
+	for i := 0; i < b.N; i++ {
+		getAppModule(path, v)
+	}
 }
