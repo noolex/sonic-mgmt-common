@@ -1,0 +1,64 @@
+From 2a39277f4b3669cacc486b53e7d5e2d406cc2aac Mon Sep 17 00:00:00 2001
+From: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+Date: Sun, 6 Jun 2021 23:23:58 -0700
+Subject: [PATCH] Add AFT fields for additional features.
+
+Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+---
+ common/openconfig-aft-common.yang | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/common/openconfig-aft-common.yang b/common/openconfig-aft-common.yang
+index 7c94e5c..056958f 100644
+--- a/common/openconfig-aft-common.yang
++++ b/common/openconfig-aft-common.yang
+@@ -128,6 +128,32 @@ submodule openconfig-aft-common {
+         within the AFT. Traffic is distributed across the set of next-hops
+         within the next-hop group according to the weight.";
+     }
++
++    leaf origin-protocol {
++      type identityref {
++        base "oc-pol-types:INSTALL_PROTOCOL_TYPE";
++      }
++      description
++        "The protocol from which the AFT entry was learned.";
++    }
++
++    leaf distance {
++      type uint32;
++      description
++        "Admin distance for this route";
++    }
++
++    leaf metric {
++      type uint32;
++      description
++        "Distance metric for this route";
++    }
++
++    leaf uptime {
++      type string;
++      description
++        "Time since route is configured or learned in RIB";
++    }
+   }
+ 
+   grouping aft-common-entry-nexthop-config {
+@@ -196,6 +222,13 @@ submodule openconfig-aft-common {
+       description
+         "The protocol from which the AFT entry was learned.";
+     }
++
++    leaf directly-connected {
++      type boolean;
++      default false;
++      description
++        "Defines whether the nexthop is directly connected.";
++    }
+   }
+ 
+   grouping aft-common-ip-state {
+-- 
+2.7.4
+

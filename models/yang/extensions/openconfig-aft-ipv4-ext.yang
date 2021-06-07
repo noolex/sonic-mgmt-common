@@ -9,7 +9,6 @@ module openconfig-aft-ipv4-ext {
 
   // import some basic types
   import openconfig-network-instance { prefix oc-netinst; }
-  import openconfig-aft { prefix oc-aft; }
   import openconfig-aft-ext { prefix oc-aft-ext; }
   import openconfig-inet-types { prefix oc-inet; }
   import openconfig-extensions { prefix oc-ext; }
@@ -126,20 +125,5 @@ module openconfig-aft-ipv4-ext {
         description
             "AFT IPv4 Multicast extensions.";
         uses aft-ipv4-ext-ipv4-mcast-top;
-  }
-
-  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry {
-      description "AFT extensions for IPv4 forwarding entry";
-      uses oc-aft:aft-nhop-structural;
-  }
-
-  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state {
-      description "AFT state extensions for IPv4 forwarding entry";
-      uses oc-aft-ext:aft-ext-common-ip-state;
-  }
-
-  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/next-hops/next-hop/state {
-    description "AFT nexthop state extensions for IPv4 forwarding entry";
-    uses oc-aft-ext:aft-ext-common-entry-nexthop-state;
   }
 }
