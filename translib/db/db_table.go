@@ -53,18 +53,16 @@ import (
 //        })
 
 type Table struct {
-	ts          *TableSpec
-	entry       map[string]Value
-	complete    bool
-	patterns    map[string][]Key
-	db          *DB
+	ts       *TableSpec
+	entry    map[string]Value
+	complete bool
+	patterns map[string][]Key
+	db       *DB
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Exported Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // GetTable gets the entire table.
 func (d *DB) GetTable(ts *TableSpec) (Table, error) {
@@ -113,7 +111,7 @@ func (d *DB) GetTable(ts *TableSpec) (Table, error) {
 		goto GetTableExit
 	}
 
-	table.patterns["*"] = keys
+	table.patterns[d.key2redis(ts, Key{Comp: []string{"*"}})] = keys
 
 	// For each key in Keys
 	// 	Add Value into table.entry[key)]
@@ -121,7 +119,7 @@ func (d *DB) GetTable(ts *TableSpec) (Table, error) {
 		value, e := d.GetEntry(ts, keys[i])
 		if e != nil {
 			glog.Warning("GetTable: GetKeys: " + e.Error())
-			value = Value {}
+			value = Value{}
 			e = nil
 		}
 		table.entry[d.key2redis(ts, keys[i])] = value
@@ -136,7 +134,6 @@ GetTableExit:
 }
 
 // GetKeys method retrieves all entry/row keys from a previously read table.
-// If the keys were not fetched earlier, fetch them now.
 func (t *Table) GetKeys() ([]Key, error) {
 	if glog.V(3) {
 		glog.Info("Table.GetKeys: Begin: t: ", t)
@@ -154,7 +151,6 @@ func (t *Table) GetKeys() ([]Key, error) {
 }
 
 // GetEntry method retrieves an entry/row from a previously read table.
-// If the entry was not fetched earlier, fetch it now.
 func (t *Table) GetEntry(key Key) (Value, error) {
 	/*
 		return Value{map[string]string{
@@ -179,5 +175,3 @@ func (t *Table) GetEntry(key Key) (Value, error) {
 ////////////////////////////////////////////////////////////////////////////////
 //  Internal Functions                                                        //
 ////////////////////////////////////////////////////////////////////////////////
-
-

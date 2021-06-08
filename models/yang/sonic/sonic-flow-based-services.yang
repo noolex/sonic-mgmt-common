@@ -27,6 +27,10 @@ module sonic-flow-based-services {
         prefix sms;
     }
 
+    import sonic-interface {
+        prefix sint;
+    }
+
     organization
         "SONiC";
 
@@ -53,6 +57,7 @@ module sonic-flow-based-services {
             enum QOS;
             enum MONITORING;
             enum FORWARDING;
+            enum ACL_COPP;
         }
     }
 
@@ -60,6 +65,13 @@ module sonic-flow-based-services {
         type enumeration {
             enum INGRESS;
             enum EGRESS;
+        }
+    }
+
+    typedef pbf-next-hop-group-type {
+        type enumeration {
+            enum IPV4;
+            enum IPV6;
         }
     }
 
@@ -299,7 +311,6 @@ module sonic-flow-based-services {
                 pattern "(0[xX][1-9a-fA-F][0-9a-fA-F]?|[1-9][0-9]?|1[0-9]{2}|2[0-5]{2})/(0[xX][1-9a-fA-F][0-9a-fA-F]?|[1-9][0-9]?|1[0-9]{2}|2[0-5]{2})";
             }
         }
-        /*
         leaf ICMP_TYPE {
             when "current()/../MATCH_TYPE = 'FIELDS'";
             type uint8;
@@ -317,7 +328,6 @@ module sonic-flow-based-services {
             }
             type uint8;
         }
-        */
     }
 
     grouping policy-section-attributes {
@@ -357,12 +367,22 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../DEFAULT_PACKET_ACTION)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "QoS and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'QOS'";
         }
 
         leaf SET_PCP {
@@ -381,12 +401,22 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../DEFAULT_PACKET_ACTION)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "QoS and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'QOS'";
         }
 
         leaf SET_TC {
@@ -405,12 +435,22 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../DEFAULT_PACKET_ACTION)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "QoS and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'QOS'";
         }
 
         leaf SET_POLICER_CIR {
@@ -425,11 +465,21 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../DEFAULT_PACKET_ACTION)" {
                 error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "((not(current()/../SET_TRAP_QUEUE)) and (/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'QOS'))"
+                 + "or (/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'ACL_COPP')" {
+                error-message "QoS and CoPP actions cant be configured at the same time.";
             }
        }
 
@@ -500,12 +550,22 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "Monitoring and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "Monitoring and forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "Monitoring and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
                 error-message "Monitoring and forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../DEFAULT_PACKET_ACTION)" {
                 error-message "Monitoring and forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Monitoring and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'MONITORING'";
         }
     }
 
@@ -535,8 +595,17 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "L2 and IPv4 forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "L2 and IPv4 forwarding actions cant be configured at the same time.";
+            }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
                 error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
+                error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
             }
             when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
             description "Egress options for L2 forwarding. Each leaf is in the format <PortName>|<Priority>.
@@ -570,12 +639,19 @@ module sonic-flow-based-services {
                 error-message "L2 and IPv4 forwarding actions cant be configured at the same time.";
             }
             must "not(current()/../SET_IPV6_NEXTHOP)" {
-                error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
             }
             when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
             description "Egress options for IPv4 forwarding. Each leaf is in the format <IPv4Address>|<VRF>|<Priority>.
                 Priority and VRF can be empty as its optional";
         }
+
         leaf-list SET_IPV6_NEXTHOP {
             max-elements 64;
             type string {
@@ -605,15 +681,161 @@ module sonic-flow-based-services {
             must "not(current()/../SET_IP_NEXTHOP)" {
                 error-message "IPV6 and IPv4 forwarding actions cant be configured at the same time.";
             }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "IPV6 and IPv4 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
+            }
             when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
             description "Egress options for IPv6 forwarding. Each leaf is in the format <IPv6Address>|<VRF>|<Priority>.
                 Priority and VRF can be empty as its optional";
         }
+
         leaf DEFAULT_PACKET_ACTION {
             type enumeration {
                 enum DROP;
             }
             when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
+            must "not(current()/../SET_PCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_DSCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TC)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_POLICER_CIR)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_MIRROR_SESSION)" {
+                error-message "Monitoring and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
+            }
+        }
+
+        leaf-list SET_IP_NEXTHOP_GROUP {
+            max-elements 64;
+            type string {
+                pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})\|'
+                    + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
+            }
+            sonic-ext:custom-validation ValidateGroupTypeMatches;
+            must "not(current()/../SET_PCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_DSCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TC)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_POLICER_CIR)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_MIRROR_SESSION)" {
+                error-message "Monitoring and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_INTERFACE)" {
+                error-message "L2 and IPv4 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
+            description "Egress options for IPv4 forwarding. Each leaf is in the format <NHGroupName>|<Priority>.
+                Priority can be empty as its optional";
+        }
+
+        leaf-list SET_IPV6_NEXTHOP_GROUP {
+            max-elements 64;
+            type string {
+                pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,71})\|'
+                    + '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?';
+            }
+            sonic-ext:custom-validation ValidateGroupTypeMatches;
+            must "not(current()/../SET_PCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_DSCP)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TC)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_POLICER_CIR)" {
+                error-message "QoS and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_MIRROR_SESSION)" {
+                error-message "Monitoring and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_INTERFACE)" {
+                error-message "L2 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IP_NEXTHOP)" {
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "IPv4 and IPv6 forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TRAP_QUEUE)" {
+                error-message "Forwarding and CoPP actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'FORWARDING'";
+            description "Egress options for IPv4 forwarding. Each leaf is in the format <NHGroupName>|<Priority>.
+                Priority can be empty as its optional";
+        }
+    }
+
+    grouping policy-section-acl-copp-actions {
+        leaf SET_TRAP_QUEUE {
+            type uint8 {
+                range "0..31" {
+                    error-app-tag invalid-trap-queue-value;
+                    error-message "Invalid Trap queue value.";
+                }
+            }
+            sonic-ext:custom-validation ValidateCpuQueueId;
+            must "not(current()/../SET_PCP)" {
+                error-message "CoPP and QoS actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_DSCP)" {
+                error-message "CoPP and QoS actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_TC)" {
+                error-message "CoPP and QoS actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_MIRROR_SESSION)" {
+                error-message "CoPP and monitoring actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_INTERFACE)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IP_NEXTHOP)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IP_NEXTHOP_GROUP)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../SET_IPV6_NEXTHOP_GROUP)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            must "not(current()/../DEFAULT_PACKET_ACTION)" {
+                error-message "CoPP and forwarding actions cant be configured at the same time.";
+            }
+            when "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()/../POLICY_NAME]/TYPE = 'ACL_COPP'";
         }
     }
 
@@ -703,6 +925,7 @@ module sonic-flow-based-services {
                 uses policy-section-qos-actions;
                 uses policy-section-monitoring-actions;
                 uses policy-section-forwarding-actions;
+                uses policy-section-acl-copp-actions;
             }
         }
 
@@ -721,9 +944,13 @@ module sonic-flow-based-services {
                         type leafref {
                             path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                         }
+                        type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                        }
                         type enumeration {
                             enum Switch;
                             enum CtrlPlane;
+                            enum CPU;
                         }
                     }
                 }
@@ -768,6 +995,119 @@ module sonic-flow-based-services {
                     }
                     sonic-ext:custom-validation ValidateLeafConstant;
                 }
+                leaf INGRESS_ACL_COPP_POLICY {
+                    must "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST[POLICY_NAME=current()]/TYPE = 'ACL_COPP'" {
+                        error-app-tag policy-not-acl-copp-type;
+                        error-message "Policy is not of type acl-copp";
+                    }
+                    type leafref {
+                        path "/sonic-flow-based-services/POLICY_TABLE/POLICY_TABLE_LIST/POLICY_NAME";
+                    }
+                    sonic-ext:custom-validation ValidateLeafConstant;
+                }
+            }
+        }
+
+        container PBF_NEXTHOP_GROUP {
+            list PBF_NEXTHOP_GROUP_LIST {
+                key GROUP_NAME;
+                max-elements 256;
+
+                leaf GROUP_NAME {
+                    type string {
+                        pattern '[a-zA-Z0-9]{1}([-a-zA-Z0-9_]{0,62})';
+                        length 1..63;
+                    }
+                }
+
+                leaf DESCRIPTION {
+                    type string {
+                        length 1..256 {
+                            error-app-tag pbf-nhgroup-description-invalid-length;
+                        }
+                    }
+                }
+
+                leaf TYPE {
+                    mandatory true;
+                    sonic-ext:custom-validation ValidateLeafConstant;
+                    type pbf-next-hop-group-type;
+                }
+
+                leaf THRESHOLD_TYPE {
+                    type enumeration {
+                        enum PERCENTAGE;
+                        enum COUNT;
+                    }
+                }
+
+                leaf THRESHOLD_UP {
+                    type uint8;
+                    must "(not(current()/../THRESHOLD_TYPE)) or (current()/../THRESHOLD_TYPE = 'COUNT') or ((current()/../THRESHOLD_TYPE = 'PERCENTAGE') and (current() >= 1) and (current() <= 100))" {
+                        error-app-tag invalid-value-threshold-up;
+                        error-message "Threshold up percentage value not in range 1-100";
+                    }
+                    must "(not(current()/../THRESHOLD_TYPE)) or (current()/../THRESHOLD_TYPE = 'PERCENTAGE') or ((current()/../THRESHOLD_TYPE = 'COUNT') and (current() >= 1) and (current() <= 128))" {
+                        error-app-tag invalid-value-threshold-up;
+                        error-message "Threshold up count value not in range 1-128";
+                    }
+                    must "(not(current()/../THRESHOLD_DOWN) or (current() > current()/../THRESHOLD_DOWN))" {
+                        error-app-tag threshold-up-less-than-threshold-down;
+                        error-message "Threshold up value must be greater than threshold down value";
+                    }
+                    must "(current()/../THRESHOLD_TYPE = 'COUNT') or (current()/../THRESHOLD_TYPE = 'PERCENTAGE')" {
+                        error-app-tag "threshold-type-not-configured";
+                        error-message "Threshold type mandatory to configure threshold up or down values.";
+                    }
+                }
+
+                leaf THRESHOLD_DOWN {
+                    type uint8;
+                    must "(not(current()/../THRESHOLD_TYPE)) or (current()/../THRESHOLD_TYPE = 'COUNT') or ((current()/../THRESHOLD_TYPE = 'PERCENTAGE') and (current() >= 0) and (current() <= 99))" {
+                        error-app-tag invalid-value-threshold-down;
+                        error-message "Threshold down percentage value not in range 0-99";
+                    }
+                    must "(not(current()/../THRESHOLD_TYPE)) or (current()/../THRESHOLD_TYPE = 'PERCENTAGE') or ((current()/../THRESHOLD_TYPE = 'COUNT') and (current() >= 0) and (current() <= 127))" {
+                        error-app-tag invalid-value-threshold-down;
+                        error-message "Threshold down count value not in range 1-127";
+                    }
+                    must "(not(current()/../THRESHOLD_UP) or (current() < current()/../THRESHOLD_UP))" {
+                        error-app-tag threshold-down-greater-than-threshold-up;
+                        error-message "Threshold down value must be lesser than threshold up value";
+                    }
+                    must "(current()/../THRESHOLD_TYPE = 'COUNT') or (current()/../THRESHOLD_TYPE = 'PERCENTAGE')" {
+                        error-app-tag "threshold-type-not-configured";
+                        error-message "Threshold type mandatory to configure threshold up or down values.";
+                    }
+                }
+
+                leaf-list SET_IP_NEXTHOP {
+                    max-elements 128;
+                    type string {
+                        pattern '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\|'
+                            + '((([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5]))\|'
+                            + '(default|Vrf[a-zA-Z0-9_-]+)?\|'
+                            + '((non-recursive)|(recursive)|(overlay))?';
+                    }
+                    must "current()/../TYPE = 'IPV4'" {
+                        error-app-tag not-ipv4-next-hop;
+                        error-message "Only IPv4 next-hops can be configured for IPv4 next-hop groups";
+                    }
+                }
+
+                leaf-list SET_IPV6_NEXTHOP {
+                    max-elements 128;
+                    type string {
+                        pattern '([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\|'
+                            + '(((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}(([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4})))\|'
+                            + '(default|Vrf[a-zA-Z0-9_-]+)?\|'
+                            + '((non-recursive)|(recursive)|(overlay))?';
+                    }
+                    must "current()/../TYPE = 'IPV6'" {
+                        error-app-tag not-ipv6-next-hop;
+                        error-message "Only IPv6 next-hops can be configured for IPv6 next-hop groups";
+                    }
+                }
             }
         }
     }
@@ -792,6 +1132,16 @@ module sonic-flow-based-services {
         }
 
         leaf VRF {
+            type string;
+        }
+
+        leaf PRIORITY {
+            type uint16;
+        }
+    }
+
+    grouping pbf-nexthop-group-attributes {
+        leaf GROUP_NAME {
             type string;
         }
 
@@ -851,9 +1201,9 @@ module sonic-flow-based-services {
 
     rpc get-policy {
         description
-            "RPC to retrieve the policy data. The name and type are optional. If no name is specified then all
-            policies with the matching type will be retrieved. If no type is provided then all policies will
-            be retrieved.";
+            "RPC to retrieve the policy data. The policy name, policy type and class name are optional. If no policy name is specified then all
+            policies with the matching type will be retrieved. If no policy type is provided then all policies will
+            be retrieved. Class name is valid only when policy name is valid.";
 
         input {
             leaf POLICY_NAME {
@@ -865,6 +1215,11 @@ module sonic-flow-based-services {
                 type policy-types;
                 description
                     "Type of the policy to retrieved. (Optional)";
+            }
+            leaf CLASS_NAME {
+                type string;
+                description
+                    "Name of the flow classifier using this policy to retrieved. (Optional)";
             }
         }
         output {
@@ -891,6 +1246,7 @@ module sonic-flow-based-services {
                     leaf PRIORITY {
                         type uint16;
                     }
+
                     leaf SET_DSCP {
                         type uint8;
                     }
@@ -905,7 +1261,7 @@ module sonic-flow-based-services {
 
                     leaf SET_POLICER_CIR {
                         type uint64;
-                   }
+                    }
 
                     leaf SET_POLICER_CBS {
                         type uint64;
@@ -931,8 +1287,16 @@ module sonic-flow-based-services {
                         uses pbf-nexthop-config-attributes;
                     }
 
+                    list SET_IP_NEXTHOP_GROUP {
+                        uses pbf-nexthop-group-attributes;
+                    }
+
                     list SET_IPV6_NEXT_HOP {
                         uses pbf-nexthop-config-attributes;
+                    }
+
+                    list SET_IPV6_NEXTHOP_GROUP {
+                        uses pbf-nexthop-group-attributes;
                     }
 
                     leaf DEFAULT_PACKET_ACTION {
@@ -965,6 +1329,7 @@ module sonic-flow-based-services {
                         description
                             "Priority value";
                     }
+
                     leaf QUEUE {
                         type uint8 {
                             range "0..47" {
@@ -974,6 +1339,7 @@ module sonic-flow-based-services {
                         description
                             "CPU queue id";
                     }
+
                     leaf METER_TYPE {
                         type string {
                             pattern "(packets)|(bytes)" {
@@ -983,6 +1349,7 @@ module sonic-flow-based-services {
                         description
                             "Meter type";
                     }
+
                     leaf MODE {
                         type string {
                             pattern "(sr_tcm)|(tr_tcm)|(storm)" {
@@ -992,6 +1359,7 @@ module sonic-flow-based-services {
                         description
                             "Mode";
                     }
+
                     leaf GREEN_ACTION {
                         type string {
                             pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
@@ -1001,6 +1369,7 @@ module sonic-flow-based-services {
                         description
                             "Green action";
                     }
+
                     leaf RED_ACTION {
                         type string {
                             pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
@@ -1010,6 +1379,7 @@ module sonic-flow-based-services {
                         description
                             "Red action";
                     }
+
                     leaf YELLOW_ACTION {
                         type string {
                             pattern "(drop)|(forward)|(copy)|(copy_cancel)|(trap)|(log)|(deny)|(transit)" {
@@ -1104,6 +1474,7 @@ module sonic-flow-based-services {
                         leaf PRIORITY {
                             type uint16;
                         }
+
                         leaf SET_DSCP {
                             type uint8;
                         }
@@ -1118,7 +1489,7 @@ module sonic-flow-based-services {
 
                         leaf SET_POLICER_CIR {
                             type uint64;
-                       }
+                        }
 
                         leaf SET_POLICER_CBS {
                             type uint64;
@@ -1144,14 +1515,26 @@ module sonic-flow-based-services {
                             uses pbf-nexthop-config-attributes;
                         }
 
+                        list SET_IP_NEXTHOP_GROUP {
+                            uses pbf-nexthop-group-attributes;
+                        }
+
                         list SET_IPV6_NEXT_HOP {
                             uses pbf-nexthop-config-attributes;
+                        }
+
+                        list SET_IPV6_NEXTHOP_GROUP {
+                            uses pbf-nexthop-group-attributes;
                         }
 
                         leaf DEFAULT_PACKET_ACTION {
                             type enumeration {
                                 enum DROP;
                             }
+                        }
+
+                        leaf SET_TRAP_QUEUE {
+                            type uint8;
                         }
 
                         container STATE {
@@ -1234,19 +1617,16 @@ module sonic-flow-based-services {
                                 leaf OPERATIONAL_PBS {
                                     type uint64;
                                 }
-
                                 leaf UNITS {
                                     type enumeration {
                                         enum BYTES;
                                     }
                                 }
-
                                 leaf COLOR_SOURCE {
                                     type enumeration {
                                         enum COLOR-BLIND;
                                     }
                                 }
-
                                 leaf STATUS {
                                     type enumeration {
                                         enum Active;
@@ -1261,6 +1641,7 @@ module sonic-flow-based-services {
                                         enum DROP;
                                     }
                                 }
+
                                 leaf INTERFACE_NAME {
                                     type string;
                                 }
@@ -1275,6 +1656,14 @@ module sonic-flow-based-services {
 
                                 leaf PRIORITY {
                                     type uint16;
+                                }
+
+                                leaf SET_IP_NEXTHOP_GROUP {
+                                    type string;
+                                }
+
+                                leaf SET_IPV6_NEXTHOP_GROUP {
+                                    type string;
                                 }
                             }
                         }
@@ -1312,6 +1701,86 @@ module sonic-flow-based-services {
                 type policy-types;
                 description
                     "Type of the policy to retrieved. (Optional)";
+            }
+        }
+    }
+
+    rpc get-pbf-next-hop-group {
+        description
+            "Get PBF next-hop group information";
+
+        input {
+            leaf GROUP_NAME {
+                type string;
+            }
+
+            leaf TYPE {
+                type pbf-next-hop-group-type;
+            }
+        }
+        output {
+            list GROUPS {
+                key GROUP_NAME;
+
+                leaf GROUP_NAME {
+                    type string;
+                }
+
+                leaf TYPE {
+                    type pbf-next-hop-group-type;
+                }
+
+                leaf DESCRIPTION {
+                    type string;
+                }
+
+                leaf THRESHOLD_TYPE {
+                    type enumeration {
+                        enum PERCENTAGE;
+                        enum COUNT;
+                    }
+                }
+
+                leaf THRESHOLD_UP {
+                    type uint8;
+                }
+
+                leaf THRESHOLD_DOWN {
+                    type uint8;
+                }
+
+                list NEXT_HOPS {
+                    key ENTRY_ID;
+
+                    leaf ENTRY_ID {
+                        type uint16;
+                    }
+
+                    leaf IP_ADDRESS {
+                        type string;
+                    }
+
+                    leaf VRF {
+                        type string;
+                    }
+
+                    leaf NEXT_HOP_TYPE {
+                        type enumeration {
+                            enum non-recursive;
+                            enum recursive;
+                        }
+                    }
+                }
+
+                list REFERENCES {
+                    leaf POLICY_NAME {
+                        type string;
+                    }
+
+                    leaf PRIORITY {
+                        type uint16;
+                    }
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ module openconfig-lldp-ext {
 
   import openconfig-lldp { prefix oc-lldp; }
   import openconfig-extensions { prefix oc-ext; }
+  import ietf-yang-types { prefix yang; }
 
   // meta
   organization "OpenConfig working group";
@@ -116,6 +117,16 @@ module openconfig-lldp-ext {
       description "Adds extensions to Interface State"; 
 
 	  uses lldp-ext-interface-config;
+  }
+
+  augment /oc-lldp:lldp/oc-lldp:interfaces/oc-lldp:interface/oc-lldp:state/oc-lldp:counters {
+      description "Adds extensions to Interface Counters"; 
+
+      leaf ageout {
+          type yang:counter64;
+          description
+              "Indicates number of times neighbor aged out";
+      }
   }
 }
 

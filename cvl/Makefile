@@ -26,6 +26,7 @@ BUILD_DIR:=$(TOP_DIR)/build/cvl
 CVL_PKG=$(TOP_DIR)/build/pkg/linux_amd64/cvl.a
 
 STATIC_CHECK = $(BUILD_DIR)/.staticcheck
+FORMAT_CHECK = $(BUILD_DIR)/.formatcheck
 CVL_TEST_DIR = $(TOP_DIR)/build/tests/cvl
 CVL_TEST_BIN = $(CVL_TEST_DIR)/cvl.test
 CVL_TEST_SCHEMA_DIR = $(CVL_TEST_DIR)/testdata/schema
@@ -39,7 +40,7 @@ ifdef DEBUG
 	GOFLAGS += -gcflags="all=-N -l"
 endif
 
-DEFAULT_TARGETS = deps schema $(STATIC_CHECK)
+DEFAULT_TARGETS = deps schema $(STATIC_CHECK) $(FORMAT_CHECK)
 ifeq ($(NO_TEST_BINS),)
 DEFAULT_TARGETS += $(CVL_TEST_BIN) test-schema
 endif
@@ -85,6 +86,11 @@ gotest:schema test-schema $(CVL_TEST_CONFIG)
 $(STATIC_CHECK): $(SRC_FILES)
 	$(TOPDIR)/tools/test/static-check.sh \
 		--log=$(BUILD_DIR)/staticcheck.log
+	touch $@
+
+$(FORMAT_CHECK): $(SRC_FILES) $(TEST_FILES)
+	$(TOPDIR)/tools/test/format-check.sh \
+		--log=$(BUILD_DIR)/formatcheck.log
 	touch $@
 
 clean:

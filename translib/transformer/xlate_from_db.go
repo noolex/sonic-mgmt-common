@@ -19,17 +19,18 @@
 package transformer
 
 import (
-    "fmt"
-    "github.com/Azure/sonic-mgmt-common/translib/db"
-    "strings"
-    "encoding/json"
-    "strconv"
-    "errors"
-    "sync"
-    "github.com/openconfig/goyang/pkg/yang"
-    "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
 
-    log "github.com/golang/glog"
+	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/openconfig/goyang/pkg/yang"
+
+	log "github.com/golang/glog"
 )
 
 type typeMapOfInterface map[string]interface{}
@@ -51,7 +52,7 @@ func DbValToInt(dbFldVal string, base int, size int, isUint bool) (interface{}, 
 	return res, err
 }
 
-func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) (yang.TypeKind) {
+func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) yang.TypeKind {
 	if yngTerminalNdDtType == yang.Yleafref {
 		var entry *yang.Entry
 		var path string
@@ -61,6 +62,8 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 		} else if _, ok := xYangSpecMap[fldXpath]; ok {
 			path = xYangSpecMap[fldXpath].yangEntry.Type.Path
 			entry = xYangSpecMap[fldXpath].yangEntry
+		} else {
+			return yngTerminalNdDtType
 		}
 		xpath, _, _ := XfmrRemoveXPATHPredicates(path)
 		xfmrLogInfoAll("Received path %v for FieldXpath %v", xpath, fldXpath)
@@ -73,7 +76,7 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 					if x == ".." {
 						entry = entry.Parent
 					} else {
-						if _,ok := entry.Dir[x]; ok {
+						if _, ok := entry.Dir[x]; ok {
 							entry = entry.Dir[x]
 						}
 					}
@@ -81,9 +84,14 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 				if entry != nil && entry.Type != nil {
 					yngTerminalNdDtType = entry.Type.Kind
 					xfmrLogInfoAll("yangLeaf datatype %v", yngTerminalNdDtType)
+
 					if yngTerminalNdDtType == yang.Yleafref {
 						leafPath := getXpathFromYangEntry(entry)
-						xfmrLogInfoAll("getLeafrefRefdYangType: xpath for leafref type:%v",leafPath)
+						if strings.Contains(leafPath, "sonic") {
+							pathList := strings.Split(leafPath, "/")
+							leafPath = pathList[SONIC_TABLE_INDEX] + "/" + pathList[SONIC_FIELD_INDEX]
+						}
+						xfmrLogInfoAll("getLeafrefRefdYangType: xpath for leafref type:%v", leafPath)
 						return getLeafrefRefdYangType(yngTerminalNdDtType, leafPath)
 					}
 				}
@@ -93,14 +101,19 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 			// Form xpath based on sonic or non sonic yang path
 			if strings.Contains(xpath, "sonic") {
 				pathList := strings.Split(xpath, "/")
-				xpath = pathList[SONIC_TABLE_INDEX]+ "/" + pathList[SONIC_FIELD_INDEX]
-				if _, ok := xDbSpecMap[xpath]; ok {
+				xpath = pathList[SONIC_TABLE_INDEX] + "/" + pathList[SONIC_FIELD_INDEX]
+				if xpath == fldXpath {
+					if sonicListInfo, ok := xDbSpecMap[pathList[SONIC_TABLE_INDEX]+"/"+pathList[SONIC_LIST_INDEX]]; ok {
+						entry = sonicListInfo.dbEntry.Dir[pathList[SONIC_FIELD_INDEX]]
+						yngTerminalNdDtType = sonicListInfo.dbEntry.Dir[pathList[SONIC_FIELD_INDEX]].Type.Kind
+					}
+				} else if _, ok := xDbSpecMap[xpath]; ok {
 					entry = xDbSpecMap[xpath].dbEntry
 					yngTerminalNdDtType = entry.Type.Kind
 				}
 
 			} else {
-				xpath = "/" + entry.Prefix.Parent.NName() + ":" + strings.SplitN(xpath, ":",2)[1]
+				xpath = "/" + entry.Prefix.Parent.NName() + ":" + strings.SplitN(xpath, ":", 2)[1]
 				if _, ok := xYangSpecMap[xpath]; ok {
 					entry = xYangSpecMap[xpath].yangEntry
 					yngTerminalNdDtType = entry.Type.Kind
@@ -111,7 +124,11 @@ func getLeafrefRefdYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string) 
 			}
 			if yngTerminalNdDtType == yang.Yleafref {
 				leafPath := getXpathFromYangEntry(entry)
-				xfmrLogInfoAll("getLeafrefRefdYangType: xpath for leafref type:%v",leafPath)
+				if strings.Contains(leafPath, "sonic") {
+					pathList := strings.Split(leafPath, "/")
+					leafPath = pathList[SONIC_TABLE_INDEX] + "/" + pathList[SONIC_FIELD_INDEX]
+				}
+				xfmrLogInfoAll("getLeafrefRefdYangType: xpath for leafref type:%v", leafPath)
 				return getLeafrefRefdYangType(yngTerminalNdDtType, leafPath)
 			}
 
@@ -132,58 +149,57 @@ func DbToYangType(yngTerminalNdDtType yang.TypeKind, fldXpath string, dbFldVal s
 		yngTerminalNdDtType = getLeafrefRefdYangType(yngTerminalNdDtType, fldXpath)
 	}
 
-
 	switch yngTerminalNdDtType {
-        case yang.Ynone:
-                log.Warning("Yang node data-type is non base yang type")
+	case yang.Ynone:
+		log.Warning("Yang node data-type is non base yang type")
 		//TODO - enhance to handle non base data types depending on future use case
 		err = errors.New("Yang node data-type is non base yang type")
-        case yang.Yint8:
-                res, err = DbValToInt(dbFldVal, INTBASE, 8, false)
+	case yang.Yint8:
+		res, err = DbValToInt(dbFldVal, INTBASE, 8, false)
 		var resInt8 int8 = int8(res.(int64))
 		resPtr = &resInt8
-        case yang.Yint16:
-                res, err = DbValToInt(dbFldVal, INTBASE, 16, false)
+	case yang.Yint16:
+		res, err = DbValToInt(dbFldVal, INTBASE, 16, false)
 		var resInt16 int16 = int16(res.(int64))
 		resPtr = &resInt16
-        case yang.Yint32:
-                res, err = DbValToInt(dbFldVal, INTBASE, 32, false)
+	case yang.Yint32:
+		res, err = DbValToInt(dbFldVal, INTBASE, 32, false)
 		var resInt32 int32 = int32(res.(int64))
 		resPtr = &resInt32
-        case yang.Yuint8:
-                res, err = DbValToInt(dbFldVal, INTBASE, 8, true)
+	case yang.Yuint8:
+		res, err = DbValToInt(dbFldVal, INTBASE, 8, true)
 		var resUint8 uint8 = uint8(res.(uint64))
 		resPtr = &resUint8
-        case yang.Yuint16:
-                res, err = DbValToInt(dbFldVal, INTBASE, 16, true)
+	case yang.Yuint16:
+		res, err = DbValToInt(dbFldVal, INTBASE, 16, true)
 		var resUint16 uint16 = uint16(res.(uint64))
 		resPtr = &resUint16
-        case yang.Yuint32:
-                res, err = DbValToInt(dbFldVal, INTBASE, 32, true)
+	case yang.Yuint32:
+		res, err = DbValToInt(dbFldVal, INTBASE, 32, true)
 		var resUint32 uint32 = uint32(res.(uint64))
 		resPtr = &resUint32
-        case yang.Ybool:
+	case yang.Ybool:
 		if res, err = strconv.ParseBool(dbFldVal); err != nil {
 			log.Warningf("Non Bool type for yang leaf-list item %v", dbFldVal)
 		}
 		var resBool bool = res.(bool)
 		resPtr = &resBool
-        case yang.Ybinary, yang.Ydecimal64, yang.Yenum, yang.Yidentityref, yang.Yint64, yang.Yuint64, yang.Ystring, yang.Yunion, yang.Yleafref:
-                // TODO - handle the union type
-                // Make sure to encode as string, expected by util_types.go: ytypes.yangToJSONType
-                xfmrLogInfoAll("Yenum/Ystring/Yunion(having all members as strings) type for yangXpath %v", fldXpath)
-                res = dbFldVal
+	case yang.Ybinary, yang.Ydecimal64, yang.Yenum, yang.Yidentityref, yang.Yint64, yang.Yuint64, yang.Ystring, yang.Yunion, yang.Yleafref:
+		// TODO - handle the union type
+		// Make sure to encode as string, expected by util_types.go: ytypes.yangToJSONType
+		xfmrLogInfoAll("Yenum/Ystring/Yunion(having all members as strings) type for yangXpath %v", fldXpath)
+		res = dbFldVal
 		var resString string = res.(string)
 		resPtr = &resString
 	case yang.Yempty:
 		logStr := fmt.Sprintf("Yang data type for xpath %v is Yempty.", fldXpath)
 		log.Warning(logStr)
 		err = errors.New(logStr)
-        default:
+	default:
 		logStr := fmt.Sprintf("Unrecognized/Unhandled yang-data type(%v) for xpath %v.", fldXpath, yang.TypeKindToName[yngTerminalNdDtType])
-                log.Warning(logStr)
-                err = errors.New(logStr)
-        }
+		log.Warning(logStr)
+		err = errors.New(logStr)
+	}
 	return res, resPtr, err
 }
 
@@ -193,10 +209,10 @@ func processLfLstDbToYang(fieldXpath string, dbFldVal string, yngTerminalNdDtTyp
 	var resLst []interface{}
 
 	xfmrLogInfoAll("xpath: %v, dbFldVal: %v", fieldXpath, dbFldVal)
-	switch  yngTerminalNdDtType {
+	switch yngTerminalNdDtType {
 	case yang.Ybinary, yang.Ydecimal64, yang.Yenum, yang.Yidentityref, yang.Yint64, yang.Yuint64, yang.Ystring, yang.Yunion:
-                // TODO - handle the union type.OC yang should have field xfmr.sonic-yang?
-                // Make sure to encode as string, expected by util_types.go: ytypes.yangToJSONType:
+		// TODO - handle the union type.OC yang should have field xfmr.sonic-yang?
+		// Make sure to encode as string, expected by util_types.go: ytypes.yangToJSONType:
 		xfmrLogInfoAll("DB leaf-list and Yang leaf-list are of same data-type")
 		for _, fldVal := range valLst {
 			resLst = append(resLst, fldVal)
@@ -246,7 +262,7 @@ func sonicDbToYangTerminalNodeFill(field string, inParamsForGet xlateFromDbParam
 
 	yangType := yangTypeGet(xDbSpecMapEntry.dbEntry)
 	yngTerminalNdDtType := xDbSpecMapEntry.dbEntry.Type.Kind
-	if yangType ==  YANG_LEAF_LIST {
+	if yangType == YANG_LEAF_LIST {
 		/* this should never happen but just adding for safetty */
 		if !strings.HasSuffix(field, "@") {
 			log.Warningf("Leaf-list in Sonic yang should also be a leaf-list in DB, its not for xpath %v", fieldXpath)
@@ -303,24 +319,26 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 	dbIdx := inParamsForGet.curDb
 	yangNode, ok := xDbSpecMap[xpath]
 
-	if ok  && yangNode.dbEntry != nil {
+	if ok && yangNode.dbEntry != nil {
 		xpathPrefix := table
-		if len(table) > 0 { xpathPrefix += "/" }
+		if len(table) > 0 {
+			xpathPrefix += "/"
+		}
 
 		for yangChldName := range yangNode.dbEntry.Dir {
-			chldXpath := xpathPrefix+yangChldName
+			chldXpath := xpathPrefix + yangChldName
 			if xDbSpecMap[chldXpath] != nil && xDbSpecMap[chldXpath].dbEntry != nil {
 				chldYangType := yangTypeGet(xDbSpecMap[chldXpath].dbEntry)
 
-				if  chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST {
+				if chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST {
 					xfmrLogInfoAll("tbl(%v), k(%v), yc(%v)", table, key, yangChldName)
 					fldName := yangChldName
-					if chldYangType == YANG_LEAF_LIST  {
+					if chldYangType == YANG_LEAF_LIST {
 						fldName = fldName + "@"
 					}
-				        curUri := inParamsForGet.uri + "/" + yangChldName
+					curUri := inParamsForGet.uri + "/" + yangChldName
 					linParamsForGet := formXlateFromDbParams(nil, inParamsForGet.dbs, dbIdx, inParamsForGet.ygRoot, curUri, inParamsForGet.requestUri, curUri, inParamsForGet.oper, table, key, dbDataMap, inParamsForGet.txCache, resultMap, inParamsForGet.validate)
-                                        sonicDbToYangTerminalNodeFill(fldName, linParamsForGet)
+					sonicDbToYangTerminalNodeFill(fldName, linParamsForGet)
 					resultMap = linParamsForGet.resultMap
 					inParamsForGet.resultMap = resultMap
 				} else if chldYangType == YANG_CONTAINER {
@@ -344,7 +362,7 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 				} else if chldYangType == YANG_LIST {
 					pathList := strings.Split(uri, "/")
 					// Skip the list entries if the uri has specific list query
-					if len(pathList) > SONIC_TABLE_INDEX+1 && !strings.Contains(uri,yangChldName) {
+					if len(pathList) > SONIC_TABLE_INDEX+1 && !strings.Contains(uri, yangChldName) {
 						xfmrLogInfoAll("Skipping yangChldName: %v, pathList:%v, len:%v", yangChldName, pathList, len(pathList))
 					} else {
 						var mapSlice []typeMapOfInterface
@@ -353,7 +371,7 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 						inParamsForGet.xpath = curUri
 						mapSlice = sonicDbToYangListFill(inParamsForGet)
 						dbDataMap = inParamsForGet.dbDataMap
-						if len(key) > 0 && len(mapSlice) == 1 {// Single instance query. Don't return array of maps
+						if len(key) > 0 && len(mapSlice) == 1 { // Single instance query. Don't return array of maps
 							for k, val := range mapSlice[0] {
 								resultMap[k] = val
 							}
@@ -398,7 +416,7 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 		var dbNode *dbInfo
 
 		if len(table) > 0 {
-			tokens:= strings.Split(xpath, "/")
+			tokens := strings.Split(xpath, "/")
 			if tokens[SONIC_TABLE_INDEX] == table {
 				fieldName := tokens[len(tokens)-1]
 				dbSpecField := table + "/" + fieldName
@@ -416,7 +434,7 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 		}
 
 		if dbNode != nil && dbNode.dbEntry != nil {
-			cdb   := db.ConfigDB
+			cdb := db.ConfigDB
 			yangType := yangTypeGet(dbNode.dbEntry)
 			if len(table) > 0 {
 				cdb = xDbSpecMap[table].dbIndex
@@ -425,7 +443,7 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 
 			if yangType == YANG_LEAF || yangType == YANG_LEAF_LIST {
 				fldName := xDbSpecMap[xpath].dbEntry.Name
-				if yangType == YANG_LEAF_LIST  {
+				if yangType == YANG_LEAF_LIST {
 					fldName = fldName + "@"
 				}
 				linParamsForGet := formXlateFromDbParams(nil, inParamsForGet.dbs, cdb, inParamsForGet.ygRoot, xpath, inParamsForGet.requestUri, uri, inParamsForGet.oper, table, key, dbDataMap, inParamsForGet.txCache, resultMap, inParamsForGet.validate)
@@ -440,14 +458,14 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 				resultMap = inParamsForGet.resultMap
 			} else if yangType == YANG_LIST {
 				mapSlice := sonicDbToYangListFill(inParamsForGet)
-				if len(key) > 0 && len(mapSlice) == 1 {// Single instance query. Don't return array of maps
-                                                for k, val := range mapSlice[0] {
-                                                        resultMap[k] = val
-                                                }
+				if len(key) > 0 && len(mapSlice) == 1 { // Single instance query. Don't return array of maps
+					for k, val := range mapSlice[0] {
+						resultMap[k] = val
+					}
 
-                                } else if len(mapSlice) > 0 {
+				} else if len(mapSlice) > 0 {
 					pathl := strings.Split(xpath, "/")
-					lname := pathl[len(pathl) - 1]
+					lname := pathl[len(pathl)-1]
 					resultMap[lname] = mapSlice
 				}
 			}
@@ -457,27 +475,27 @@ func directDbToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, e
 	jsonMapData, _ := json.Marshal(resultMap)
 	isEmptyPayload := isJsonDataEmpty(string(jsonMapData))
 	jsonData := fmt.Sprintf("%v", string(jsonMapData))
-        if isEmptyPayload {
+	if isEmptyPayload {
 		log.Warning("No data available")
-        }
-        return jsonData, isEmptyPayload, err
+	}
+	return jsonData, isEmptyPayload, err
 }
 
 func tableNameAndKeyFromDbMapGet(dbDataMap map[string]map[string]db.Value) (string, string, error) {
-    tableName := ""
-    tableKey  := ""
-    for tn, tblData := range dbDataMap {
-        tableName = tn
-        for kname := range tblData {
-            tableKey = kname
-        }
-    }
-    return tableName, tableKey, nil
+	tableName := ""
+	tableKey := ""
+	for tn, tblData := range dbDataMap {
+		tableName = tn
+		for kname := range tblData {
+			tableKey = kname
+		}
+	}
+	return tableName, tableKey, nil
 }
 
 func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string, cdb db.DBNum, dbs [db.MaxDB]*db.DB, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool) (map[db.DBNum]map[string]map[string]db.Value, error) {
 	var err error
-	dbresult  := make(RedisDbMap)
+	dbresult := make(RedisDbMap)
 	dbresult[cdb] = make(map[string]map[string]db.Value)
 	dbFormat := KeySpec{}
 	dbFormat.Ts.Name = tblName
@@ -496,7 +514,7 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 	}
 	err = TraverseDb(dbs, dbFormat, &dbresult, nil, dbTblKeyGetCache)
 	if err != nil {
-		log.Warningf("TraverseDb() didn't fetch data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
+		xfmrLogInfo("Didn't fetch DB data for tbl(DB num) %v(%v) for xpath %v", tblName, cdb, xpath)
 		return nil, err
 	}
 	if _, ok := dbresult[cdb]; !ok {
@@ -510,28 +528,28 @@ func fillDbDataMapForTbl(uri string, xpath string, tblName string, tblKey string
 
 // Assumption: All tables are from the same DB
 func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBNum]map[string]map[string]db.Value, dbTblKeyGetCache map[db.DBNum]map[string]map[string]bool, xpath string) error {
-    // skip the query if the table is already visited
-    if _,ok := (*dbDataMap)[inParams.curDb][tbl]; ok {
-       if len(inParams.key) > 0 {
-          if  _,ok = (*dbDataMap)[inParams.curDb][tbl][inParams.key]; ok {
-             return nil
-          }
-       } else {
-          return nil
-       }
-    }
+	// skip the query if the table is already visited
+	if _, ok := (*dbDataMap)[inParams.curDb][tbl]; ok {
+		if len(inParams.key) > 0 {
+			if _, ok = (*dbDataMap)[inParams.curDb][tbl][inParams.key]; ok {
+				return nil
+			}
+		} else {
+			return nil
+		}
+	}
 
-	terminalNodeGet  := false
+	terminalNodeGet := false
 	qdbMapHasTblData := false
 	qdbMapHasTblKeyData := false
-	if !xYangSpecMap[xpath].hasNonTerminalNode  && len(inParams.key) > 0 {
+	if !xYangSpecMap[xpath].hasNonTerminalNode && len(inParams.key) > 0 {
 		terminalNodeGet = true
 	}
 	if qdbMap, getOk := dbTblKeyGetCache[inParams.curDb]; getOk {
 		if dbTblData, tblPresent := qdbMap[tbl]; tblPresent {
 			qdbMapHasTblData = true
 			if _, keyPresent := dbTblData[inParams.key]; keyPresent {
-				qdbMapHasTblKeyData = true;
+				qdbMapHasTblKeyData = true
 			}
 		}
 	}
@@ -542,7 +560,7 @@ func dbDataFromTblXfmrGet(tbl string, inParams XfmrParams, dbDataMap *map[db.DBN
 			mapCopy((*dbDataMap)[inParams.curDb], curDbDataMap[inParams.curDb])
 		}
 	}
-    return nil
+	return nil
 }
 
 func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error {
@@ -559,62 +577,61 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 	tbl := inParamsForGet.tbl
 	tblKey := inParamsForGet.tblKey
 
-
 	_, ok := xYangSpecMap[xpath]
 	if ok {
-	if xYangSpecMap[xpath].xfmrTbl != nil {
-		xfmrTblFunc := *xYangSpecMap[xpath].xfmrTbl
-		if len(xfmrTblFunc) > 0 {
-			inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, tblKey, dbDataMap, nil, nil, txCache)
-			tblList, _   = xfmrTblHandlerFunc(xfmrTblFunc, inParams, inParamsForGet.xfmrDbTblKeyCache)
-			inParamsForGet.dbDataMap = dbDataMap
-			inParamsForGet.ygRoot = ygRoot
-			if len(tblList) != 0 {
-				for _, curTbl := range tblList {
-					dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpath)
-					inParamsForGet.dbDataMap = dbDataMap
-					inParamsForGet.ygRoot = ygRoot
-				}
-			}
-		}
-		if tbl != "" {
-			if !contains(tblList, tbl) {
-				tblList = append(tblList, tbl)
-			}
-		}
-	} else if tbl != "" && xYangSpecMap[xpath].xfmrTbl == nil {
-		tblList = append(tblList, tbl)
-	} else if tbl == "" && xYangSpecMap[xpath].xfmrTbl == nil {
-		// Handling for case: Parent list is not associated with a tableName but has children containers/lists having tableNames.
-		if tblKey != "" {
-			var mapSlice []typeMapOfInterface
-			instMap, err := yangListInstanceDataFill(inParamsForGet, isFirstCall)
-			dbDataMap = inParamsForGet.dbDataMap
-			if err != nil {
-				log.Infof("Error(%v) returned for %v", err, uri)
-			} else if ((instMap != nil)  && (len(instMap) > 0)) {
-				mapSlice = append(mapSlice, instMap)
-			}
-
-			if len(mapSlice) > 0 {
-				listInstanceGet := false
-				// Check if it is a list instance level Get
-				if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
-					listInstanceGet = true
-					for k, v := range mapSlice[0] {
-						resultMap[k] = v
+		if xYangSpecMap[xpath].xfmrTbl != nil {
+			xfmrTblFunc := *xYangSpecMap[xpath].xfmrTbl
+			if len(xfmrTblFunc) > 0 {
+				inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, tblKey, dbDataMap, nil, nil, txCache)
+				tblList, _ = xfmrTblHandlerFunc(xfmrTblFunc, inParams, inParamsForGet.xfmrDbTblKeyCache)
+				inParamsForGet.dbDataMap = dbDataMap
+				inParamsForGet.ygRoot = ygRoot
+				if len(tblList) != 0 {
+					for _, curTbl := range tblList {
+						dbDataFromTblXfmrGet(curTbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpath)
+						inParamsForGet.dbDataMap = dbDataMap
+						inParamsForGet.ygRoot = ygRoot
 					}
 				}
-				if !listInstanceGet {
-					resultMap[xYangSpecMap[xpath].yangEntry.Name] = mapSlice
+			}
+			if tbl != "" {
+				if !contains(tblList, tbl) {
+					tblList = append(tblList, tbl)
 				}
-				inParamsForGet.resultMap = resultMap
+			}
+		} else if tbl != "" && xYangSpecMap[xpath].xfmrTbl == nil {
+			tblList = append(tblList, tbl)
+		} else if tbl == "" && xYangSpecMap[xpath].xfmrTbl == nil {
+			// Handling for case: Parent list is not associated with a tableName but has children containers/lists having tableNames.
+			if tblKey != "" {
+				var mapSlice []typeMapOfInterface
+				instMap, err := yangListInstanceDataFill(inParamsForGet, isFirstCall)
+				dbDataMap = inParamsForGet.dbDataMap
+				if err != nil {
+					xfmrLogInfoAll("Error(%v) returned for %v", err, uri)
+				} else if (instMap != nil) && (len(instMap) > 0) {
+					mapSlice = append(mapSlice, instMap)
+				}
+
+				if len(mapSlice) > 0 {
+					listInstanceGet := false
+					// Check if it is a list instance level Get
+					if (strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")) {
+						listInstanceGet = true
+						for k, v := range mapSlice[0] {
+							resultMap[k] = v
+						}
+					}
+					if !listInstanceGet {
+						resultMap[xYangSpecMap[xpath].yangEntry.Name] = mapSlice
+					}
+					inParamsForGet.resultMap = resultMap
+				}
 			}
 		}
 	}
-	}
 
-	for _, tbl = range(tblList) {
+	for _, tbl = range tblList {
 		inParamsForGet.tbl = tbl
 
 		tblData, ok := (*dbDataMap)[cdb][tbl]
@@ -626,8 +643,8 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 				instMap, err := yangListInstanceDataFill(inParamsForGet, isFirstCall)
 				dbDataMap = inParamsForGet.dbDataMap
 				if err != nil {
-					log.Infof("Error(%v) returned for %v", err, uri)
-				} else if ((instMap != nil)  && (len(instMap) > 0)) {
+					xfmrLogInfoAll("Error(%v) returned for %v", err, uri)
+				} else if (instMap != nil) && (len(instMap) > 0) {
 					mapSlice = append(mapSlice, instMap)
 				}
 			}
@@ -635,7 +652,7 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 			if len(mapSlice) > 0 {
 				listInstanceGet := false
 				/*Check if it is a list instance level Get*/
-				if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
+				if (strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")) {
 					listInstanceGet = true
 					for k, v := range mapSlice[0] {
 						resultMap[k] = v
@@ -643,26 +660,26 @@ func yangListDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) error 
 				}
 				if !listInstanceGet {
 					if _, specOk := xYangSpecMap[xpath]; specOk {
-					if _, ok := resultMap[xYangSpecMap[xpath].yangEntry.Name]; ok {
-						mlen := len(resultMap[xYangSpecMap[xpath].yangEntry.Name].([]typeMapOfInterface))
-						for i := 0; i < mlen; i++ {
-							mapSlice = append(mapSlice, resultMap[xYangSpecMap[xpath].yangEntry.Name].([]typeMapOfInterface)[i])
+						if _, ok := resultMap[xYangSpecMap[xpath].yangEntry.Name]; ok {
+							mlen := len(resultMap[xYangSpecMap[xpath].yangEntry.Name].([]typeMapOfInterface))
+							for i := 0; i < mlen; i++ {
+								mapSlice = append(mapSlice, resultMap[xYangSpecMap[xpath].yangEntry.Name].([]typeMapOfInterface)[i])
+							}
 						}
-					}
-					resultMap[xYangSpecMap[xpath].yangEntry.Name] = mapSlice
-					inParamsForGet.resultMap = resultMap
+						resultMap[xYangSpecMap[xpath].yangEntry.Name] = mapSlice
+						inParamsForGet.resultMap = resultMap
 					}
 				}
 			} else {
 				xfmrLogInfoAll("Empty slice for (\"%v\").\r\n", uri)
 			}
 		}
-	}// end of tblList for
+	} // end of tblList for
 
 	return nil
 }
 
-func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) (typeMapOfInterface,error) {
+func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool) (typeMapOfInterface, error) {
 
 	var err error
 	curMap := make(map[string]interface{})
@@ -679,10 +696,10 @@ func yangListInstanceDataFill(inParamsForGet xlateFromDbParams, isFirstCall bool
 	dbKey := inParamsForGet.tblKey
 
 	curKeyMap, curUri, err := dbKeyToYangDataConvert(uri, requestUri, xpath, tbl, dbDataMap, dbKey, dbs[cdb].Opts.KeySeparator, txCache)
-        if ((err != nil) || (curKeyMap == nil) || (len(curKeyMap) == 0)) {
-                xfmrLogInfoAll("Skip filling list instance for uri %v since no yang  key found corresponding to db-key %v", uri, dbKey)
-               return curMap, err
-        }
+	if (err != nil) || (curKeyMap == nil) || (len(curKeyMap) == 0) {
+		xfmrLogInfoAll("Skip filling list instance for uri %v since no yang  key found corresponding to db-key %v", uri, dbKey)
+		return curMap, err
+	}
 	parentXpath := parentXpathGet(xpath)
 	_, ok := xYangSpecMap[xpath]
 	if ok && len(xYangSpecMap[xpath].xfmrFunc) > 0 {
@@ -763,17 +780,17 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery boo
 			xfmrLogInfoAll("No data from field transformer for %v: %v.", uri, err)
 			return resFldValMap, err
 		}
-		if (uri == requestUri) {
+		if uri == requestUri {
 			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
 			if len(fldValMap) == 0 {
 				// field transformer returns empty map when no data in DB
-				if ((yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))))) {
+				if (yangType == YANG_LEAF) || ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
 					log.Warningf("Field transformer returned empty data , uri  - %v", requestUri)
-					err = tlerr.NotFoundError{Format:"Resource not found"}
+					err = tlerr.NotFoundError{Format: "Resource not found"}
 					return resFldValMap, err
 				}
 			} else {
-				if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+				if (yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
 					return resFldValMap, nil
 				}
 			}
@@ -787,10 +804,10 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery boo
 			return resFldValMap, err
 		}
 		/* if there is no transformer extension/annotation then it means leaf-list in yang is also leaflist in db */
-		if len(dbFldName) > 0  && !xYangSpecMap[xpath].isKey {
+		if len(dbFldName) > 0 && !xYangSpecMap[xpath].isKey {
 			yangType := yangTypeGet(xYangSpecMap[xpath].yangEntry)
 			yngTerminalNdDtType := xYangSpecMap[xpath].yangEntry.Type.Kind
-			if yangType ==  YANG_LEAF_LIST {
+			if yangType == YANG_LEAF_LIST {
 				dbFldName += "@"
 				val, ok := (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName]
 				leafLstInstGetReq := false
@@ -819,15 +836,15 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery boo
 						}
 						if !leafListInstExists((*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName], leafListInstVal) {
 							log.Warningf("Queried leaf-list instance does not exists, uri  - %v, dbData - %v", requestUri, (*dbDataMap)[cdb][tbl][tblKey].Field[dbFldName])
-							err = tlerr.NotFoundError{Format:"Resource not found"}
+							err = tlerr.NotFoundError{Format: "Resource not found"}
 						}
 						if err == nil {
 							/* Since translib already fills in ygRoot with queried leaf-list instance, do not
 							   fill in resFldValMap or else Unmarshall of payload(resFldValMap) into ygotTgt in
 							   app layer will create duplicate instances in result.
-							 */
-							 log.Info("Queried leaf-list instance exists but Since translib already fills in ygRoot with queried leaf-list instance do not populate payload.")
-						 }
+							*/
+							log.Info("Queried leaf-list instance exists but Since translib already fills in ygRoot with queried leaf-list instance do not populate payload.")
+						}
 						return resFldValMap, err
 					} else {
 						resLst := processLfLstDbToYang(xpath, val, yngTerminalNdDtType)
@@ -836,7 +853,7 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery boo
 				} else {
 					if leafLstInstGetReq {
 						log.Warningf("Queried leaf-list does not exist in DB, uri  - %v", requestUri)
-						err = tlerr.NotFoundError{Format:"Resource not found"}
+						err = tlerr.NotFoundError{Format: "Resource not found"}
 					}
 				}
 			} else {
@@ -849,8 +866,8 @@ func terminalNodeProcess(inParamsForGet xlateFromDbParams, terminalNodeQuery boo
 						resFldValMap[xYangSpecMap[xpath].yangEntry.Name] = resVal
 					}
 				} else {
-					xfmrLogInfoAll("Field value does not exist in DB for - %v" , uri)
-					err = tlerr.NotFoundError{Format:"Resource not found"}
+					xfmrLogInfoAll("Field value does not exist in DB for - %v", uri)
+					err = tlerr.NotFoundError{Format: "Resource not found"}
 				}
 			}
 		}
@@ -874,13 +891,13 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 
 	yangNode, ok := xYangSpecMap[xpath]
 
-	if ok  && yangNode.yangEntry != nil {
+	if ok && yangNode.yangEntry != nil {
 		for yangChldName := range yangNode.yangEntry.Dir {
-			chldXpath := xpath+"/"+yangChldName
+			chldXpath := xpath + "/" + yangChldName
 			if xYangSpecMap[chldXpath] != nil && xYangSpecMap[chldXpath].nameWithMod != nil {
-				chldUri   = uri+"/"+ *(xYangSpecMap[chldXpath].nameWithMod)
+				chldUri = uri + "/" + *(xYangSpecMap[chldXpath].nameWithMod)
 			} else {
-				chldUri   = uri+"/"+yangChldName
+				chldUri = uri + "/" + yangChldName
 			}
 			inParamsForGet.xpath = chldXpath
 			inParamsForGet.uri = chldUri
@@ -903,7 +920,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					inParamsForGet.ygRoot = ygRoot
 				}
 				chldYangType := xYangSpecMap[chldXpath].yangDataType
-				if  chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST {
+				if chldYangType == YANG_LEAF || chldYangType == YANG_LEAF_LIST {
 					if len(xYangSpecMap[xpath].xfmrFunc) > 0 {
 						continue
 					}
@@ -923,31 +940,31 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					chtbl := xpathKeyExtRet.tableName
 					inParamsForGet.ygRoot = ygRoot
 
-					if _, ok := (*dbDataMap)[cdb][chtbl]; !ok && len(chtbl) > 0 {
+					if _, ok := (*dbDataMap)[cdb][chtbl][tblKey]; !ok && len(chtbl) > 0 {
 						childDBKey := ""
-						terminalNodeGet  := false
+						terminalNodeGet := false
 						qdbMapHasTblData := false
 						qdbMapHasTblKeyData := false
 						if !xYangSpecMap[chldXpath].hasNonTerminalNode {
-							childDBKey      = tblKey
+							childDBKey = tblKey
 							terminalNodeGet = true
 						}
 						if qdbMap, getOk := inParamsForGet.dbTblKeyGetCache[cdb]; getOk {
 							if dbTblData, tblPresent := qdbMap[chtbl]; tblPresent {
 								qdbMapHasTblData = true
 								if _, keyPresent := dbTblData[tblKey]; keyPresent {
-									qdbMapHasTblKeyData = true;
+									qdbMapHasTblKeyData = true
 								}
 							}
 						}
 
 						if !qdbMapHasTblData || (terminalNodeGet && qdbMapHasTblData && !qdbMapHasTblKeyData) {
-						curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs, inParamsForGet.dbTblKeyGetCache)
-						if err == nil {
-							mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
-							inParamsForGet.dbDataMap = dbDataMap
+							curDbDataMap, err := fillDbDataMapForTbl(chldUri, chldXpath, chtbl, childDBKey, cdb, dbs, inParamsForGet.dbTblKeyGetCache)
+							if err == nil {
+								mapCopy((*dbDataMap)[cdb], curDbDataMap[cdb])
+								inParamsForGet.dbDataMap = dbDataMap
+							}
 						}
-					    }
 					}
 					cname := xYangSpecMap[chldXpath].yangEntry.Name
 					if xYangSpecMap[chldXpath].xfmrTbl != nil {
@@ -971,8 +988,8 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					}
 					if len(xYangSpecMap[chldXpath].xfmrFunc) > 0 {
 						if (len(xYangSpecMap[xpath].xfmrFunc) == 0) ||
-						(len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
-						(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
+							(len(xYangSpecMap[xpath].xfmrFunc) > 0 &&
+								(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
 							inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
 							err := xfmrHandlerFunc(inParams, xYangSpecMap[chldXpath].xfmrFunc)
 							inParamsForGet.dbDataMap = dbDataMap
@@ -989,7 +1006,7 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					linParamsForGet := formXlateFromDbParams(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, chldXpath, inParamsForGet.oper, chtbl, tblKey, dbDataMap, inParamsForGet.txCache, cmap2, inParamsForGet.validate)
 					linParamsForGet.xfmrDbTblKeyCache = inParamsForGet.xfmrDbTblKeyCache
 					linParamsForGet.dbTblKeyGetCache = inParamsForGet.dbTblKeyGetCache
-					err  = yangDataFill(linParamsForGet)
+					err = yangDataFill(linParamsForGet)
 					cmap2 = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap
 					ygRoot = linParamsForGet.ygRoot
@@ -1003,22 +1020,22 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 					}
 					inParamsForGet.dbDataMap = dbDataMap
 					inParamsForGet.ygRoot = ygRoot
-				} else if chldYangType ==  YANG_LIST {
+				} else if chldYangType == YANG_LIST {
 					xpathKeyExtRet, _ := xpathKeyExtract(dbs[cdb], ygRoot, GET, chldUri, requestUri, dbDataMap, nil, txCache, inParamsForGet.xfmrDbTblKeyCache)
 					inParamsForGet.ygRoot = ygRoot
 					cdb = xYangSpecMap[chldXpath].dbIndex
 					inParamsForGet.curDb = cdb
 					if len(xYangSpecMap[chldXpath].xfmrFunc) > 0 {
 						if (len(xYangSpecMap[xpath].xfmrFunc) == 0) ||
-						   (len(xYangSpecMap[xpath].xfmrFunc) > 0   &&
-						   (xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
-							   inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
-							   err := xfmrHandlerFunc(inParams, xYangSpecMap[chldXpath].xfmrFunc)
-							   if err != nil {
-								   xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
-							   }
-							   inParamsForGet.dbDataMap = dbDataMap
-							   inParamsForGet.ygRoot = ygRoot
+							(len(xYangSpecMap[xpath].xfmrFunc) > 0 &&
+								(xYangSpecMap[xpath].xfmrFunc != xYangSpecMap[chldXpath].xfmrFunc)) {
+							inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, chldUri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
+							err := xfmrHandlerFunc(inParams, xYangSpecMap[chldXpath].xfmrFunc)
+							if err != nil {
+								xfmrLogInfoAll("Error returned by %v: %v", xYangSpecMap[chldXpath].xfmrFunc, err)
+							}
+							inParamsForGet.dbDataMap = dbDataMap
+							inParamsForGet.ygRoot = ygRoot
 						}
 						if !xYangSpecMap[chldXpath].hasChildSubTree {
 							continue
@@ -1064,16 +1081,16 @@ func yangDataFill(inParamsForGet xlateFromDbParams) error {
 func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, error) {
 	var err error
 	var fldSbtErr error // used only when direct query on leaf/leaf-list having subtree
-	var fldErr error //used only when direct query on leaf/leaf-list having field transformer
+	var fldErr error    //used only when direct query on leaf/leaf-list having field transformer
 	jsonData := "{}"
 	resultMap := make(map[string]interface{})
-        d := inParamsForGet.d
-        dbs := inParamsForGet.dbs
-        ygRoot := inParamsForGet.ygRoot
-        uri := inParamsForGet.uri
-        requestUri := inParamsForGet.requestUri
-        dbDataMap := inParamsForGet.dbDataMap
-        txCache := inParamsForGet.txCache
+	d := inParamsForGet.d
+	dbs := inParamsForGet.dbs
+	ygRoot := inParamsForGet.ygRoot
+	uri := inParamsForGet.uri
+	requestUri := inParamsForGet.requestUri
+	dbDataMap := inParamsForGet.dbDataMap
+	txCache := inParamsForGet.txCache
 	cdb := inParamsForGet.curDb
 	inParamsForGet.resultMap = resultMap
 
@@ -1100,7 +1117,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					return jsonData, true, err
 				}
 				inParamsForGet.dbDataMap = dbDataMap
-				inParamsForGet.ygRoot    = ygRoot
+				inParamsForGet.ygRoot = ygRoot
 			}
 
 			yangType := yangTypeGet(yangNode.yangEntry)
@@ -1149,11 +1166,11 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 							tableXfmrFlag = true
 						}
 						if !tableXfmrFlag {
-                                                      for _, tbl := range tblList {
-                                                               dbDataFromTblXfmrGet(tbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpathKeyExtRet.xpath)
-							       inParamsForGet.dbDataMap = dbDataMap
-							       inParamsForGet.ygRoot = ygRoot
-                                                      }
+							for _, tbl := range tblList {
+								dbDataFromTblXfmrGet(tbl, inParams, dbDataMap, inParamsForGet.dbTblKeyGetCache, xpathKeyExtRet.xpath)
+								inParamsForGet.dbDataMap = dbDataMap
+								inParamsForGet.ygRoot = ygRoot
+							}
 
 						}
 					} else {
@@ -1165,7 +1182,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 
 			for {
 				done := true
-				if yangType ==  YANG_LEAF || yangType == YANG_LEAF_LIST {
+				if yangType == YANG_LEAF || yangType == YANG_LEAF_LIST {
 					yangName := xYangSpecMap[xpathKeyExtRet.xpath].yangEntry.Name
 					if validateHandlerFlag || tableXfmrFlag {
 						resultMap[yangName] = ""
@@ -1176,9 +1193,9 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						fldSbtErr = xfmrHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc)
 						if fldSbtErr != nil {
 							/*For request Uri pointing to leaf/leaf-list having subtree, error will be propagated
-							  to handle check of leaf/leaf-list-instance existence in Db , which will be performed 
+							  to handle check of leaf/leaf-list-instance existence in Db , which will be performed
 							  by subtree
-							 */
+							*/
 							xfmrLogInfo("Error returned by %v: %v", xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc, err)
 							inParamsForGet.ygRoot = ygRoot
 							break
@@ -1191,14 +1208,14 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						inParamsForGet.tblKey = key
 						var fldValMap map[string]interface{}
 						fldValMap, fldErr = terminalNodeProcess(inParamsForGet, true)
-						if ((fldErr != nil) || (len(fldValMap) == 0)) {
+						if (fldErr != nil) || (len(fldValMap) == 0) {
 							if fldErr == nil {
 								if yangType == YANG_LEAF {
 									xfmrLogInfo("Empty terminal node (\"%v\").", uri)
-									fldErr = tlerr.NotFoundError{Format:"Resource Not found"}
-								} else if ((yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/")))) {
+									fldErr = tlerr.NotFoundError{Format: "Resource Not found"}
+								} else if (yangType == YANG_LEAF_LIST) && ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) {
 									jsonMapData, _ := json.Marshal(resultMap)
-									jsonData        = fmt.Sprintf("%v", string(jsonMapData))
+									jsonData = fmt.Sprintf("%v", string(jsonMapData))
 									return jsonData, false, nil
 								}
 							}
@@ -1208,7 +1225,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 					break
 
 				} else if yangType == YANG_CONTAINER {
-					cmap  := make(map[string]interface{})
+					cmap := make(map[string]interface{})
 					resultMap = cmap
 					if validateHandlerFlag || tableXfmrFlag {
 						break
@@ -1239,7 +1256,7 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 						inParams := formXfmrInputRequest(dbs[cdb], dbs, cdb, ygRoot, uri, requestUri, GET, "", dbDataMap, nil, nil, txCache)
 						err := xfmrHandlerFunc(inParams, xYangSpecMap[xpathKeyExtRet.xpath].xfmrFunc)
 						if err != nil {
-							if (((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri)) {
+							if ((strings.HasSuffix(uri, "]")) || (strings.HasSuffix(uri, "]/"))) && (uri == requestUri) {
 								// The error handling here is for the deferred resource check error being handled by the subtree for virtual table cases.
 								log.Warningf("Subtree at list instance level returns error %v for  uri  - %v", err, uri)
 								return jsonData, true, err
@@ -1276,16 +1293,16 @@ func dbDataToYangJsonCreate(inParamsForGet xlateFromDbParams) (string, bool, err
 
 	jsonMapData, _ := json.Marshal(resultMap)
 	isEmptyPayload := isJsonDataEmpty(string(jsonMapData))
-	jsonData        = fmt.Sprintf("%v", string(jsonMapData))
+	jsonData = fmt.Sprintf("%v", string(jsonMapData))
 	if fldSbtErr != nil {
 		/*error should be propagated only when request Uri points to leaf/leaf-list-instance having subtree,
-		  This is to handle check of leaf/leaf-list-instance existence in Db , which will be performed 
-                  by subtree, and depending whether queried node exists or not subtree should return error
+				  This is to handle check of leaf/leaf-list-instance existence in Db , which will be performed
+		                  by subtree, and depending whether queried node exists or not subtree should return error
 		*/
 		return jsonData, isEmptyPayload, fldSbtErr
 	}
 	if fldErr != nil {
-		/* error should be propagated only when request Uri points to leaf/leaf-list-instance and the data 
+		/* error should be propagated only when request Uri points to leaf/leaf-list-instance and the data
 		   is not available(via field-xfmr or field name)
 		*/
 		return jsonData, isEmptyPayload, fldErr

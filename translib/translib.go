@@ -11,7 +11,7 @@
 //                                                                            //
 //  Unless required by applicable law or agreed to in writing, software       //
 //  distributed under the License is distributed on an "AS IS" BASIS,         //
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //  
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 //  See the License for the specific language governing permissions and       //
 //  limitations under the License.                                            //
 //                                                                            //
@@ -34,12 +34,16 @@ This package can also talk to non-DB clients.
 package translib
 
 import (
+	"fmt"
+	"runtime/debug"
+	"sync"
+	"sync/atomic"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Workiva/go-datastructures/queue"
 	log "github.com/golang/glog"
-	"runtime/debug"
-	"sync"
+	"github.com/openconfig/ygot/ygot"
 )
 
 //Write lock for all write operations to be synchronized
@@ -56,17 +60,24 @@ const (
 	AppErr
 )
 
+const (
+	TRANSLIB_FMT_IETF_JSON = iota
+	TRANSLIB_FMT_YGOT
+)
+
+type TranslibFmtType int
+
 type UserRoles struct {
-	Name    string
-	Roles	[]string
+	Name  string
+	Roles []string
 }
 
 type SetRequest struct {
-	Path    string
-	Payload []byte
-	User    UserRoles
-	AuthEnabled bool
-	ClientVersion Version
+	Path             string
+	Payload          []byte
+	User             UserRoles
+	AuthEnabled      bool
+	ClientVersion    Version
 	DeleteEmptyEntry bool
 }
 
@@ -76,26 +87,28 @@ type SetResponse struct {
 }
 
 type GetRequest struct {
-	Path    string
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	FmtType       TranslibFmtType
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 
 	// Depth limits the depth of data subtree in the response
 	// payload. Default value 0 indicates there is no limit.
-	Depth   uint
+	Depth uint
 }
 
 type GetResponse struct {
-	Payload []byte
-	ErrSrc  ErrSource
+	Payload   []byte
+	ValueTree *ygot.ValidatedGoStruct
+	ErrSrc    ErrSource
 }
 
 type ActionRequest struct {
-	Path    string
-	Payload []byte
-	User    UserRoles
-	AuthEnabled bool
+	Path          string
+	Payload       []byte
+	User          UserRoles
+	AuthEnabled   bool
 	ClientVersion Version
 }
 
@@ -121,18 +134,21 @@ type BulkResponse struct {
 	CreateResponse  []SetResponse
 }
 
+// SubscribeRequest holds the request data for Subscribe and Stream APIs.
 type SubscribeRequest struct {
-	Paths			[]string
-	Q				*queue.PriorityQueue
-	Stop			chan struct{}
-	User            UserRoles
-	AuthEnabled     bool
-	ClientVersion   Version
+	Paths         []string
+	Q             *queue.PriorityQueue
+	Stop          chan struct{}
+	User          UserRoles
+	AuthEnabled   bool
+	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type SubscribeResponse struct {
 	Path         string
-	Payload      []byte
+	Update       ygot.ValidatedGoStruct // updated values
+	Delete       []string               // deleted paths - relative to Path
 	Timestamp    int64
 	SyncComplete bool
 	IsTerminated bool
@@ -146,10 +162,11 @@ const (
 )
 
 type IsSubscribeRequest struct {
-	Paths				[]string
-	User                UserRoles
-	AuthEnabled         bool
-	ClientVersion       Version
+	Paths         []string
+	User          UserRoles
+	AuthEnabled   bool
+	ClientVersion Version
+	Session       *SubscribeSession
 }
 
 type IsSubscribeResponse struct {
@@ -166,11 +183,8 @@ type ModelData struct {
 	Ver  string
 }
 
-type notificationOpts struct {
-    isOnChangeSupported bool
-	mInterval           int
-	pType               NotificationType // for TARGET_DEFINED
-}
+// Counter is a monotonically increasing unsigned integer.
+type Counter uint64
 
 //initializes logging and app modules
 func init() {
@@ -186,7 +200,7 @@ func Create(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Create Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -260,10 +274,9 @@ func Update(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Update Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
-
 
 	log.Info("Update request received with path =", path)
 	log.Info("Update request received with payload =", string(payload))
@@ -336,7 +349,7 @@ func Replace(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Replace Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -410,7 +423,7 @@ func Delete(req SetRequest) (SetResponse, error) {
 	if !isAuthorizedForSet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Delete Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -483,7 +496,7 @@ func Get(req GetRequest) (GetResponse, error) {
 	if !isAuthorizedForGet(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Get Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -496,7 +509,7 @@ func Get(req GetRequest) (GetResponse, error) {
 		return resp, err
 	}
 
-	opts := appOptions{ depth: req.Depth }
+	opts := appOptions{depth: req.Depth}
 	err = appInitialize(app, appInfo, path, nil, &opts, GET)
 
 	if err != nil {
@@ -505,7 +518,9 @@ func Get(req GetRequest) (GetResponse, error) {
 	}
 
 	isGetCase := true
-	dbs, err := getAllDbs(isGetCase)
+	isEnableCache := true
+	isSubscribeCase := false
+	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
 		resp = GetResponse{Payload: payload, ErrSrc: ProtoErr}
@@ -520,12 +535,11 @@ func Get(req GetRequest) (GetResponse, error) {
 		resp = GetResponse{Payload: payload, ErrSrc: AppErr}
 		return resp, err
 	}
-
-	resp, err = (*app).processGet(dbs)
+	resp, err = (*app).processGet(dbs, req.FmtType)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -537,7 +551,7 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	if !isAuthorizedForAction(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
-			Path: path,
+			Path:   path,
 		}
 	}
 
@@ -561,8 +575,8 @@ func Action(req ActionRequest) (ActionResponse, error) {
 		return resp, err
 	}
 
-    writeMutex.Lock()
-    defer writeMutex.Unlock()
+	writeMutex.Lock()
+	defer writeMutex.Unlock()
 
 	isGetCase := false
 	dbs, err := getAllDbs(isGetCase)
@@ -584,8 +598,8 @@ func Action(req ActionRequest) (ActionResponse, error) {
 	resp, err = (*app).processAction(dbs)
 	// if the size of byte array equals or greater than 10 MB, then free the memory
 	if len(resp.Payload) >= 10000000 {
-		log.Info("Calling FreeOSMemory..")	 
-		debug.FreeOSMemory()	
+		log.Info("Calling FreeOSMemory..")
+		debug.FreeOSMemory()
 	}
 	return resp, err
 }
@@ -602,14 +616,14 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 
 	resp := BulkResponse{DeleteResponse: delResp,
 		ReplaceResponse: replaceResp,
-		UpdateResponse: updateResp,
-		CreateResponse: createResp}
+		UpdateResponse:  updateResp,
+		CreateResponse:  createResp}
 
-    if (!isAuthorizedForBulk(req)) {
+	if !isAuthorizedForBulk(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
 
 	writeMutex.Lock()
 	defer writeMutex.Unlock()
@@ -627,8 +641,8 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	err = d.StartTx(nil, nil)
 
 	if err != nil {
-        return resp, err
-    }
+		return resp, err
+	}
 
 	for i := range req.DeleteRequest {
 		path := req.DeleteRequest[i].Path
@@ -680,58 +694,58 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 		}
 	}
 
-    for i := range req.ReplaceRequest {
-        path := req.ReplaceRequest[i].Path
+	for i := range req.ReplaceRequest {
+		path := req.ReplaceRequest[i].Path
 		payload := req.ReplaceRequest[i].Payload
 
-        log.Info("Replace request received with path =", path)
+		log.Info("Replace request received with path =", path)
 
-        app, appInfo, err := getAppModule(path, req.ReplaceRequest[i].ClientVersion)
+		app, appInfo, err := getAppModule(path, req.ReplaceRequest[i].ClientVersion)
 
-        if err != nil {
-            errSrc = ProtoErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = ProtoErr
+			goto BulkReplaceError
+		}
 
 		log.Info("Bulk replace request received with path =", path)
 		log.Info("Bulk replace request received with payload =", string(payload))
 
 		err = appInitialize(app, appInfo, path, &payload, nil, REPLACE)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        keys, err = (*app).translateReplace(d)
+		keys, err = (*app).translateReplace(d)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        err = d.AppendWatchTx(keys, appInfo.tablesToWatch)
+		err = d.AppendWatchTx(keys, appInfo.tablesToWatch)
 
-        if err != nil {
-            errSrc = AppErr
-            goto BulkReplaceError
-        }
+		if err != nil {
+			errSrc = AppErr
+			goto BulkReplaceError
+		}
 
-        resp.ReplaceResponse[i], err = (*app).processReplace(d)
+		resp.ReplaceResponse[i], err = (*app).processReplace(d)
 
-        if err != nil {
-            errSrc = AppErr
-        }
+		if err != nil {
+			errSrc = AppErr
+		}
 
-    BulkReplaceError:
+	BulkReplaceError:
 
-        if err != nil {
-            d.AbortTx()
-            resp.ReplaceResponse[i].ErrSrc = errSrc
-            resp.ReplaceResponse[i].Err = err
-            return resp, err
-        }
-    }
+		if err != nil {
+			d.AbortTx()
+			resp.ReplaceResponse[i].ErrSrc = errSrc
+			resp.ReplaceResponse[i].Err = err
+			return resp, err
+		}
+	}
 
 	for i := range req.UpdateRequest {
 		path := req.UpdateRequest[i].Path
@@ -838,134 +852,152 @@ func Bulk(req BulkRequest) (BulkResponse, error) {
 	return resp, err
 }
 
-//Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
-func Subscribe(req SubscribeRequest) ([]*IsSubscribeResponse, error) {
-	var err error
-	var sErr error
-
-	paths := req.Paths
-	q     := req.Q
-	stop  := req.Stop
-
-	dbNotificationMap := make(map[db.DBNum][]*notificationInfo)
-
-	resp := make([]*IsSubscribeResponse, len(paths))
-
-	for i := range resp {
-		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
-			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
-			Err:                 nil}
+// NewSubscribeSession creates a new SubscribeSession. Caller
+// MUST close the session object through CloseSubscribeSession
+// call at the end.
+func NewSubscribeSession() *SubscribeSession {
+	return &SubscribeSession{
+		ID: fmt.Sprintf("%d", subscribeCounter.Next()),
 	}
+}
 
-    if (!isAuthorizedForSubscribe(req)) {
-		return resp, tlerr.AuthorizationError{
+// CloseSubscribeSession closes a SubscribeSession and release
+// any resources it held. API client MUST close the sessions it
+// creates; and not reuse the session after closing.
+func CloseSubscribeSession(ss *SubscribeSession) {
+	// nothing for now!
+}
+
+//Subscribe - Subscribes to the paths requested and sends notifications when the data changes in DB
+func Subscribe(req SubscribeRequest) error {
+	paths := req.Paths
+	q := req.Q
+	stop := req.Stop
+
+	if !isAuthorizedForSubscribe(req) {
+		return tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
 
 	isGetCase := true
-	dbs, err := getAllDbs(isGetCase)
+	isEnableCache := false
+	isSubscribeCase := true
+	dbs, err := getAllDbsC(isGetCase, isEnableCache, isSubscribeCase)
 
 	if err != nil {
-		return resp, err
+		return err
 	}
 
-	//Do NOT close the DBs here as we need to use them during subscribe notification
-
-	for i, path := range paths {
-
-		app, appInfo, err := getAppModule(path, req.ClientVersion)
-
-		if err != nil {
-
-			if sErr == nil {
-				sErr = err
-			}
-
-			resp[i].Err = err
-			continue
-		}
-
-		nOpts, nInfo, errApp := (*app).translateSubscribe(dbs, path)
-
-		if nOpts != nil {
-			if nOpts.mInterval != 0 {
-				if ((nOpts.mInterval >= minSubsInterval) && (nOpts.mInterval <= maxSubsInterval)) {
-					resp[i].MinInterval = nOpts.mInterval
-				} else if (nOpts.mInterval < minSubsInterval) {
-					resp[i].MinInterval = minSubsInterval
-				} else {
-					resp[i].MinInterval = maxSubsInterval
-				}
-			}
-
-			resp[i].IsOnChangeSupported = nOpts.isOnChangeSupported
-			resp[i].PreferredType = nOpts.pType
-		}
-
-		if errApp != nil {
-			resp[i].Err = errApp
-
-			if sErr == nil {
-				sErr = errApp
-			}
-
-			continue
-		} else {
-
-			if nInfo == nil {
-				sErr = tlerr.NotSupportedError{
-					Format: "Subscribe not supported", Path: path}
-				resp[i].Err = sErr
-				continue
-			}
-
-			nInfo.path = path
-			nInfo.app = app
-			nInfo.appInfo = appInfo
-			nInfo.dbs = dbs
-
-			dbNotificationMap[nInfo.dbno] = append(dbNotificationMap[nInfo.dbno], nInfo)
-		}
-
-	}
-
-	log.Info("map=", dbNotificationMap)
-
-	if sErr != nil {
-		return resp, sErr
-	}
-
-	sInfo := &subscribeInfo{syncDone: false,
+	sInfo := &subscribeInfo{
+		id:   subscribeCounter.Next(),
 		q:    q,
-		stop: stop}
+		stop: stop,
+		dbs:  dbs,
+	}
 
-	sErr = startSubscribe(sInfo, dbNotificationMap)
+	sCtx := subscribeContext{
+		sInfo:   sInfo,
+		dbs:     dbs,
+		mode:    OnChange,
+		version: req.ClientVersion,
+		session: req.Session,
+	}
 
-	return resp, sErr
+	for _, path := range paths {
+		err = sCtx.translateAndAddPath(path)
+		if err != nil {
+			closeAllDbs(dbs[:])
+			return err
+		}
+	}
+
+	// Start db subscription and exit. DB objects will be
+	// closed automatically when the subscription ends.
+	err = sCtx.startSubscribe()
+
+	return err
+}
+
+// Stream function streams the value for requested paths through a queue.
+// Unlike Get, this function can return smaller chunks of response separately.
+// Individual chunks are packed in a SubscribeResponse object and pushed to the req.Q.
+// Pushes a SubscribeResponse with SyncComplete=true after data are pushed.
+// Function will block until all values are returned. This can be used for
+// handling "Sample" subscriptions (NotificationType.Sample).
+// Client should be authorized to perform "subscribe" operation.
+func Stream(req SubscribeRequest) error {
+
+	if !isAuthorizedForSubscribe(req) {
+		return tlerr.AuthorizationError{
+			Format: "User is unauthorized for Action Operation",
+		}
+	}
+
+	sid := subscribeCounter.Next()
+	log.Infof("[%v] Stream request rcvd for paths %v", sid, req.Paths)
+
+	dbs, err := getAllDbs(true)
+	if err != nil {
+		return err
+	}
+	defer closeAllDbs(dbs[:])
+
+	sc := subscribeContext{
+		id:      sid,
+		dbs:     dbs,
+		version: req.ClientVersion,
+		session: req.Session,
+	}
+
+	for _, path := range req.Paths {
+		err := sc.translateAndAddPath(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	sInfo := &subscribeInfo{
+		id:  sid,
+		q:   req.Q,
+		dbs: dbs,
+	}
+
+	for _, nInfo := range sc.tgtInfos {
+		err = sendInitialUpdate(sInfo, nInfo)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Push a SyncComplete message at the end
+	sInfo.syncDone = true
+	sendSyncNotification(sInfo, false)
+	return nil
 }
 
 //IsSubscribeSupported - Check if subscribe is supported on the given paths
 func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error) {
 
+	reqID := subscribeCounter.Next()
 	paths := req.Paths
 	resp := make([]*IsSubscribeResponse, len(paths))
 
 	for i := range resp {
 		resp[i] = &IsSubscribeResponse{Path: paths[i],
-			IsOnChangeSupported: false,
+			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
-			PreferredType:       Sample,
+			PreferredType:       OnChange,
 			Err:                 nil}
 	}
 
-    if (!isAuthorizedForIsSubscribe(req)) {
+	if !isAuthorizedForIsSubscribe(req) {
 		return resp, tlerr.AuthorizationError{
 			Format: "User is unauthorized for Action Operation",
 		}
-    }
+	}
+
+	log.Info("IsSubscribeSupported:", paths)
 
 	isGetCase := true
 	dbs, err := getAllDbs(isGetCase)
@@ -976,41 +1008,62 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 
 	defer closeAllDbs(dbs[:])
 
+	sc := subscribeContext{
+		id:      reqID,
+		dbs:     dbs,
+		version: req.ClientVersion,
+		session: req.Session,
+	}
+
 	for i, path := range paths {
+		nAppInfos, trData, errApp := sc.translatePath(path)
 
-		app, _, err := getAppModule(path, req.ClientVersion)
+		r := resp[i]
 
-		if err != nil {
-			resp[i].Err = err
-			continue
+		if nAppInfos != nil {
+			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgt, r)
+			collectNotificationPreferences(nAppInfos.ntfAppInfoTrgtChlds, r)
+		}
+		if trData != nil {
+			sc.saveTranslatedData(path, trData)
 		}
 
-		nOpts, _, errApp := (*app).translateSubscribe(dbs, path)
-
-        if nOpts != nil {
-            if nOpts.mInterval != 0 {
-                if ((nOpts.mInterval >= minSubsInterval) && (nOpts.mInterval <= maxSubsInterval)) {
-                    resp[i].MinInterval = nOpts.mInterval
-                } else if (nOpts.mInterval < minSubsInterval) {
-                    resp[i].MinInterval = minSubsInterval
-                } else {
-                    resp[i].MinInterval = maxSubsInterval
-                }
-            }
-
-            resp[i].IsOnChangeSupported = nOpts.isOnChangeSupported
-            resp[i].PreferredType = nOpts.pType
-        }
+		log.Infof("IsSubscribeResponse[%d]: onChg=%v, pref=%v, minInt=%d, err=%v",
+			i, r.IsOnChangeSupported, r.PreferredType, r.MinInterval, errApp)
 
 		if errApp != nil {
 			resp[i].Err = errApp
 			err = errApp
-
-			continue
 		}
 	}
 
 	return resp, err
+}
+
+// collectNotificationPreferences computes overall notification preferences (is on-change
+// supported, min sample interval, preferred mode etc) by combining individual table preferences
+// from the notificationAppInfo array. Writes them to the IsSubscribeResponse object 'resp'.
+func collectNotificationPreferences(nAppInfos []*notificationAppInfo, resp *IsSubscribeResponse) {
+	if len(nAppInfos) == 0 {
+		return
+	}
+
+	for _, nInfo := range nAppInfos {
+		if !nInfo.isOnChangeSupported || nInfo.isNonDB() {
+			resp.IsOnChangeSupported = false
+			resp.PreferredType = Sample
+		}
+		if nInfo.pType == Sample {
+			resp.PreferredType = Sample
+		}
+		if nInfo.mInterval > resp.MinInterval {
+			resp.MinInterval = nInfo.mInterval
+		}
+	}
+
+	if resp.MinInterval > maxSubsInterval {
+		resp.MinInterval = maxSubsInterval
+	}
 }
 
 //GetModels - Gets all the models supported by Translib
@@ -1020,8 +1073,16 @@ func GetModels() ([]ModelData, error) {
 	return getModels(), err
 }
 
-//Creates connection will all the redis DBs. To be used for get request
+//Creates DB connection with all the redis DBs. Cache Disabled
 func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
+	return getAllDbsC(isGetCase, false, false)
+}
+
+//Creates DB connection with all the redis DBs.
+//Allow Per Connection cache enabling, if configured to do so.
+//Allow OnChange cache enabling.
+//Per Connection cache and OnChange cache are mutually exclusive.
+func getAllDbsC(isGetCase bool, isEnableCache bool, isEnableOnChange bool) ([db.MaxDB]*db.DB, error) {
 	var dbs [db.MaxDB]*db.DB
 	var err error
 	var isWriteDisabled bool
@@ -1033,7 +1094,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Application DB connection
-	dbs[db.ApplDB], err = db.NewDB(getDBOptions(db.ApplDB, isWriteDisabled))
+	dbs[db.ApplDB], err = db.NewDB(getDBOptionsC(db.ApplDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1041,7 +1102,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create ASIC DB connection
-	dbs[db.AsicDB], err = db.NewDB(getDBOptions(db.AsicDB, isWriteDisabled))
+	dbs[db.AsicDB], err = db.NewDB(getDBOptionsC(db.AsicDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1049,7 +1110,7 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Counter DB connection
-	dbs[db.CountersDB], err = db.NewDB(getDBOptions(db.CountersDB, isWriteDisabled))
+	dbs[db.CountersDB], err = db.NewDB(getDBOptionsC(db.CountersDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1057,31 +1118,31 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create Log Level DB connection
-	dbs[db.LogLevelDB], err = db.NewDB(getDBOptions(db.LogLevelDB, isWriteDisabled))
+	dbs[db.LogLevelDB], err = db.NewDB(getDBOptionsC(db.LogLevelDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
 		return dbs, err
 	}
 
-    isWriteDisabled = true 
+	isWriteDisabled = true
 
 	//Create Config DB connection
-	dbs[db.ConfigDB], err = db.NewDB(getDBOptions(db.ConfigDB, isWriteDisabled))
+	dbs[db.ConfigDB], err = db.NewDB(getDBOptionsC(db.ConfigDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
 		return dbs, err
 	}
 
-    if isGetCase {
-        isWriteDisabled = true 
-    } else {
-        isWriteDisabled = false
-    }
+	if isGetCase {
+		isWriteDisabled = true
+	} else {
+		isWriteDisabled = false
+	}
 
 	//Create Flex Counter DB connection
-	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptions(db.FlexCounterDB, isWriteDisabled))
+	dbs[db.FlexCounterDB], err = db.NewDB(getDBOptionsC(db.FlexCounterDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1089,23 +1150,15 @@ func getAllDbs(isGetCase bool) ([db.MaxDB]*db.DB, error) {
 	}
 
 	//Create State DB connection
-	dbs[db.StateDB], err = db.NewDB(getDBOptions(db.StateDB, isWriteDisabled))
+	dbs[db.StateDB], err = db.NewDB(getDBOptionsC(db.StateDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
 		return dbs, err
 	}
 
-    //Create Error DB connection
-    dbs[db.ErrorDB], err = db.NewDB(getDBOptions(db.ErrorDB, isWriteDisabled))
-
-	if err != nil {
-		closeAllDbs(dbs[:])
-		return dbs, err
-	}
-
-    //Create User DB connection
-    dbs[db.UserDB], err = db.NewDB(getDBOptions(db.UserDB, isWriteDisabled))
+	//Create Error DB connection
+	dbs[db.ErrorDB], err = db.NewDB(getDBOptionsC(db.ErrorDB, isWriteDisabled, isEnableCache, isEnableOnChange))
 
 	if err != nil {
 		closeAllDbs(dbs[:])
@@ -1137,14 +1190,20 @@ func (val SubscribeResponse) Compare(other queue.Item) int {
 }
 
 func getDBOptions(dbNo db.DBNum, isWriteDisabled bool) db.Options {
+	return getDBOptionsC(dbNo, isWriteDisabled, false, false)
+}
+
+func getDBOptionsC(dbNo db.DBNum, isWriteDisabled bool, isEnableCache bool, isEnableOnChange bool) db.Options {
 	var opt db.Options
 
 	switch dbNo {
-	case db.ApplDB, db.CountersDB, db.AsicDB:
+	case db.ApplDB, db.CountersDB, db.AsicDB, db.FlexCounterDB, db.LogLevelDB, db.ErrorDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", ":", ":", isWriteDisabled)
-	case db.FlexCounterDB, db.LogLevelDB, db.ConfigDB, db.StateDB, db.ErrorDB, db.UserDB:
+	case db.ConfigDB, db.StateDB, db.SnmpDB:
 		opt = getDBOptionsWithSeparator(dbNo, "", "|", "|", isWriteDisabled)
 	}
+	opt.IsCacheEnabled = isEnableCache
+	opt.IsEnableOnChange = isEnableOnChange
 
 	return opt
 }
@@ -1213,4 +1272,20 @@ func (data *appData) setOptions(opts *appOptions) {
 	if opts != nil {
 		data.appOptions = *opts
 	}
+}
+
+func (nt NotificationType) String() string {
+	switch nt {
+	case Sample:
+		return "Sample"
+	case OnChange:
+		return "OnChange"
+	default:
+		return fmt.Sprintf("NotificationType(%d)", nt)
+	}
+}
+
+// Next increments the counter and returns the new value
+func (c *Counter) Next() uint64 {
+	return atomic.AddUint64((*uint64)(c), 1)
 }

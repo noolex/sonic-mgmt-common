@@ -25,9 +25,9 @@ import (
 
 	// "errors"
 	// "strings"
-	"time"
+	"reflect"
 	"sync"
-  "reflect"
+	"time"
 
 	"github.com/go-redis/redis/v7"
 	// "github.com/golang/glog"
@@ -40,24 +40,28 @@ import (
 
 type Stats struct {
 
-		// Total Hits
+	// Total Hits
 
-	Hits                    uint `json:"hits"`
+	Hits uint `json:"hits"`
 
-		// TimeStats are being collected (true)
+	// TimeStats are being collected (true)
 
-	Time                    time.Duration `json:"total-time"`
-	Peak                    time.Duration `json:"peak-time"`
+	Time time.Duration `json:"total-time"`
+	Peak time.Duration `json:"peak-time"`
 
-		// Category Hits
+	// Category Hits
 
-	GetEntryHits            uint `json:"get-entry-hits"`
-	GetKeysHits             uint `json:"get-keys-hits"`
-	GetKeysPatternHits      uint `json:"get-keys-pattern-hits"`
-	GetMapHits              uint `json:"get-map-hits"`
-	GetMapAllHits           uint `json:"get-map-all-hits"`
+	GetEntryHits       uint `json:"get-entry-hits"`
+	GetKeysHits        uint `json:"get-keys-hits"`
+	GetKeysPatternHits uint `json:"get-keys-pattern-hits"`
+	GetMapHits         uint `json:"get-map-hits"`
+	GetMapAllHits      uint `json:"get-map-all-hits"`
 
-		// Cache Statistics
+	NewScanCursorHits    uint `json:"new-scan-cursor-hits"`
+	DeleteScanCursorHits uint `json:"delete-scan-cursor-hits"`
+	GetNextKeysHits      uint `json:"get-next-keys-hits"`
+
+	// Cache Statistics
 
 	GetEntryCacheHits       uint `json:"get-entry-cache-hits"`
 	GetKeysCacheHits        uint `json:"keys-cache-hits"`
@@ -65,44 +69,44 @@ type Stats struct {
 	GetMapCacheHits         uint `json:"get-map-cache-hits"`
 	GetMapAllCacheHits      uint `json:"get-map-all-cache-hits"`
 
-		// TimeStats are being collected (true)
+	// TimeStats are being collected (true)
 
-	GetEntryTime            time.Duration `json:"get-entry-time"`
-	GetKeysTime             time.Duration `json:"get-keys-time"`
-	GetKeysPatternTime      time.Duration `json:"get-keys-pattern-time"`
-	GetMapTime              time.Duration `json:"get-map-time"`
-	GetMapAllTime           time.Duration `json:"get-map-all-time"`
+	GetEntryTime       time.Duration `json:"get-entry-time"`
+	GetKeysTime        time.Duration `json:"get-keys-time"`
+	GetKeysPatternTime time.Duration `json:"get-keys-pattern-time"`
+	GetMapTime         time.Duration `json:"get-map-time"`
+	GetMapAllTime      time.Duration `json:"get-map-all-time"`
+	GetNextKeysTime    time.Duration `json:"get-next-keys-time"`
 
-	GetEntryPeak            time.Duration `json:"get-entry-peak-time"`
-	GetKeysPeak             time.Duration `json:"get-keys-peak-time"`
-	GetKeysPatternPeak      time.Duration `json:"get-keys-pattern-peak-time"`
-	GetMapPeak              time.Duration `json:"get-map-peak-time"`
-	GetMapAllPeak           time.Duration `json:"get-map-all-peak-time"`
-
+	GetEntryPeak       time.Duration `json:"get-entry-peak-time"`
+	GetKeysPeak        time.Duration `json:"get-keys-peak-time"`
+	GetKeysPatternPeak time.Duration `json:"get-keys-pattern-peak-time"`
+	GetMapPeak         time.Duration `json:"get-map-peak-time"`
+	GetMapAllPeak      time.Duration `json:"get-map-all-peak-time"`
+	GetNextKeysPeak    time.Duration `json:"get-next-keys-peak-time"`
 }
 
 type DBStats struct {
-	AllTables  Stats            `json:"all-tables"`
-	AllMaps    Stats            `json:"all-maps"`
-	Tables     map[string]Stats `json:"tables"`
-	Maps       map[string]Stats `json:"maps"`
+	AllTables Stats            `json:"all-tables"`
+	AllMaps   Stats            `json:"all-maps"`
+	Tables    map[string]Stats `json:"tables"`
+	Maps      map[string]Stats `json:"maps"`
 }
 
 type DBGlobalStats struct {
-	New         uint           `json:"new-db"`
-	Delete      uint           `json:"delete-db"`
-	PeakOpen    uint           `json:"peak-open"`
+	New      uint `json:"new-db"`
+	Delete   uint `json:"delete-db"`
+	PeakOpen uint `json:"peak-open"`
 
-	NewTime     time.Duration  `json:"new-time"`
-	NewPeak     time.Duration  `json:"peak-new-time"`
+	NewTime time.Duration `json:"new-time"`
+	NewPeak time.Duration `json:"peak-new-time"`
 
-	ZeroGetHits uint           `json:"zero-get-ops-db"`
+	ZeroGetHits uint `json:"zero-get-ops-db"`
 
-		// TableStats are being collected (true)
+	// TableStats are being collected (true)
 
-	Databases   [MaxDB]DBStats `json:"dbs"`
+	Databases [MaxDB]DBStats `json:"dbs"`
 }
-
 
 type DBStatsConfig struct {
 	TimeStats  bool
@@ -122,7 +126,7 @@ func GetDBStatsTotals() (uint, time.Duration, time.Duration) {
 	return dbGlobalStats.getStatsTotals()
 }
 
-func ClearDBStats() (error) {
+func ClearDBStats() error {
 	return dbGlobalStats.clearStats()
 }
 
@@ -139,11 +143,11 @@ var mutexDBGlobalStats sync.Mutex
 var zeroDBGlobalStats = &DBGlobalStats{}
 
 var dbStatsConfig *DBStatsConfig
-var defaultDBStatsConfig DBStatsConfig = DBStatsConfig {
-	TimeStats: false,
+var defaultDBStatsConfig DBStatsConfig = DBStatsConfig{
+	TimeStats:  false,
 	TableStats: false,
-	MapStats: false,
-	}
+	MapStats:   false,
+}
 
 var reconfigureStatsConfig bool
 var mutexStatsConfig sync.Mutex
@@ -170,15 +174,15 @@ func (stats *DBGlobalStats) getStats() (*DBGlobalStats, error) {
 	mutexDBGlobalStats.Lock()
 
 	dbGlobalStats = *stats
-	for dbnum,db := range stats.Databases {
+	for dbnum, db := range stats.Databases {
 
 		dbGlobalStats.Databases[dbnum].Tables = make(map[string]Stats, len(db.Tables))
-		for name,table := range db.Tables {
+		for name, table := range db.Tables {
 			dbGlobalStats.Databases[dbnum].Tables[name] = table
 		}
 
 		dbGlobalStats.Databases[dbnum].Maps = make(map[string]Stats, len(db.Maps))
-		for name,mAP := range db.Maps {
+		for name, mAP := range db.Maps {
 			dbGlobalStats.Databases[dbnum].Maps[name] = mAP
 		}
 
@@ -195,7 +199,7 @@ func (stats *DBGlobalStats) getStatsTotals() (uint, time.Duration, time.Duration
 
 	mutexDBGlobalStats.Lock()
 
-	for _,db := range stats.Databases {
+	for _, db := range stats.Databases {
 
 		if db.AllTables.Hits != 0 {
 			hits += db.AllTables.Hits
@@ -204,7 +208,7 @@ func (stats *DBGlobalStats) getStatsTotals() (uint, time.Duration, time.Duration
 				peak = db.AllTables.Peak
 			}
 		} else {
-			for _,table := range db.Tables {
+			for _, table := range db.Tables {
 				hits += table.Hits
 				timetotal += table.Time
 				if peak < table.Peak {
@@ -220,7 +224,7 @@ func (stats *DBGlobalStats) getStatsTotals() (uint, time.Duration, time.Duration
 				peak = db.AllMaps.Peak
 			}
 		} else {
-			for _,mAP := range db.Maps {
+			for _, mAP := range db.Maps {
 				hits += mAP.Hits
 				timetotal += mAP.Time
 				if peak < mAP.Peak {
@@ -236,7 +240,7 @@ func (stats *DBGlobalStats) getStatsTotals() (uint, time.Duration, time.Duration
 	return hits, timetotal, peak
 }
 
-func (stats *DBGlobalStats) clearStats() (error) {
+func (stats *DBGlobalStats) clearStats() error {
 
 	mutexDBGlobalStats.Lock()
 	*stats = *zeroDBGlobalStats
@@ -245,17 +249,16 @@ func (stats *DBGlobalStats) clearStats() (error) {
 	return nil
 }
 
-
-func (stats *DBGlobalStats) updateStats(dbNo DBNum, isNew bool, dur time.Duration, connStats * DBStats) (error) {
+func (stats *DBGlobalStats) updateStats(dbNo DBNum, isNew bool, dur time.Duration, connStats *DBStats) error {
 
 	mutexDBGlobalStats.Lock()
 
 	if isNew {
 		stats.NewTime += dur
-		if (dur > stats.NewPeak) {
+		if dur > stats.NewPeak {
 			stats.NewPeak = dur
 		}
-		if (stats.New)++ ; (stats.New - stats.Delete) > stats.PeakOpen {
+		if (stats.New)++; (stats.New - stats.Delete) > stats.PeakOpen {
 			(stats.PeakOpen)++
 		}
 	} else {
@@ -277,7 +280,7 @@ func (stats *DBGlobalStats) updateStats(dbNo DBNum, isNew bool, dur time.Duratio
 //  DBStats functions                                                         //
 ////////////////////////////////////////////////////////////////////////////////
 
-func (dbstats *DBStats) updateStats(connStats *DBStats) (error) {
+func (dbstats *DBStats) updateStats(connStats *DBStats) error {
 
 	var ok bool
 
@@ -287,8 +290,8 @@ func (dbstats *DBStats) updateStats(connStats *DBStats) (error) {
 		if dbstats.Tables == nil {
 			dbstats.Tables = make(map[string]Stats, InitialTablesCount)
 		}
-		for t,s := range connStats.Tables {
-			if _,ok = dbstats.Tables[t]; !ok {
+		for t, s := range connStats.Tables {
+			if _, ok = dbstats.Tables[t]; !ok {
 				dbstats.Tables[t] = s
 			} else {
 				var stats Stats = dbstats.Tables[t]
@@ -304,8 +307,8 @@ func (dbstats *DBStats) updateStats(connStats *DBStats) (error) {
 		if dbstats.Maps == nil {
 			dbstats.Maps = make(map[string]Stats, InitialMapsCount)
 		}
-		for t,s := range connStats.Maps {
-			if _,ok = dbstats.Maps[t]; !ok {
+		for t, s := range connStats.Maps {
+			if _, ok = dbstats.Maps[t]; !ok {
 				dbstats.Maps[t] = s
 			} else {
 				var stats Stats = dbstats.Maps[t]
@@ -322,17 +325,21 @@ func (dbstats *DBStats) updateStats(connStats *DBStats) (error) {
 //  Stats functions                                                           //
 ////////////////////////////////////////////////////////////////////////////////
 
-func (stats *Stats) updateStats(connStats *Stats) (error) {
+func (stats *Stats) updateStats(connStats *Stats) error {
 
 	if connStats.Hits != 0 {
 
 		stats.Hits += connStats.Hits
-		
+
 		stats.GetEntryHits += connStats.GetEntryHits
 		stats.GetKeysHits += connStats.GetKeysHits
 		stats.GetKeysPatternHits += connStats.GetKeysPatternHits
 		stats.GetMapHits += connStats.GetMapHits
 		stats.GetMapAllHits += connStats.GetMapAllHits
+
+		stats.NewScanCursorHits += connStats.NewScanCursorHits
+		stats.DeleteScanCursorHits += connStats.DeleteScanCursorHits
+		stats.GetNextKeysHits += connStats.GetNextKeysHits
 
 		stats.GetEntryCacheHits += connStats.GetEntryCacheHits
 		stats.GetKeysCacheHits += connStats.GetKeysCacheHits
@@ -352,6 +359,7 @@ func (stats *Stats) updateStats(connStats *Stats) (error) {
 			stats.GetKeysPatternTime += connStats.GetKeysPatternTime
 			stats.GetMapTime += connStats.GetMapTime
 			stats.GetMapAllTime += connStats.GetMapAllTime
+			stats.GetNextKeysTime += connStats.GetNextKeysTime
 
 			if connStats.GetEntryPeak > stats.GetEntryPeak {
 				stats.GetEntryPeak = connStats.GetEntryPeak
@@ -367,6 +375,9 @@ func (stats *Stats) updateStats(connStats *Stats) (error) {
 			}
 			if connStats.GetMapAllPeak > stats.GetMapAllPeak {
 				stats.GetMapAllPeak = connStats.GetMapAllPeak
+			}
+			if connStats.GetNextKeysPeak > stats.GetNextKeysPeak {
+				stats.GetNextKeysPeak = connStats.GetNextKeysPeak
 			}
 
 		}
@@ -433,20 +444,20 @@ func (config *DBStatsConfig) readFromDB() error {
 		config.TableStats = defaultDBStatsConfig.TableStats
 		config.MapStats = defaultDBStatsConfig.MapStats
 	} else {
-		for k,v := range fields {
+		for k, v := range fields {
 			switch {
-				case k == "time_stats" && v == "True":
-					config.TimeStats = true
-				case k == "time_stats" && v == "False":
-					config.TimeStats = false
-				case k == "table_stats" && v == "True":
-					config.TableStats = true
-				case k == "table_stats" && v == "False":
-					config.TableStats = false
-				case k == "map_stats" && v == "True":
-					config.MapStats = true
-				case k == "map_stats" && v == "False":
-					config.MapStats = false
+			case k == "time_stats" && v == "True":
+				config.TimeStats = true
+			case k == "time_stats" && v == "False":
+				config.TimeStats = false
+			case k == "table_stats" && v == "True":
+				config.TableStats = true
+			case k == "table_stats" && v == "False":
+				config.TableStats = false
+			case k == "map_stats" && v == "True":
+				config.MapStats = true
+			case k == "map_stats" && v == "False":
+				config.MapStats = false
 			}
 		}
 	}
@@ -461,20 +472,22 @@ func readRedis(key string) (map[string]string, error) {
 
 	ipAddr := DefaultRedisLocalTCPEP
 	dbId := int(ConfigDB)
+	dbPassword := ""
 	if dbInstName := getDBInstName(ConfigDB); dbInstName != "" {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
+			dbPassword = getDbPassword(dbInstName)
 		}
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Network: "tcp",
-		Addr:    ipAddr,
-		Password: "",
+		Network:     "tcp",
+		Addr:        ipAddr,
+		Password:    dbPassword,
 		DB:          dbId,
 		DialTimeout: 0,
-		PoolSize: 1,
+		PoolSize:    1,
 	})
 
 	fields, e := client.HGetAll(key).Result()
@@ -483,4 +496,3 @@ func readRedis(key string) (map[string]string, error) {
 
 	return fields, e
 }
-

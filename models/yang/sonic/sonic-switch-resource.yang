@@ -7,6 +7,10 @@ module sonic-switch-resource {
     prefix sonic-ext;
   }
 
+  import sonic-common {
+      prefix cmn;
+  }
+
 
   organization
     "SONiC";
@@ -27,6 +31,10 @@ module sonic-switch-resource {
       enum DROP_MONITOR {
         description
           "Drop Monitor Resource";
+      }
+      enum ROUTE_SCALE {
+        description
+          "Route Scale Resource";
       }
     }
     description
@@ -50,6 +58,22 @@ module sonic-switch-resource {
 
   }
 
+  typedef route-scale-limit {
+    type enumeration {
+      enum "DEFAULT" {
+        description
+          "No route scale configured.";
+      }
+      enum "MAX" {
+        description
+          "Maximum route scale configured.";
+      }
+    }
+    description
+      "Route scale limit ";
+
+  }
+
   container sonic-switch-resource {
     container SWITCH_RESOURCE_TABLE {
       list SWITCH_RESOURCE_TABLE_LIST {
@@ -64,8 +88,26 @@ module sonic-switch-resource {
 
         leaf flows {
           type flow-scale-limit;
+          must 'not(current()/../../SWITCH_RESOURCE_TABLE_LIST[name="ROUTE_SCALE"]/routes) or' +
+               '(current()/../../SWITCH_RESOURCE_TABLE_LIST[name="ROUTE_SCALE"]/routes = "DEFAULT")'
+          {
+              error-message "Remove route-scale configuration before configuring drop-monitor flows";
+              error-app-tag switch-resouce-invalid-config;
+          }
           description
             "Drop Monitor Flow scale options ";
+        }
+
+        leaf routes {
+          type route-scale-limit;
+          must 'not(current()/../../SWITCH_RESOURCE_TABLE_LIST[name="DROP_MONITOR"]/flows) or' +
+               '(current()/../../SWITCH_RESOURCE_TABLE_LIST[name="DROP_MONITOR"]/flows = "NONE")'
+          {
+              error-message "Remove drop-monitor configuration before configuring route-scale";
+              error-app-tag switch-resouce-invalid-config;
+          }
+          description
+            "Route scale options ";
         }
 
       }

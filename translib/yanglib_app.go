@@ -20,14 +20,13 @@
 package translib
 
 import (
-	"bufio"
 	"net"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	errors "github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -107,8 +106,13 @@ func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	return nil, nil, errors.NotSupported("Unsupported")
+func (app *yanglibApp) translateSubscribe(in *translateSubRequest) (*translateSubResponse, error) {
+	return nil, errors.NotSupported("Unsupported")
+}
+
+func (app *yanglibApp) processSubscribe(in *processSubRequest) (processSubResponse, error) {
+	var resp processSubResponse
+	return resp, errors.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -131,7 +135,7 @@ func (app *yanglibApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, erro
 	return ActionResponse{}, errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	glog.Infof("path = %s", app.pathInfo.Template)
 	glog.Infof("vars = %s", app.pathInfo.Vars)
 
@@ -153,8 +157,8 @@ func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	}
 
 	if err == nil {
-		resp.Payload, err = generateGetResponsePayload(
-			app.pathInfo.Path, app.ygotRoot, app.ygotTarget)
+		resp.Payload, resp.ValueTree, err = generateGetResponsePayload(
+			app.pathInfo.Path, app.ygotRoot, app.ygotTarget, fmtType)
 	}
 
 	return resp, err
@@ -312,25 +316,13 @@ func (yb *yanglibBuilder) prepare() error {
 func (yb *yanglibBuilder) loadYangs() error {
 	glog.Infof("Loading yangs from %s directory", yb.yangDir)
 	var parsed, ignored uint32
-	yangIgnores := make(map[string]bool)
 	mods := yang.NewModules()
 	start := time.Now()
 
-	// Load yang ignore list
-	ignores, err := readConfigLines(filepath.Join(yb.yangDir, "api_ignore"))
-	if err == nil {
-		glog.Infof("api_ignore = %v", ignores)
-		for _, f := range ignores {
-			yangIgnores[filepath.Base(f)] = true
-		}
-	} else {
-		glog.Warningf("Failed to parse api_ignore file; err=%v", err)
-		// Continue to load all yangs if api_ignore canot be resolved
-	}
-
 	files, _ := filepath.Glob(filepath.Join(yb.yangDir, "*.yang"))
 	for _, f := range files {
-		if yangIgnores[filepath.Base(f)] {
+		// ignore transformer annotation yangs
+		if strings.HasSuffix(filepath.Base(f), "-annot.yang") {
 			ignored++
 			continue
 		}
@@ -536,26 +528,4 @@ func findAManagementIP() string {
 // transformer.YangPath for now.
 func GetYangPath() string {
 	return transformer.YangPath
-}
-
-// readConfigLines returns a slice containing lines from a config
-// file. Empty lines and lines starting with '#' are ignored.
-func readConfigLines(filepath string) ([]string, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	var lines []string
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if len(line) != 0 && !strings.HasPrefix(line, "#") {
-			lines = append(lines, line)
-		}
-	}
-
-	return lines, nil
 }

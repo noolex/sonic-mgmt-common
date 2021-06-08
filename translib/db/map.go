@@ -40,9 +40,6 @@ import (
 func init() {
 }
 
-
-
-
 func (d *DB) GetMap(ts *TableSpec, mapKey string) (string, error) {
 
 	if glog.V(3) {
@@ -53,7 +50,7 @@ func (d *DB) GetMap(ts *TableSpec, mapKey string) (string, error) {
 	// Time Start
 	var cacheHit bool
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	var stats Stats
 	if d.dbStatsConfig.TimeStats {
 		now = time.Now()
@@ -68,24 +65,24 @@ func (d *DB) GetMap(ts *TableSpec, mapKey string) (string, error) {
 		var ok bool
 		if mAP, ok = d.cache.Maps[ts.Name]; ok {
 			if v, ok = mAP.mapMap[mapKey]; ok {
-				cacheHit = true;
+				cacheHit = true
 			}
 		}
 	}
 
-	if (!cacheHit) {
+	if !cacheHit {
 
 		v, e = d.client.HGet(ts.Name, mapKey).Result()
 
 		// If cache SetCache (i.e. a cache miss)
 		if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheMap(ts.Name) {
-			if _, ok := d.cache.Maps[ts.Name] ; !ok {
-				d.cache.Maps[ts.Name] = MAP {
+			if _, ok := d.cache.Maps[ts.Name]; !ok {
+				d.cache.Maps[ts.Name] = MAP{
 					ts:       ts,
 					complete: false,
 					mapMap:   make(map[string]string, InitialMapKeyCount),
 					db:       d,
-					}
+				}
 			}
 			d.cache.Maps[ts.Name].mapMap[mapKey] = v
 		}
@@ -142,7 +139,7 @@ func (d *DB) GetMapAll(ts *TableSpec) (Value, error) {
 	// Time Start
 	var cacheHit bool
 	var now time.Time
-	var dur	time.Duration
+	var dur time.Duration
 	var stats Stats
 	if d.dbStatsConfig.TimeStats {
 		now = time.Now()
@@ -158,13 +155,13 @@ func (d *DB) GetMapAll(ts *TableSpec) (Value, error) {
 		var ok bool
 		if mAP, ok = d.cache.Maps[ts.Name]; ok {
 			if mAP.complete {
-				cacheHit = true;
-				value = Value{ Field: mAP.mapMap }
+				cacheHit = true
+				value = Value{Field: mAP.mapMap}
 			}
 		}
 	}
 
-	if (!cacheHit) {
+	if !cacheHit {
 
 		v, e = d.client.HGetAll(ts.Name).Result()
 
@@ -174,19 +171,19 @@ func (d *DB) GetMapAll(ts *TableSpec) (Value, error) {
 
 			// If cache SetCache (i.e. a cache miss)
 			if d.dbCacheConfig.PerConnection && d.dbCacheConfig.isCacheMap(ts.Name) {
-				d.cache.Maps[ts.Name] = MAP {
+				d.cache.Maps[ts.Name] = MAP{
 					ts:       ts,
 					complete: true,
 					mapMap:   v,
 					db:       d,
-					}
+				}
 			}
 
 		} else {
 			if glog.V(1) {
 				glog.Info("GetMapAll: HGetAll(): empty map")
 			}
-			e = tlerr.TranslibRedisClientEntryNotExist { Entry: ts.Name }
+			e = tlerr.TranslibRedisClientEntryNotExist{Entry: ts.Name}
 		}
 
 	}
@@ -249,6 +246,7 @@ func (d *DB) SetMap(ts *TableSpec, mapKey string, mapValue string) error {
 
 	return e
 }
+
 // For Testing only. Do Not Use!!! ==============================
 
 // DeleteMapAll - There is no transaction support on these.
@@ -266,6 +264,5 @@ func (d *DB) DeleteMapAll(ts *TableSpec) error {
 
 	return e
 }
+
 // For Testing only. Do Not Use!!! ==============================
-
-

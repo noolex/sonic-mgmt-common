@@ -64,6 +64,9 @@ module sonic-vxlan {
                     }
                     type inet:ipv4-address;
                 }
+                leaf primary_ip {
+                    type inet:ipv4-address;
+                }
                 leaf qos-mode {
                     type enumeration {
                         enum uniform;

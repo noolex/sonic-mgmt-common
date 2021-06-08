@@ -1,6 +1,7 @@
 module sonic-sag {
 	namespace "http://github.com/Azure/sonic-sag";
     prefix ssag;
+		yang-version 1.1;
 
     import ietf-inet-types {
 		prefix "inet";
@@ -13,6 +14,10 @@ module sonic-sag {
 	import sonic-vlan {
         prefix "svlan";
     }
+
+		import sonic-interface {
+				prefix sint;
+		}
 
 		import sonic-extension {
 		    prefix sonic-ext;
@@ -45,8 +50,13 @@ module sonic-sag {
 			key "ifname table_distinguisher";
 
 			leaf ifname {
-				type leafref {
-					path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+				type union {
+						type leafref {
+								path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+						}
+						type leafref {
+								path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+						}
 				}
 			}
 
@@ -117,7 +127,14 @@ module sonic-sag {
             key "ifname";
 
             leaf ifname {
-                type string;
+                type union {
+                    type leafref {
+                            path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                    }
+                    type leafref {
+                            path "/sint:sonic-interface/sint:VLAN_SUB_INTERFACE/sint:VLAN_SUB_INTERFACE_LIST/sint:id";
+                    }
+                }
             }
 
             leaf vrf {

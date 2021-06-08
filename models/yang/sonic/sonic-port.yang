@@ -95,6 +95,18 @@ module sonic-port {
                 leaf override_unreliable_los {
                     type string;
                 }
+		leaf-list tagged_vlans{
+		    type string;
+		    description
+			"List of tagged VLANs to be associated with port";
+            sonic-ext:custom-validation ValidateSwitchPortConfig;
+		}
+		leaf access_vlan{
+		    type string;
+		    description
+			"Access VLAN to be associated with port";
+            sonic-ext:custom-validation ValidateSwitchPortConfig;
+		}
             }
         }
         container PORT_TABLE {
