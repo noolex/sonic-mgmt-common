@@ -309,8 +309,8 @@ func (reqXlator *subscribeReqXlator) Translate() error {
 	}
 
 	if err = reqXlator.translateTargetNodePath(ygXpathInfoTrgt); err == nil {
-		if reqXlator.subReq.isTrgtDfnd {
-			if ygXpathInfoTrgt.subscribePref != nil && *ygXpathInfoTrgt.subscribePref != "onchange" {
+		if reqXlator.subReq.isTrgtDfnd { // target defined case
+			if (ygXpathInfoTrgt.subscribePref != nil && *ygXpathInfoTrgt.subscribePref != "onchange") || reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.OnChange == OnchangeDisable {
 				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval = ygXpathInfoTrgt.subscribeMinIntvl
 				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.PType = Sample
 				reqXlator.subReq.isOnchange = false
@@ -318,8 +318,15 @@ func (reqXlator *subscribeReqXlator) Translate() error {
 				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.PType = OnChange
 				reqXlator.subReq.isOnchange = true
 			}
-		} else if !reqXlator.subReq.isTrgtDfnd {
+		} else if reqXlator.subReq.isOnchange { // on change case
+			reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.PType = OnChange
 			reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.OnChange = OnchangeEnable
+		} else if !reqXlator.subReq.isOnchange { //sample case
+			if reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval < ygXpathInfoTrgt.subscribeMinIntvl {
+				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval = ygXpathInfoTrgt.subscribeMinIntvl
+			}
+			reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.PType = Sample
+			reqXlator.subReq.isOnchange = false
 		}
 
 		if err = reqXlator.translateChildNodePaths(ygXpathInfoTrgt); err != nil {
@@ -332,8 +339,13 @@ func (reqXlator *subscribeReqXlator) Translate() error {
 			if reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval < reqXlator.subReq.chldNodeMaxMinIntrvl {
 				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval = reqXlator.subReq.chldNodeMaxMinIntrvl
 			}
-		}
 
+			if reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval == 0 {
+				reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval = 20 // default value; in seconds
+			}
+
+			log.Info(reqXlator.subReq.reqLogId, "Translate: Min Interval: ", reqXlator.subReq.subReqXlateInfo.TrgtPathInfo.MinInterval)
+		}
 	} else {
 		log.Error(reqXlator.subReq.reqLogId, "Error in translating the target node subscribe path: ", err)
 	}
@@ -386,6 +398,7 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 	}
 
 	var ntfType NotificationType
+	minInterval := 0
 
 	if ygXpathInfo.subscribePref != nil && *ygXpathInfo.subscribePref == "onchange" {
 		ntfType = OnChange
@@ -393,10 +406,11 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 
 	if subOutPram.nOpts != nil {
 		ntfType = NotificationType(subOutPram.nOpts.pType)
+		minInterval = subOutPram.nOpts.mInterval
 	}
 
 	if !subOutPram.isVirtualTbl &&
-		(subOutPram.onChange == OnchangeDisable || (pathXltr.subReq.isTrgtDfnd && ntfType != OnChange)) {
+		(subOutPram.onChange == OnchangeDisable && (pathXltr.subReq.isOnchange && !pathXltr.subReq.isTrgtDfnd)) {
 		log.Error(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: Onchange subscription is not supported; onChange flag set to"+
 			" false in the XfmrSubscOutParams for the Subscribe transformer callback: ", ygXpathInfo.xfmrFunc)
 		return tlerr.InternalError{Format: "Onchange subscription is not supported; onChange flag set to false in the" +
@@ -412,8 +426,11 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 			pathXltr.pathXlateInfo.OnChange = OnchangeEnable
 		}
 
-		if pathXltr.subReq.isTrgtDfnd {
+		if pathXltr.subReq.isTrgtDfnd || !pathXltr.subReq.isOnchange {
 			pathXltr.pathXlateInfo.PType = ntfType
+			if ntfType == Sample {
+				pathXltr.pathXlateInfo.MinInterval = minInterval
+			}
 		}
 	}
 
@@ -507,8 +524,11 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 							ygLeafNodeSecDbMap[yangNodeName] = true
 							if isLeafTblFound {
 								// target node
-								if pathXltr.subReq.isTrgtDfnd {
+								if pathXltr.subReq.isTrgtDfnd || !pathXltr.subReq.isOnchange {
 									pathXltr.pathXlateInfo.PType = ntfType
+									if ntfType == Sample {
+										pathXltr.pathXlateInfo.MinInterval = minInterval
+									}
 								}
 								dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
 								if log.V(dbLgLvl) {
@@ -536,8 +556,11 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 								dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}
 								dbYgPath.DbFldYgPathMap[dbField] = ""
 								dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-								if pathXltr.subReq.isTrgtDfnd {
+								if pathXltr.subReq.isTrgtDfnd || !pathXltr.subReq.isOnchange {
 									leafPathXlateInfo.PType = ntfType
+									if ntfType == Sample {
+										pathXltr.pathXlateInfo.MinInterval = minInterval
+									}
 								}
 								if log.V(dbLgLvl) {
 									log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: secDbDataMap: target node: container: "+
@@ -648,8 +671,8 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 				}
 			}
 		}
-	} else if pathXltr.pathXlateInfo.OnChange == OnchangeDisable && (subOutPram.nOpts != nil && pathXltr.subReq.chldNodeMaxMinIntrvl < subOutPram.nOpts.mInterval) {
-		pathXltr.subReq.chldNodeMaxMinIntrvl = subOutPram.nOpts.mInterval
+	} else if pathXltr.pathXlateInfo.OnChange == OnchangeDisable && pathXltr.subReq.chldNodeMaxMinIntrvl < minInterval {
+		pathXltr.subReq.chldNodeMaxMinIntrvl = minInterval
 	}
 
 	return nil
