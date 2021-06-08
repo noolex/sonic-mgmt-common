@@ -23,9 +23,10 @@ set -e
 TOPDIR=$(git rev-parse --show-toplevel)
 GO=${GO:-go}
 
-TARGS=( -mod=vendor -v -cover -tags test )
+TARGS=( -mod=vendor -v -cover )
 PARGS=()
-PKG=translib/...
+PKG=translib
+TAG=test
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -33,9 +34,10 @@ while [[ $# -gt 0 ]]; do
         echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME|-bench PATTERN] [-json] [ARGS...]"
         exit 0;;
     -p|-pkg|-package) PKG=$2; shift 2;;
-    -r|-run)   TARGS+=( -run $2 ); shift 2;;
-    -b|-bench) TARGS+=( -bench $2 -run XXX ); shift 2;;
+    -r|-run)   TARGS+=( -run "$2" ); shift 2;;
+    -b|-bench) TARGS+=( -bench "$2" -run XXX ); shift 2;;
     -j|-json)  TARGS+=( -json ); shift;;
+    -nosub)    NOSUBSCRIBE=1; shift;;
     *) PARGS+=( "$1"); shift;;
     esac
 done
@@ -65,6 +67,23 @@ if [[ -z ${YANG_MODELS_PATH} ]]; then
     ${TOPDIR}/tools/test/yangpath_init.sh
 fi
 
+# Include extra annotations for translib package
+if [[ ${PKG} == translib ]] && [[ -z ${NOSUBSCRIBE} ]]; then
+    TAG+=',subscribe_annot'
+    for F in $(find models/yang/testdata -name '*-annot.subscribe'); do
+        ANNOT=${YANG_MODELS_PATH}/$(basename $F .subscribe).yang
+        [[ -f ${ANNOT} ]] || continue
+        # Remove last '}' from xxxx-annot.yang and append xxxx-annot.subscribe contents.
+        # Assumes there are no comments after the last '}'.
+        tac ${ANNOT} | awk 'NF {p=1} p' | tac | sed '$s/}\s*$//' > ${ANNOT}.tmp
+        echo -e "\n//===== subscribe test annotations =====\n" >> ${ANNOT}.tmp
+        cat $F >> ${ANNOT}.tmp
+        echo -e "\n}" >> ${ANNOT}.tmp
+        mv ${ANNOT}.tmp ${ANNOT}
+    done
+fi
+
+[[ -z ${TAG} ]] || TARGS+=( -tags ${TAG} )
 [[ "${PARGS[@]}" =~ -(also)?log* ]] || PARGS+=( -logtostderr )
 
 set -x

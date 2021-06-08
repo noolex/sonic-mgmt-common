@@ -37,6 +37,7 @@ import (
 type translateSubRequest struct {
 	ctxID interface{}      // request id for logging
 	path  string           // subscribe path
+	mode  NotificationType // requested notification type
 	dbs   [db.MaxDB]*db.DB // DB objects for querying, if needed
 }
 
