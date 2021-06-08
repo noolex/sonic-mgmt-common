@@ -222,38 +222,38 @@ module openconfig-routing-policy-annot {
             sonic-ext:field-name "match_local_pref";
       }
     }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:vni-number {
+    
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:vni-number {
       deviate add {
             sonic-ext:field-name "match_evpn_vni_number";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:default-type5-route {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:default-type5-route {
       deviate add {
             sonic-ext:field-name "match_evpn_default_type5_route";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:route-type {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:route-type {
       deviate add {
             sonic-ext:field-name "match_evpn_advertise_route_type";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:vni-number {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:vni-number {
       deviate add {
             sonic-ext:field-name "match_evpn_vni_number";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:default-type5-route {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:default-type5-route {
       deviate add {
             sonic-ext:field-name "match_evpn_default_type5_route";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:route-type {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:route-type {
       deviate add {
             sonic-ext:field-name "match_evpn_advertise_route_type";
       }
