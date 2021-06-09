@@ -1,0 +1,85 @@
+From 2f6b18baddf32f4798fe4f3d96f7aa78816b5b51 Mon Sep 17 00:00:00 2001
+From: Phaniraj Vattem <phaniraj_vattem@dell.com>
+Date: Tue, 1 Jun 2021 19:50:22 -0700
+Subject: [PATCH] Moved static & dynamic MAC counts
+ openconfig-network-instance-ext.yang to openconfig-network-instance-l2.yang
+ Moved Metric for redistributed routes from
+ openconfig-network-instance-ext.yang to openconfig-network-instance.yang
+
+---
+ common/openconfig-network-instance-l2.yang | 19 ++++++++++++++++++-
+ openconfig-network-instance.yang           | 14 +++++++++++++-
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+
+diff --git a/common/openconfig-network-instance-l2.yang b/common/openconfig-network-instance-l2.yang
+index 57746ad..a93fb31 100644
+--- a/common/openconfig-network-instance-l2.yang
++++ b/common/openconfig-network-instance-l2.yang
+@@ -21,7 +21,13 @@ submodule openconfig-network-instance-l2 {
+     Layer 2 network instance configuration and operational state
+     parameters.";
+ 
+-  oc-ext:openconfig-version "0.14.0";
++  oc-ext:openconfig-version "0.14.1";
++
++  revision "2021-06-01" {
++    description
++      "Added static & dynamic MAC counts.";
++    reference "0.14.1";
++  }
+ 
+   revision "2020-06-20" {
+     description
+@@ -226,6 +232,17 @@ submodule openconfig-network-instance-l2 {
+         "The maximum number of MAC address entries that should be
+         accepted into the FDB";
+     }
++
++    leaf static-count {
++      type uint32;
++      description "Static MAC count";
++    }
++
++    leaf dynamic-count {
++      type uint32;
++      description "Dynamic MAC count";
++    }
++
+   }
+ 
+   grouping l2ni-encapsulation-config {
+diff --git a/openconfig-network-instance.yang b/openconfig-network-instance.yang
+index b80263f..af17e7d 100644
+--- a/openconfig-network-instance.yang
++++ b/openconfig-network-instance.yang
+@@ -46,7 +46,13 @@ module openconfig-network-instance {
+     virtual switch instance (VSI). Mixed Layer 2 and Layer 3
+     instances are also supported.";
+ 
+-  oc-ext:openconfig-version "0.14.0";
++  oc-ext:openconfig-version "0.14.1";
++
++  revision "2021-06-01" {
++    description
++      "Added the Metric for Redistributed Routes.";
++    reference "0.14.1";
++  }
+ 
+   revision "2020-06-20" {
+     description
+@@ -1036,6 +1042,12 @@ module openconfig-network-instance {
+         or explicitly set by policy.";
+     }
+ 
++    leaf metric {
++      type uint32;
++      description
++        "Metric for redistributed routes";
++    }
++
+     uses oc-rpol:apply-policy-import-config;
+   }
+ 
+-- 
+2.7.4
+

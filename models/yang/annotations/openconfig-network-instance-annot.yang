@@ -1022,7 +1022,7 @@ module openconfig-network-instance-annot {
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst-ext:metric {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:config/oc-netinst:metric {
       deviate add {
         sonic-ext:field-name "metric";
       }
@@ -1052,7 +1052,7 @@ module openconfig-network-instance-annot {
       }
     }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst-ext:metric {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:table-connections/oc-netinst:table-connection/oc-netinst:state/oc-netinst:metric {
       deviate add {
         sonic-ext:field-name "metric";
       }
