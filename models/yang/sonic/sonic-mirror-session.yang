@@ -62,7 +62,6 @@ module sonic-mirror-session {
 
                 leaf dst_ip {
                     type inet:ipv4-address;
-                    sonic-ext:custom-validation ValidateDstIp;
                     description
                         "ERSPAN destination ip. Mirrored frames will be routed to this destination.
                         This IP will be set as destination ip in outer header of mirrored frame ";
