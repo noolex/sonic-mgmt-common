@@ -157,19 +157,27 @@ type SubscribeResponse struct {
 type NotificationType int
 
 const (
-	Sample NotificationType = iota
+	TargetDefined NotificationType = iota
+	Sample
 	OnChange
 )
 
 type IsSubscribeRequest struct {
-	Paths         []string
+	Paths         []IsSubscribePath
 	User          UserRoles
 	AuthEnabled   bool
 	ClientVersion Version
 	Session       *SubscribeSession
 }
 
+type IsSubscribePath struct {
+	ID   uint32           // Path ID for correlating with IsSubscribeResponse
+	Path string           // Subscribe path
+	Mode NotificationType // Requested subscribe mode
+}
+
 type IsSubscribeResponse struct {
+	ID                  uint32 // Path ID
 	Path                string
 	IsOnChangeSupported bool
 	MinInterval         int
@@ -946,6 +954,7 @@ func Stream(req SubscribeRequest) error {
 	sc := subscribeContext{
 		id:      sid,
 		dbs:     dbs,
+		mode:    Sample,
 		version: req.ClientVersion,
 		session: req.Session,
 	}
@@ -984,7 +993,9 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 	resp := make([]*IsSubscribeResponse, len(paths))
 
 	for i := range resp {
-		resp[i] = &IsSubscribeResponse{Path: paths[i],
+		resp[i] = &IsSubscribeResponse{
+			ID:                  paths[i].ID,
+			Path:                paths[i].Path,
 			IsOnChangeSupported: true,
 			MinInterval:         minSubsInterval,
 			PreferredType:       OnChange,
@@ -1015,7 +1026,9 @@ func IsSubscribeSupported(req IsSubscribeRequest) ([]*IsSubscribeResponse, error
 		session: req.Session,
 	}
 
-	for i, path := range paths {
+	for i, p := range paths {
+		path := p.Path
+		sc.mode = p.Mode
 		nAppInfos, trData, errApp := sc.translatePath(path)
 
 		r := resp[i]
@@ -1276,6 +1289,8 @@ func (data *appData) setOptions(opts *appOptions) {
 
 func (nt NotificationType) String() string {
 	switch nt {
+	case TargetDefined:
+		return "TargetDefined"
 	case Sample:
 		return "Sample"
 	case OnChange:

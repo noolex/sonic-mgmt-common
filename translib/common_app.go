@@ -135,7 +135,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 	txCache := new(sync.Map)
 
 	log.Info("tranlateSubscribe:path", req.path)
-	isOnchange := true //TODO: default to true for now, the value need to be passed from the subscribe infra
+	isOnchange := (req.mode != Sample)
 	if subReqXlator, err := transformer.GetSubscribeReqXlator(req.ctxID, req.path, isOnchange, req.dbs, txCache); err != nil {
 		log.Info("tranlateSubscribe:Error in initializing the SubscribeReqXlator for the subscribe path request: ", req.path)
 		return nil, err
@@ -172,7 +172,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 				}
 
 				if !ntfAppInfo.isOnChangeSupported {
-					ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+					ntfAppInfo.pType = app.translateNotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
 					ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
 				} else {
 					ntfAppInfo.pType = OnChange
@@ -221,7 +221,7 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 						ntfAppInfo.isOnChangeSupported = true
 					}
 					if !ntfAppInfo.isOnChangeSupported {
-						ntfAppInfo.pType = NotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
+						ntfAppInfo.pType = app.translateNotificationType(subsReqXlateInfo.TrgtPathInfo.PType)
 						ntfAppInfo.mInterval = subsReqXlateInfo.TrgtPathInfo.MinInterval
 					} else {
 						ntfAppInfo.pType = OnChange
@@ -256,6 +256,13 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 			return ntfSubsAppInfo, nil
 		}
 	}
+}
+
+func (app *CommonApp) translateNotificationType(t transformer.NotificationType) NotificationType {
+	if t == transformer.Sample {
+		return Sample
+	}
+	return OnChange
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {

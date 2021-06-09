@@ -45,7 +45,25 @@ func clearRADIUSDb() {
 	}
 }
 
-func createRADIUSData() {
+func createRADIUSData() error {
+	var err error
+
+	// radius_ts := db.TableSpec{Name: "RADIUS"}
+	radius_server_ts := db.TableSpec{Name: "RADIUS_SERVER"}
+
+	d := getConfigDb()
+
+	if d == nil {
+		err = errors.New("Failed to connect to config Db")
+		return err
+	}
+
+	if err = d.SetEntry(&radius_server_ts, asKey("1.1.1.1"), createEmptyDbValue("NULL")); err != nil {
+		err = errors.New("Failed to add RADIUS_SERVER Table")
+		return err
+	}
+
+	return err
 }
 
 func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
@@ -58,7 +76,7 @@ func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 	t.Run("PATCH - RADIUS global source-address", processSetRequest(radiusGCSourceAddressUrl, radiusGCSourceAddressReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS global source-address", processGetRequest(radiusGCSourceAddressUrl, radiusGCSourceAddressReq, false))
 	t.Run("Delete - RADIUS global source-address", processDeleteRequest(radiusGCSourceAddressUrl))
-	t.Run("Verify: Delete - RADIUS global source-address", processGetRequest(radiusGCSourceAddressUrl, radiusGCSourceAddressEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS global source-address", processGetRequest(radiusGCSourceAddressUrl, radiusGCSourceAddressEmptyReq, true))
 
 	//PATCH - global timeout
 	t.Run("PATCH - RADIUS global timeout", processSetRequest(radiusGCTimeoutUrl, radiusGCTimeoutReq, "PATCH", false))
@@ -70,19 +88,19 @@ func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 	t.Run("PATCH - RADIUS global retransmit-attempts", processSetRequest(radiusGCRetransmitUrl, radiusGCRetransmitReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS global retransmit-attempts", processGetRequest(radiusGCRetransmitUrl, radiusGCRetransmitReq, false))
 	t.Run("Delete - RADIUS global retransmit-attempts", processDeleteRequest(radiusGCRetransmitUrl))
-	t.Run("Verify: Delete - RADIUS global retransmit-attempts", processGetRequest(radiusGCRetransmitUrl, radiusGCRetransmitEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS global retransmit-attempts", processGetRequest(radiusGCRetransmitUrl, radiusGCRetransmitEmptyReq, true))
 
 	//PATCH - global secret-key
 	t.Run("PATCH - RADIUS global secret-key", processSetRequest(radiusGCSecretUrl, radiusGCSecretReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS global secret-key", processGetRequest(radiusGCSecretUrl, radiusGCSecretReq, false))
 	t.Run("Delete - RADIUS global secret-key", processDeleteRequest(radiusGCSecretUrl))
-	t.Run("Verify: Delete - RADIUS global secret-key", processGetRequest(radiusGCSecretUrl, radiusGCSecretEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS global secret-key", processGetRequest(radiusGCSecretUrl, radiusGCSecretEmptyReq, true))
 
 	//PATCH - global auth-type
 	t.Run("PATCH - RADIUS global auth-type", processSetRequest(radiusGCAuthTypeUrl, radiusGCAuthTypeReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS global auth-type", processGetRequest(radiusGCAuthTypeUrl, radiusGCAuthTypeReq, false))
 	t.Run("Delete - RADIUS global auth-type", processDeleteRequest(radiusGCAuthTypeUrl))
-	t.Run("Verify: Delete - RADIUS global auth-type", processGetRequest(radiusGCAuthTypeUrl, radiusGCAuthTypeEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS global auth-type", processGetRequest(radiusGCAuthTypeUrl, radiusGCAuthTypeEmptyReq, true))
 
 	// Host ==================================================
 
@@ -96,37 +114,37 @@ func TestRADIUSConfigPatchDeleteGetAPIs(t *testing.T) {
 	t.Run("PATCH - RADIUS host secret-key", processSetRequest(radiusHRCSecretUrl, radiusHRCSecretReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host secret-key", processGetRequest(radiusHRCSecretUrl, radiusHRCSecretReq, false))
 	t.Run("Delete - RADIUS host secret-key", processDeleteRequest(radiusHRCSecretUrl))
-	t.Run("Verify: Delete - RADIUS host secret-key", processGetRequest(radiusHRCSecretUrl, radiusHRCSecretEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host secret-key", processGetRequest(radiusHRCSecretUrl, radiusHRCSecretEmptyReq, true))
 
 	//PATCH - host retransmit-attempts
 	t.Run("PATCH - RADIUS host retransmit-attempts", processSetRequest(radiusHRCRetransmitUrl, radiusHRCRetransmitReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host retransmit-attempts", processGetRequest(radiusHRCRetransmitUrl, radiusHRCRetransmitReq, false))
 	t.Run("Delete - RADIUS host retransmit-attempts", processDeleteRequest(radiusHRCRetransmitUrl))
-	t.Run("Verify: Delete - RADIUS host retransmit-attempts", processGetRequest(radiusHRCRetransmitUrl, radiusHRCRetransmitEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host retransmit-attempts", processGetRequest(radiusHRCRetransmitUrl, radiusHRCRetransmitEmptyReq, true))
 
 	//PATCH - host timeout
 	t.Run("PATCH - RADIUS host timeout", processSetRequest(radiusHCTimeoutUrl, radiusHCTimeoutReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host timeout", processGetRequest(radiusHCTimeoutUrl, radiusHCTimeoutReq, false))
 	t.Run("Delete - RADIUS host timeout", processDeleteRequest(radiusHCTimeoutUrl))
-	t.Run("Verify: Delete - RADIUS host timeout", processGetRequest(radiusHCTimeoutUrl, radiusHCTimeoutEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host timeout", processGetRequest(radiusHCTimeoutUrl, radiusHCTimeoutEmptyReq, true))
 
 	//PATCH - host auth-type
 	t.Run("PATCH - RADIUS host auth-type", processSetRequest(radiusHCAuthTypeUrl, radiusHCAuthTypeReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host auth-type", processGetRequest(radiusHCAuthTypeUrl, radiusHCAuthTypeReq, false))
 	t.Run("Delete - RADIUS host auth-type", processDeleteRequest(radiusHCAuthTypeUrl))
-	t.Run("Verify: Delete - RADIUS host auth-type", processGetRequest(radiusHCAuthTypeUrl, radiusHCAuthTypeEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host auth-type", processGetRequest(radiusHCAuthTypeUrl, radiusHCAuthTypeEmptyReq, true))
 
 	//PATCH - host priority
 	t.Run("PATCH - RADIUS host priority", processSetRequest(radiusHCPriorityUrl, radiusHCPriorityReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host priority", processGetRequest(radiusHCPriorityUrl, radiusHCPriorityReq, false))
 	t.Run("Delete - RADIUS host priority", processDeleteRequest(radiusHCPriorityUrl))
-	t.Run("Verify: Delete - RADIUS host priority", processGetRequest(radiusHCPriorityUrl, radiusHCPriorityEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host priority", processGetRequest(radiusHCPriorityUrl, radiusHCPriorityEmptyReq, true))
 
 	//PATCH - host vrf
 	t.Run("PATCH - RADIUS host vrf", processSetRequest(radiusHCVrfUrl, radiusHCVrfReq, "PATCH", false))
 	t.Run("Verify: PATCH - RADIUS host vrf", processGetRequest(radiusHCVrfUrl, radiusHCVrfReq, false))
 	t.Run("Delete - RADIUS host vrf", processDeleteRequest(radiusHCVrfUrl))
-	t.Run("Verify: Delete - RADIUS host vrf", processGetRequest(radiusHCVrfUrl, radiusHCVrfEmptyReq, false))
+	t.Run("Verify: Delete - RADIUS host vrf", processGetRequest(radiusHCVrfUrl, radiusHCVrfEmptyReq, true))
 
 }
 
@@ -163,12 +181,14 @@ var aaaUrl string = systemUrl + "aaa/"
 var serverGroupsUrl = aaaUrl + "server-groups/"
 var radiusGUrl string = serverGroupsUrl + "server-group[name=RADIUS]/"
 var radiusGCUrl string = radiusGUrl + "config/"
+var radiusGRUrl string = radiusGUrl + "openconfig-aaa-radius-ext:radius/"
+var radiusGRCUrl string = radiusGRUrl + "config/"
 
 var radiusGCSourceAddressUrl string = radiusGCUrl + "openconfig-system-ext:source-address"
 
 var radiusGCTimeoutUrl string = radiusGCUrl + "openconfig-system-ext:timeout"
 
-var radiusGCRetransmitUrl string = radiusGCUrl + "openconfig-system-ext:retransmit-attempts"
+var radiusGCRetransmitUrl string = radiusGRCUrl + "retransmit-attempts"
 
 var radiusGCSecretUrl string = radiusGCUrl + "openconfig-system-ext:secret-key"
 
@@ -237,19 +257,19 @@ var radiusHCVrfEmptyReq string = "{\"openconfig-system-ext:vrf\":\"\"}"
 // Global JSON data
 
 var radiusGCSourceAddressReq string = "{\"openconfig-system-ext:source-address\":\"1.1.1.1\"}"
-var radiusGCSourceAddressEmptyReq string = "{}"
+var radiusGCSourceAddressEmptyReq string = ""
 
 var radiusGCTimeoutReq string = "{\"openconfig-system-ext:timeout\":6}"
-var radiusGCTimeoutEmptyReq string = "{}"
+var radiusGCTimeoutEmptyReq string = "{\"openconfig-system-ext:timeout\":5}"
 
-var radiusGCRetransmitReq string = "{\"openconfig-system-ext:retransmit-attempts\":7}"
-var radiusGCRetransmitEmptyReq string = "{}"
+var radiusGCRetransmitReq string = "{\"openconfig-aaa-radius-ext:retransmit-attempts\":7}"
+var radiusGCRetransmitEmptyReq string = ""
 
 var radiusGCSecretReq string = "{\"openconfig-system-ext:secret-key\":\"sharedsecret\"}"
-var radiusGCSecretEmptyReq string = "{}"
+var radiusGCSecretEmptyReq string = ""
 
 var radiusGCAuthTypeReq string = "{\"openconfig-system-ext:auth-type\":\"mschapv2\"}"
-var radiusGCAuthTypeEmptyReq string = "{}"
+var radiusGCAuthTypeEmptyReq string = "{\"openconfig-system-ext:auth-type\":\"pap\"}"
 
 // Host JSON data
 
@@ -257,19 +277,19 @@ var radiusHRCAuthPortReq string = "{\"openconfig-system:auth-port\":1912}"
 var radiusHRCAuthPortEmptyReq string = "{\"openconfig-system:auth-port\":1812}"
 
 var radiusHRCSecretReq string = "{\"openconfig-system:secret-key\":\"sharedsecret\"}"
-var radiusHRCSecretEmptyReq string = "{}"
+var radiusHRCSecretEmptyReq string = ""
 
 var radiusHRCRetransmitReq string = "{\"openconfig-system:retransmit-attempts\":8}"
-var radiusHRCRetransmitEmptyReq string = "{}"
+var radiusHRCRetransmitEmptyReq string = ""
 
 var radiusHCTimeoutReq string = "{\"openconfig-system:timeout\":9}"
-var radiusHCTimeoutEmptyReq string = "{}"
+var radiusHCTimeoutEmptyReq string = ""
 
 var radiusHCAuthTypeReq string = "{\"openconfig-system-ext:auth-type\":\"chap\"}"
-var radiusHCAuthTypeEmptyReq string = "{}"
+var radiusHCAuthTypeEmptyReq string = ""
 
 var radiusHCPriorityReq string = "{\"openconfig-system-ext:priority\":2}"
-var radiusHCPriorityEmptyReq string = "{}"
+var radiusHCPriorityEmptyReq string = ""
 
 var radiusHCVrfReq string = "{\"openconfig-system-ext:vrf\":\"mgmt\"}"
-var radiusHCVrfEmptyReq string = "{}"
+var radiusHCVrfEmptyReq string = ""

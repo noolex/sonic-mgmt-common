@@ -189,7 +189,8 @@ func vSubscribe(v Version, expSuccess bool) func(*testing.T) {
 
 func vIsSubscribe(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		req := IsSubscribeRequest{Paths: []string{tPath}, ClientVersion: v}
+		p := IsSubscribePath{Path: tPath}
+		req := IsSubscribeRequest{Paths: []IsSubscribePath{p}, ClientVersion: v}
 		resp, err := IsSubscribeSupported(req)
 		if err == nil && len(resp) == 1 && resp[0].Err != nil {
 			err = resp[0].Err
