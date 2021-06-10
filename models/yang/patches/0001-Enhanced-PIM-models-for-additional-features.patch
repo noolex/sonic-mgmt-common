@@ -1,0 +1,457 @@
+From f159a8edb784b2efef769946e77b70b7520bc12b Mon Sep 17 00:00:00 2001
+From: Rathnasabapathy Velautharaj <rathna_sabapathy@dell.com>
+Date: Tue, 8 Jun 2021 18:05:47 -0700
+Subject: [PATCH] Enhanced PIM models for additional features
+
+---
+ common/openconfig-pim-types.yang |  23 ++-
+ common/openconfig-pim.yang       | 338 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 359 insertions(+), 2 deletions(-)
+
+diff --git a/common/openconfig-pim-types.yang b/common/openconfig-pim-types.yang
+index a1fc515..11a6d99 100644
+--- a/common/openconfig-pim-types.yang
++++ b/common/openconfig-pim-types.yang
+@@ -21,7 +21,13 @@ module openconfig-pim-types {
+     description
+       "This module defines types related to the PIM protocol model.";
+ 
+-    oc-ext:openconfig-version "0.1.1";
++    oc-ext:openconfig-version "0.2.0";
++
++    revision "2021-06-09" {
++      description
++        "Enhanced PIM models for additional features";
++      reference "0.2.0";
++    }
+ 
+     revision "2018-11-21" {
+       description
+@@ -82,4 +88,19 @@ module openconfig-pim-types {
+           upstream RPF neighbor.";
+         reference "RFC7761 4.5 page 44, 4.3.1 page 29";
+     }
++
++    typedef route-type {
++        type enumeration {
++            enum "SG" {
++                description
++                    "When this particular (S,G) multicast route entry is not a RPT entry";
++            }
++            enum "SG_RPT" {
++                description
++                    "When this particular (S,G) multicast route entry is a RPT entry";
++            }
++        }
++        description
++            "Multicast route-types";
++    }
+ }
+diff --git a/common/openconfig-pim.yang b/common/openconfig-pim.yang
+index 4b87d00..ff2fc2c 100644
+--- a/common/openconfig-pim.yang
++++ b/common/openconfig-pim.yang
+@@ -8,6 +8,7 @@ module openconfig-pim {
+   prefix "oc-pim";
+ 
+   // import some basic types/interfaces
++  import openconfig-inet-types { prefix oc-inet; }
+   import openconfig-pim-types { prefix oc-pim-types; }
+   import openconfig-interfaces { prefix oc-if; }
+   import openconfig-acl { prefix oc-acl; }
+@@ -27,7 +28,13 @@ module openconfig-pim {
+   description
+     "An OpenConfig model for Protocol Independent Multicast (PIM).";
+ 
+-  oc-ext:openconfig-version "0.4.1";
++  oc-ext:openconfig-version "0.5.0";
++
++  revision "2021-06-04" {
++    description
++      "Enhanced PIM models for additional features";
++    reference "0.5.0";
++  }
+ 
+   revision "2021-04-21" {
+     description
+@@ -193,6 +200,29 @@ module openconfig-pim {
+     }
+   }
+ 
++  grouping pim-interface-state {
++    description
++      "Operational state information of PIM interface.";
++
++    leaf nbrs-count {
++      type uint16;
++      description
++        "Number of PIM neighbors on this interface.";
++    }
++
++    leaf local-address {
++      type oc-inet:ipv4-address;
++      description
++        "Local IPv4 address of this interface.";
++    }
++
++    leaf dr-address {
++      type oc-inet:ipv4-address;
++      description
++        "IPv4 address of designated router on this interface.";
++    }
++  }
++
+   grouping pim-neighbor-state {
+     description
+       "PIM neighbor state.";
+@@ -209,6 +239,14 @@ module openconfig-pim {
+          "IPv4 address of designated router.";
+     }
+ 
++    leaf dr-priority {
++      type uint32 {
++        range 1..4294967295;
++      }
++      description
++        "Designated router priority value.";
++    }
++
+     leaf neighbor-established {
+       type oc-types:timeticks64;
+       description
+@@ -239,6 +277,12 @@ module openconfig-pim {
+         "PIM mode in use when delivering multicast traffic
+         via this neighbor.";
+     }
++
++    leaf bfd-session-status {
++      type oc-bfd:bfd-session-state;
++      description
++        "BFD session status of PIM neighbor.";
++    }
+   }
+ 
+   grouping pim-neighbors-top {
+@@ -309,6 +353,7 @@ module openconfig-pim {
+             "State information for PIM interfaces.";
+ 
+           uses pim-interface-config;
++          uses pim-interface-state;
+           container counters {
+             description
+               "PIM counters for each interface.";
+@@ -334,6 +379,35 @@ module openconfig-pim {
+          "Limit the number of accepted (S, G) and (*, G) 
+          PIM join states on the network-instance.";
+     }   
++
++    leaf join-prune-interval {
++      type uint16 {
++        range 60..600;
++      }
++      description
++        "Interval at which the router sends the PIM join/prune messages
++        toward the upstream RPF neighbor.";
++    }
++
++    leaf keep-alive-timer {
++      type uint16 {
++        range 31..60000;
++      }
++      description
++        "Time after which router invalidates the multicast route entry.";
++    }
++
++    leaf ecmp-enabled {
++      type boolean;
++      description
++        "When set to TRUE, PIM ECMP will be enabled.";
++    }
++
++    leaf ecmp-rebalance-enabled {
++      type boolean;
++      description
++        "When set to TRUE, PIM ECMP rebalance will be enabled.";
++    }
+   }
+ 
+   grouping pim-global-state {
+@@ -439,6 +513,267 @@ module openconfig-pim {
+     }
+   }
+ 
++  grouping pim-gbl-tib-oil-cmn-info-state {
++    description
++      "Common Operational state information of an outgoing interface present in PIM TIB.";
++
++    leaf outgoing-interface {
++      type leafref {
++        path "../state/outgoing-interface";
++      }
++      description
++        "Reference to the outgoing-interface key";
++    }
++
++    container state {
++      description
++        "Common Operational state information of an outgoing interface present in PIM TIB.";
++
++      leaf outgoing-interface {
++        type oc-if:interface-id;
++        description
++          "Outgoing interface for this multicast entry.";
++      }
++
++      leaf uptime {
++        type oc-types:timeticks64;
++        description
++          "This timestamp indicates the time, since this particular outgoing interface is present in this multicast entry.
++          The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
++          It can be computed by clients as the difference between this value and the current time in UTC.";
++      }
++
++      leaf expiry {
++        type oc-types:timeticks64;
++        description
++          "This timestamp indicates the time, when this particular outgoing interface will expire from this multicast entry.
++          The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
++          It can be computed by clients as the difference between this value and the current time in UTC.";
++      }
++    }
++  }
++
++  grouping pim-gbl-tib-src-entry-cmn-info-state {
++    description
++      "Common Operational state information of particular multicast source present in PIM TIB.";
++
++    leaf incoming-interface {
++      type oc-if:interface-id;
++      description
++        "Incoming interface for this multicast entry.";
++    }
++
++    leaf uptime {
++      type oc-types:timeticks64;
++      description
++        "This timestamp indicates the time, since this particular multicast entry is learnt.
++        The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
++        It can be computed by clients as the difference between this value and the current time in UTC.";
++    }
++
++    leaf expiry {
++      type oc-types:timeticks64;
++      description
++        "This timestamp indicates the time, when this particular multicast entry will expire.
++        The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
++        It can be computed by clients as the difference between this value and the current time in UTC.";
++    }
++
++    leaf flags {
++      type string;
++      description
++        "To present the various other states of this entry and the information will be represented in a
++        concatenated string format. The following alphabets represents a state as explained below.
++
++        S - Sparse, C - Connected, L - Local, P - Pruned, R - RP-bit set,
++        F - Register Flag, T - SPT-bit set, J - Join SPT, K - Ack-Pending state
++
++        For e.g. This attribute can represent a state like this ==> SJT, which means these following flags are set
++        in this multicast entry as per PIM-TIB
++        * S - Sparse
++        * J - Join SPT
++        * T - SPT-bit set";
++    }
++  }
++
++  grouping pim-gbl-tib-oil-cmn-info-top {
++    description
++      "Details about all outgoing interfaces of multicast entry.";
++
++    container oil-info-entries {
++      description
++        "Details about all outgoing interfaces of multicast entry.";
++
++      list oil-info-entry {
++        key "outgoing-interface";
++
++        description
++          "Details about outgoing interface for this multicast entry.";
++
++        uses pim-gbl-tib-oil-cmn-info-state;
++      }
++    }
++  }
++
++  grouping pim-gbl-tib-ipv4-src-entry-rpf-info-top {
++    description
++      "Details about RPF-neighbor for a particular multicast source present in PIM protocol TIB.";
++
++    container rpf-info {
++      description
++        "Details about RPF-neighbor for a particular multicast source present in PIM protocol TIB.";
++
++      container state {
++        description "Operational state information.";
++
++        leaf rpf-neighbor-address {
++          type oc-inet:ipv4-address;
++          description
++            "IPv4 Unicast address of the RPF-neighbor for the multicast source-address.";
++        }
++
++        leaf metric {
++          type uint32;
++          description
++            "Distance metric of the route for this RPF-neighbor";
++        }
++
++        leaf preference {
++          type uint32;
++          description
++            "Preference of the route for this RPF-neighbor";
++        }
++      }
++    }
++  }
++
++  grouping pim-gbl-tib-ipv4-src-entry-cmn-info-top {
++    description
++      "Common IPv4 Operational state information of particular multicast source present in PIM TIB.";
++
++    uses pim-gbl-tib-oil-cmn-info-top;
++    uses pim-gbl-tib-ipv4-src-entry-rpf-info-top;
++  }
++
++  grouping pim-gbl-ip-entry-key-refs-state {
++    description
++      "Common PIM TIB IP multicast group entries keys refereneces.";
++
++    leaf group-address {
++      type leafref {
++        path "../state/group-address";
++      }
++      description
++        "Reference to the group-address key";
++    }
++  }
++
++  grouping pim-gbl-tib-src-entry-key-refs-state {
++    description
++      "Common PIM TIB IP multicast group's source entries keys refereneces.";
++
++    leaf source-address {
++      type leafref {
++        path "../state/source-address";
++      }
++      description
++        "Reference to the source-address key";
++    }
++
++    leaf route-type {
++      type leafref {
++        path "../state/route-type";
++      }
++      description
++        "Reference to the route-type key";
++    }
++  }
++
++  grouping pim-gbl-ipv4-src-entries-top {
++    description
++      "Details about all multicast-source information of this particular multicast group-address entry.";
++
++    container src-entries {
++      description
++        "Details about all multicast-source information of this particular multicast group-address entry.";
++
++      list src-entry {
++        key "source-address route-type";
++
++        description
++          "List of different source-address entries within this particular multicast group-address entry.";
++
++        uses pim-gbl-tib-src-entry-key-refs-state;
++
++        container state {
++          description
++            "Operational state information of particular multicast source present in PIM TIB.";
++
++          leaf source-address {
++            type oc-inet:ipv4-address;
++            description
++              "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
++              This address can be 0.0.0.0 in case of *,G multicast group entry.";
++          }
++
++          leaf route-type {
++            type oc-pim-types:route-type;
++            description
++              "Route-type of multicast entry.";
++          }
++
++          uses pim-gbl-tib-src-entry-cmn-info-state;
++        }
++
++        uses pim-gbl-tib-ipv4-src-entry-cmn-info-top;
++      }
++    }
++  }
++
++  grouping pim-gbl-ipv4-tib-state {
++    description
++      "Operational state IPv4 information of PIM TIB.";
++
++    container ipv4-entries {
++      description
++        "Details about all IPv4 multicast entries present in PIM protocol TIB.";
++
++      list ipv4-entry {
++        key "group-address";
++
++        description
++          "List of the IPv4 multicast entries present in PIM protocol TIB.";
++
++        uses pim-gbl-ip-entry-key-refs-state;
++
++        container state {
++          description "Operational state information.";
++
++          leaf group-address {
++            type oc-inet:ipv4-address;
++            description
++              "IPv4 Multicast group-address";
++          }
++        }
++
++        uses pim-gbl-ipv4-src-entries-top;
++      }
++    }
++  }
++
++  grouping pim-gbl-tib-state {
++    description
++      "Operational state information of PIM TIB.";
++
++    container tib {
++      config false;
++      description
++        "PIM Protocol TIB state information.";
++
++      uses pim-gbl-ipv4-tib-state;
++    }
++  }
++
+   grouping pim-global-top {
+     description
+       "Top level grouping for global PIM configuration.";
+@@ -505,6 +840,7 @@ module openconfig-pim {
+       }
+     }
+     uses pim-sources-joined-top;
++    uses pim-gbl-tib-state;
+   }
+ 
+   grouping pim-top {
+-- 
+2.7.4
+
