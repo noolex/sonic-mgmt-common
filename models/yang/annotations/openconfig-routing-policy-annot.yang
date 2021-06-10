@@ -20,6 +20,7 @@ module openconfig-routing-policy-annot {
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition {
         deviate add {
             sonic-ext:table-name "ROUTE_MAP_SET";
+            sonic-ext:path-transformer "route_map_path_xfmr";
         }
     }
 
@@ -87,6 +88,8 @@ module openconfig-routing-policy-annot {
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:config/oc-rpol:install-protocol-eq {
       deviate add {
             sonic-ext:field-transformer "route_map_match_protocol_xfmr";
+            sonic-ext:table-name "ROUTE_MAP";
+            sonic-ext:field-name "match_protocol";
       }
     }
 

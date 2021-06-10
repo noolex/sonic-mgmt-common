@@ -48,5 +48,11 @@ module openconfig-errdisable-types {
       "Recover ports shutdown due to Bpduguard";
   }
 
+  identity LINK_FLAP {
+    base ERRDISABLE_RECOVERY_CAUSE;
+    description
+      "Recover ports shutdown due to link-flaps";
+  }
+
 }
 

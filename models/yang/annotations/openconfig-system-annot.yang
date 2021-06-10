@@ -771,6 +771,7 @@ module openconfig-system-annot {
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:state/oc-sys-ext:source-interface" {
         deviate add {
             sonic-ext:field-name "src_intf";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
@@ -784,18 +785,21 @@ module openconfig-system-annot {
         deviate add {
             sonic-ext:table-name "DNS_SERVER";
             sonic-ext:key-transformer "server_dns_key_xfmr";
+            sonic-ext:path-transformer "server_dns_path_xfmr";
         }
     }
 
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:config/oc-sys:address" {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
+            sonic-ext:field-name "ipaddress";
         }
     }
 
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:address" {
         deviate add {
             sonic-ext:field-transformer "server_dns_field_xfmr";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
@@ -808,6 +812,7 @@ module openconfig-system-annot {
     deviation "/oc-sys:system/oc-sys:dns/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:vrf-name" {
         deviate add {
             sonic-ext:field-name "vrf_name";
+            sonic-ext:subscribe-on-change "disable";
         }
     }
 
@@ -1015,8 +1020,70 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server {
         deviate add {
             sonic-ext:subtree-transformer "ntp_server_subtree_xfmr";
+            sonic-ext:path-transformer "ntp_server_path_xfmr";
         }
     }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:stratum {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:refid {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peerdelay {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peeroffset {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peerjitter {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:selmode {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peertype {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:now {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:reach {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:poll-interval {
+        deviate add {
+            sonic-ext:subscribe-on-change "disable";
+        }
+    }
+
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys {
         deviate add {
@@ -1046,36 +1113,42 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:key-type {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_key_type_xfmr";
+            sonic-ext:field-name "type";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:key-type {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_key_type_xfmr";
+            sonic-ext:field-name "type";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:key-value {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_key_value_xfmr";
+            sonic-ext:field-name "value";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:key-value {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_key_value_xfmr";
+            sonic-ext:field-name "value";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys-ext:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
+            sonic-ext:field-name "encrypted";
         }
     }
 
     deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys-ext:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
+            sonic-ext:field-name "encrypted";
         }
     }
 
@@ -1385,3 +1458,4 @@ module openconfig-system-annot {
 	    }
     }
 }
+

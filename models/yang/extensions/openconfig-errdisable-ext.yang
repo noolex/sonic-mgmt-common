@@ -9,6 +9,7 @@ module openconfig-errdisable-ext {
 
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-errdisable-types { prefix oc-errdisable-types; }
+  import openconfig-interfaces { prefix "oc-if"; }
 
   organization
       "SONiC";
@@ -38,6 +39,67 @@ module openconfig-errdisable-ext {
 
   // grouping statements
 
+
+  grouping errdisable-ext-link-flap-config {
+
+    description
+      "Groups ErrDisable Link-flap configurations ";
+
+        	leaf error-disable {
+            	type string;
+				description
+                	"On or off error disable";
+			}
+        	leaf flap-threshold {
+            	type uint8 {
+                	range 1..50;
+            	}
+            	description
+                	"This interval is the number of times that the port’s
+                	link state goes from up to down and down to up
+                	before the recovery-timeout is activated";
+        	}
+
+        	leaf sampling-interval {
+            	type uint32 {
+                	range 1..65535;
+            	}
+            	description
+                	"This time period is the amount of time during which
+                	the specified flap-threshold can be crossed. If the flap-threshold
+                	is crossed during this sampling-time, port will be error-disabled.";
+        	}
+
+        	leaf recovery-interval {
+            	type uint32 {
+                	range 0..65534;
+            	}
+            	description
+                	"This period of time is the amount of time the port remains disabled
+                 	(down) before it becomes enabled. Entering 0 indicates that the
+                	port will stay down until an administrative override occurs.";
+        	}
+		}
+
+  	grouping errdisable-ext-link-flap-state {
+
+    	description
+      	"Groups ErrDisable Link-flap state ";
+
+    	leaf status {
+          	type string;
+			description
+            	"The current error disable status";
+		}
+
+   		leaf time-left {
+            type uint32 {
+                range 1..65535;
+            }
+       		description
+       			"Time left for the error disable recovery in seconds.";
+   		}
+	}
 
   grouping errdisable-ext-config {
     description
@@ -83,9 +145,79 @@ module openconfig-errdisable-ext {
 
         uses errdisable-ext-config;
       }
-    }
-  }
+	}
 
+    container errdisable-port {
+		description
+      		"Error disable port ";
+    	list port {
+
+        	key "name";
+                leaf name {
+                    type leafref {
+                        path "../config/name";
+                    }
+                    description
+                      "Interface name for the port";
+                }
+
+    		container config {
+        		description
+          			"Configuration data for port error-disable";
+
+        		leaf name {
+            		type leafref {
+                		path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            		}
+            		description
+                		"Reference to a interface name.";
+        		}
+			}
+    		container state {
+        		
+				config false;
+
+        		description
+          			"State data for port error-disable";
+
+        		leaf name {
+            		type leafref {
+                		path "/oc-if:interfaces/oc-if:interface/oc-if:name";
+            		}
+            		description
+                		"Reference to a interface name.";
+        		}
+			}
+
+			container link-flap {
+
+    			container config {
+        			description
+          				"Configuration data for link-flap error-disable";
+
+          			uses errdisable-ext-link-flap-config;
+				}
+
+      			container state {
+
+        			config false;
+
+          			description
+            			"The list of link-flap error disable state.";
+
+          			uses errdisable-ext-link-flap-config;
+          			uses errdisable-ext-link-flap-state;
+        		}
+        		description
+					"Link-flap error-disable related related data";
+			}
+    		description
+        		"List of ERRDISABLE configuration and state data for ports";
+		}
+
+	}
+
+  }
   // data definition statements
 
   uses errdisable-ext-top;
