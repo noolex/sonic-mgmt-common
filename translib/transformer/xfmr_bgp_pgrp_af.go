@@ -88,6 +88,7 @@ var DbToYang_bgp_pgrp_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams X
 }
 
 var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+
 	var err error
 	var vrfName string
 
@@ -141,6 +142,8 @@ var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
 		afName = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afName = "l2vpn_evpn"
+	} else if strings.Contains(afName, "*") {
+		afName = "*"
 	} else {
 		err = errors.New("Unsupported AFI SAFI")
 		log.Info("Unsupported AFI SAFI ", afName)

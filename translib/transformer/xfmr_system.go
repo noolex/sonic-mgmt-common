@@ -42,6 +42,7 @@ func init() {
 	XlateFuncBind("YangToDb_server_dns_field_xfmr", YangToDb_server_dns_field_xfmr)
 	XlateFuncBind("DbToYang_server_dns_field_xfmr", DbToYang_server_dns_field_xfmr)
 	XlateFuncBind("Subscribe_sys_aaa_auth_xfmr", Subscribe_sys_aaa_auth_xfmr)
+	XlateFuncBind("DbToYangPath_server_dns_path_xfmr", DbToYangPath_server_dns_path_xfmr)
 }
 
 type SysMem struct {
@@ -619,4 +620,18 @@ var DbToYang_server_dns_key_xfmr KeyXfmrDbToYang = func(inParams XfmrParams) (ma
 	rmap["address"] = address
 
 	return rmap, nil
+}
+
+var DbToYangPath_server_dns_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	log.Info("DbToYangPath_server_dns_path_xfmr: tbl:", params.tblName, " params: ", params)
+	niRoot := "/openconfig-system:system/dns/servers/server"
+	if params.tblName != "DNS_SERVER" {
+		oper_err := errors.New("wrong config DB table sent")
+		log.Errorf("server_dns_path_xfmr: table name %s not in system/dns view", params.tblKeyComp)
+		return oper_err
+	} else {
+		params.ygPathKeys[niRoot+"/address"] = params.tblKeyComp[0]
+	}
+	log.Info("server_dns_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
 }

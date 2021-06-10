@@ -54,6 +54,11 @@ func getAllCauseStatus(dbCl *db.DB, tblName string, key string) ([]string, error
 		enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_BPDUGUARD)
 		cause = append(cause, enumName)
 	}
+
+	if entry.Field["link_flap"] == "enabled" {
+		enumName, _ := ygot.EnumName(ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_LINK_FLAP)
+		cause = append(cause, enumName)
+	}
 	return cause, err
 }
 
@@ -103,10 +108,14 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 		if val, ok := errdisable_entry.Field["bpduguard"]; ok {
 			subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["bpduguard"] = val
 		}
+		if val, ok := errdisable_entry.Field["link_flap"]; ok {
+			subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["link_flap"] = val
+		}
 
 		if len(cause) == 0 {
 			subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["udld"] = is_enabled
 			subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["bpduguard"] = is_enabled
+			subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["link_flap"] = is_enabled
 		} else {
 			for i := 0; i < len(cause); i++ {
 				switch t_cause := cause[i]; t_cause {
@@ -114,6 +123,8 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 					subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["udld"] = is_enabled
 				case ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_BPDUGUARD:
 					subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["bpduguard"] = is_enabled
+				case ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_LINK_FLAP:
+					subOpMap[db.ConfigDB]["ERRDISABLE"]["RECOVERY"].Field["link_flap"] = is_enabled
 				default:
 					log.Error(" Invalid Cause : ", cause)
 					err = errors.New("Invalid cause")
@@ -130,6 +141,8 @@ var YangToDb_errdisable_cause_xfmr FieldXfmrYangToDb = func(inParams XfmrParams)
 				res_map["udld"] = is_enabled
 			case ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_BPDUGUARD:
 				res_map["bpduguard"] = is_enabled
+			case ocbinds.OpenconfigErrdisableTypes_ERRDISABLE_RECOVERY_CAUSE_LINK_FLAP:
+				res_map["link_flap"] = is_enabled
 			default:
 				log.Error(" Invalid Cause : ", cause)
 				err = errors.New("Invalid cause")
