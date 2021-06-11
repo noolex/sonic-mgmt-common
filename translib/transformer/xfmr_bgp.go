@@ -207,8 +207,8 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
 	niRoot := "/openconfig-network-instance:network-instances/network-instance"
 	bgp_glb_dyn_neig := niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix"
 	bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
-	bgp_glb_aggr_addr := bgp_glb_afi_safi + "/openconfig-bgp-ext:aggregate-address-config/aggregate-address"
-	bgp_glb_af_network := bgp_glb_afi_safi + "/openconfig-bgp-ext:network-config/network"
+	bgp_glb_aggr_addr := bgp_glb_afi_safi + "/aggregate-address-config/aggregate-address"
+	bgp_glb_af_network := bgp_glb_afi_safi + "/network-config/network"
 
 	log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
 	if params.tblName == "BGP_GLOBALS" || params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||
