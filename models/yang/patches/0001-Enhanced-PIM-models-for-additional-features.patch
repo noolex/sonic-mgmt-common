@@ -1,15 +1,15 @@
-From f159a8edb784b2efef769946e77b70b7520bc12b Mon Sep 17 00:00:00 2001
+From 3addd8c70333f38041933316e723d0d637067946 Mon Sep 17 00:00:00 2001
 From: Rathnasabapathy Velautharaj <rathna_sabapathy@dell.com>
-Date: Tue, 8 Jun 2021 18:05:47 -0700
+Date: Thu, 10 Jun 2021 20:53:22 -0700
 Subject: [PATCH] Enhanced PIM models for additional features
 
 ---
  common/openconfig-pim-types.yang |  23 ++-
- common/openconfig-pim.yang       | 338 ++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 359 insertions(+), 2 deletions(-)
+ common/openconfig-pim.yang       | 336 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 357 insertions(+), 2 deletions(-)
 
 diff --git a/common/openconfig-pim-types.yang b/common/openconfig-pim-types.yang
-index a1fc515..11a6d99 100644
+index a1fc515..89c1b2a 100644
 --- a/common/openconfig-pim-types.yang
 +++ b/common/openconfig-pim-types.yang
 @@ -21,7 +21,13 @@ module openconfig-pim-types {
@@ -48,7 +48,7 @@ index a1fc515..11a6d99 100644
 +    }
  }
 diff --git a/common/openconfig-pim.yang b/common/openconfig-pim.yang
-index 4b87d00..ff2fc2c 100644
+index 4b87d00..bf3e8a3 100644
 --- a/common/openconfig-pim.yang
 +++ b/common/openconfig-pim.yang
 @@ -8,6 +8,7 @@ module openconfig-pim {
@@ -104,14 +104,12 @@ index 4b87d00..ff2fc2c 100644
    grouping pim-neighbor-state {
      description
        "PIM neighbor state.";
-@@ -209,6 +239,14 @@ module openconfig-pim {
+@@ -209,6 +239,12 @@ module openconfig-pim {
           "IPv4 address of designated router.";
      }
  
 +    leaf dr-priority {
-+      type uint32 {
-+        range 1..4294967295;
-+      }
++      type oc-pim-types:dr-priority-type;
 +      description
 +        "Designated router priority value.";
 +    }
@@ -119,7 +117,7 @@ index 4b87d00..ff2fc2c 100644
      leaf neighbor-established {
        type oc-types:timeticks64;
        description
-@@ -239,6 +277,12 @@ module openconfig-pim {
+@@ -239,6 +275,12 @@ module openconfig-pim {
          "PIM mode in use when delivering multicast traffic
          via this neighbor.";
      }
@@ -132,7 +130,7 @@ index 4b87d00..ff2fc2c 100644
    }
  
    grouping pim-neighbors-top {
-@@ -309,6 +353,7 @@ module openconfig-pim {
+@@ -309,6 +351,7 @@ module openconfig-pim {
              "State information for PIM interfaces.";
  
            uses pim-interface-config;
@@ -140,7 +138,7 @@ index 4b87d00..ff2fc2c 100644
            container counters {
              description
                "PIM counters for each interface.";
-@@ -334,6 +379,35 @@ module openconfig-pim {
+@@ -334,6 +377,35 @@ module openconfig-pim {
           "Limit the number of accepted (S, G) and (*, G) 
           PIM join states on the network-instance.";
      }   
@@ -176,7 +174,7 @@ index 4b87d00..ff2fc2c 100644
    }
  
    grouping pim-global-state {
-@@ -439,6 +513,267 @@ module openconfig-pim {
+@@ -439,6 +511,267 @@ module openconfig-pim {
      }
    }
  
@@ -444,7 +442,7 @@ index 4b87d00..ff2fc2c 100644
    grouping pim-global-top {
      description
        "Top level grouping for global PIM configuration.";
-@@ -505,6 +840,7 @@ module openconfig-pim {
+@@ -505,6 +838,7 @@ module openconfig-pim {
        }
      }
      uses pim-sources-joined-top;
