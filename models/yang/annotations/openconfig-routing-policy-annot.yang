@@ -346,13 +346,13 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol-ext:set-ipv6-next-hop-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol:set-ipv6-next-hop-global {
       deviate add {
             sonic-ext:field-transformer "route_map_set_ipv6_next_hop_xfmr";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol-ext:set-ipv6-next-hop-prefer-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol:set-ipv6-next-hop-prefer-global {
       deviate add {
             sonic-ext:field-name "set_ipv6_next_hop_prefer_global";
       }
@@ -364,25 +364,25 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:config/oc-rpol-ext:action {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:config/oc-rpol:action {
       deviate add {
             sonic-ext:field-name "set_metric_action";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:config/oc-rpol-ext:metric {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:config/oc-rpol:metric {
       deviate add {
             sonic-ext:field-name "set_metric";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:state/oc-rpol-ext:action {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:state/oc-rpol:action {
       deviate add {
             sonic-ext:field-name "set_metric_action";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:state/oc-rpol-ext:metric {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:state/oc-rpol:metric {
       deviate add {
             sonic-ext:field-name "set_metric";
       }
@@ -406,13 +406,13 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol-ext:set-ipv6-next-hop-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol:set-ipv6-next-hop-global {
       deviate add {
             sonic-ext:field-transformer "route_map_set_ipv6_next_hop_xfmr";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol-ext:set-ipv6-next-hop-prefer-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol:set-ipv6-next-hop-prefer-global {
       deviate add {
             sonic-ext:field-name "set_ipv6_next_hop_prefer_global";
       }
