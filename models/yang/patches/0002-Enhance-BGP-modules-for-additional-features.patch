@@ -1,0 +1,2229 @@
+From 39c7113618a02364cedd059720514cfdbc34a26f Mon Sep 17 00:00:00 2001
+From: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+Date: Tue, 1 Jun 2021 10:23:03 -0700
+Subject: [PATCH] Enhance BGP modules for additional features.
+
+Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+---
+ common/openconfig-bgp-common-multiprotocol.yang |  74 +++-
+ common/openconfig-bgp-common-structure.yang     | 186 +++++++-
+ common/openconfig-bgp-common.yang               | 359 ++++++++++++++-
+ common/openconfig-bgp-global.yang               | 561 +++++++++++++++++++++++-
+ common/openconfig-bgp-neighbor.yang             |  49 ++-
+ common/openconfig-bgp-peer-group.yang           |  85 +++-
+ common/openconfig-bgp-types.yang                | 140 +++++-
+ common/openconfig-bgp.yang                      |   8 +-
+ common/openconfig-rib-bgp-table-attributes.yang |  20 +-
+ common/openconfig-rib-bgp-tables.yang           |  23 +-
+ openconfig-bfd.yang                             |  14 +-
+ openconfig-bgp-policy.yang                      |  14 +-
+ openconfig-routing-policy.yang                  | 112 ++++-
+ 13 files changed, 1603 insertions(+), 42 deletions(-)
+
+diff --git a/common/openconfig-bgp-common-multiprotocol.yang b/common/openconfig-bgp-common-multiprotocol.yang
+index b97ecaa..4072f68 100644
+--- a/common/openconfig-bgp-common-multiprotocol.yang
++++ b/common/openconfig-bgp-common-multiprotocol.yang
+@@ -24,7 +24,13 @@ submodule openconfig-bgp-common-multiprotocol {
+     for multiple protocols in BGP. The groupings are common across
+     multiple contexts.";
+ 
+-  oc-ext:openconfig-version "6.0.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2019-07-10" {
+     description
+@@ -539,5 +545,71 @@ submodule openconfig-bgp-common-multiprotocol {
+       description
+         "If set to true, send the default-route to the neighbour(s)";
+     }
++
++    leaf default-policy-name {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
++          "oc-rpol:policy-definition/oc-rpol:name";
++      }
++      description
++        "Routing policy definition to specify criteria to originate default.";
++    }
++  }
++
++  grouping bgp-common-mp-afi-safi-neighbor-group-config {
++    description
++      "Configuration data for neighbor group address family";
++
++    leaf soft-reconfiguration-in {
++      type boolean;
++      description
++        "This enables to store the inbound BGP updates for soft reconfiguration.";
++    }
++
++    leaf unsuppress-map-name {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
++          "oc-rpol:policy-definition/oc-rpol:name";
++      }
++      description
++        "This helps to selectively advertise more-specific routes to neighbor group
++        based on routing policy definition when aggregate-address is active.";
++    }
++
++    leaf weight {
++      type uint32 {
++        range 0..65535;
++      }
++      description
++        "This indicates the default weight value for the neighbor's routes";
++    }
++
++    leaf as-override {
++      type boolean;
++      description
++        "Override ASNs in outbound updates if as-path equals remote-as.";
++    }
++
++    leaf send-community {
++      type oc-bgp-types:community-type;
++      default "BOTH";
++      description
++        "Specify which types of community should be sent to the
++        neighbor or group. The default is to send both standard and extended
++        community attributes";
++    }
++
++    leaf route-reflector-client {
++      type boolean;
++      default "false";
++      description
++        "Configure the neighbor as a route reflector client.";
++    }
++
++    leaf route-server-client {
++      type boolean;
++      description
++        "Configure a neighbor as Route Server client.";
++    }
+   }
+ }
+diff --git a/common/openconfig-bgp-common-structure.yang b/common/openconfig-bgp-common-structure.yang
+index a28588d..b9c663f 100644
+--- a/common/openconfig-bgp-common-structure.yang
++++ b/common/openconfig-bgp-common-structure.yang
+@@ -21,7 +21,13 @@ submodule openconfig-bgp-common-structure {
+     "This sub-module contains groupings that are common across multiple BGP
+     contexts and provide structure around other primitive groupings.";
+ 
+-  oc-ext:openconfig-version "6.0.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2019-07-10" {
+     description
+@@ -98,26 +104,26 @@ submodule openconfig-bgp-common-structure {
+     reference "2.1.1";
+   }
+ 
+-  grouping bgp-common-structure-neighbor-group-logging-options {
++  grouping bgp-common-structure-global-neighbor-group-logging-options {
+     description
+       "Structural grouping used to include error handling configuration and
+-      state for both BGP neighbors and groups";
++      state for BGP global, neighbors and groups";
+ 
+     container logging-options {
+       description
+-        "Logging options for events related to the BGP neighbor or
++        "Logging options for events related to the BGP global or neighbor or
+         group";
+       container config {
+         description
+           "Configuration parameters enabling or modifying logging
+-          for events relating to the BGPgroup";
++          for events relating to the BGP global or neighbor or group";
+         uses bgp-common-neighbor-group-logging-options-config;
+       }
+       container state {
+         config false;
+         description
+-          "State information relating to logging for the BGP neighbor
+-          or group";
++          "State information relating to logging for the BGP global 
++          or neighbor or group";
+         uses bgp-common-neighbor-group-logging-options-config;
+       }
+     }
+@@ -219,4 +225,170 @@ submodule openconfig-bgp-common-structure {
+     }
+   }
+ 
++  grouping bgp-common-structure-neighbor-group-auth-password {
++    description
++      "Structural grouping used to include authentication password configuration and
++      state for both BGP neighbors and peer groups";
++
++    container auth-password {
++      description
++        "Parameters relating to BGP authentication password";
++      container config {
++        description
++          "Configuration information for BGP neighbor group authentication.";
++        uses bgp-common-neighbor-group-auth-password-config;
++      }
++      container state {
++        config false;
++        description
++          "State information for BGP neighbor group authentication.";
++        uses bgp-common-neighbor-group-auth-password-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-allow-own-as {
++    description
++      "This enables BGP to accept as-path update with local AS.";
++    container allow-own-as {
++      description
++        "This enables BGP to accept as-path update with local AS.";
++      container config {
++        description
++          "Configuration parameters relating to accept as-path update with local AS";
++        uses bgp-common-neighbor-group-allow-own-as-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to accept as-path update with local AS";
++        uses bgp-common-neighbor-group-allow-own-as-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-attribute-unchanged {
++    description
++      "Configuration data for propagating BGP attribute unchanged to the neighbor";
++    container attribute-unchanged {
++      description
++        "BGP attribute is propagated unchanged to the neighbor.";
++      container config {
++        description
++          "Configuration parameters relating to propagate BGP attribute unchanged to the neighbor";
++        uses bgp-common-neighbor-group-attribute-unchanged-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to propagate BGP attribute unchanged to the neighbor";
++        uses bgp-common-neighbor-group-attribute-unchanged-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-filter-list {
++    description
++      "Configuration data for AS-path filter list.";
++
++    container filter-list {
++      description
++        "Apply AS-path filter list.";
++      container config {
++        description
++          "Configuration parameters relating to AS-Path filter list";
++        uses bgp-common-neighbor-group-filter-list-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to AS-Path filter list";
++        uses bgp-common-neighbor-group-filter-list-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-next-hop-self {
++    description
++      "Configuration data for disabling the next hop calculation for the neighbor group.";
++
++    container next-hop-self {
++      description
++        "Disable the next hop calculation for the neighbor group";
++      container config {
++        description
++          "Configuration parameters relating to disable the next hop calculation for the neighbor group";
++        uses bgp-common-neighbor-group-next-hop-self-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to disable the next hop calculation for the neighbor group";
++        uses bgp-common-neighbor-group-next-hop-self-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-prefix-list {
++    description
++      "Configuration data for prefix list filter"; 
++
++    container prefix-list {
++      description
++        "Apply prefix filter list.";
++      container config {
++        description
++          "Configuration parameters relating to prefix filter list";
++        uses bgp-common-neighbor-group-prefix-list-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to prefix filter list";
++        uses bgp-common-neighbor-group-prefix-list-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-remove-private-as {
++    description
++      "Configuration data for removing private ASNs in outbound updates";
++
++    container remove-private-as {
++      description
++        "Remove private ASNs in outbound updates";
++      container config {
++        description
++          "Configuration parameters relating to remove private ASNs in outbound updates";
++        uses bgp-common-neighbor-group-remove-private-as-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to remove private ASNs in outbound updates";
++        uses bgp-common-neighbor-group-remove-private-as-config;
++      }
++    }
++  }
++
++  grouping bgp-common-structure-neighbor-group-capability-orf {
++    description
++      "Configuration data for advertising prefix-list outbound route filtering capability";
++    container capability-orf {
++      description
++        "Advertise prefix-list outbound route filtering capability to this neighbor.";
++      container config {
++        description
++          "Configuration parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
++        uses bgp-common-neighbor-group-capability-orf-config;
++      }
++      container state {
++        config false;
++        description
++          "Operational state parameters relating to advertise prefix-list outbound route filtering capability to this neighbor";
++        uses bgp-common-neighbor-group-capability-orf-config;
++      }
++    }
++  }
++
+ }
+diff --git a/common/openconfig-bgp-common.yang b/common/openconfig-bgp-common.yang
+index 5aa36af..334871c 100644
+--- a/common/openconfig-bgp-common.yang
++++ b/common/openconfig-bgp-common.yang
+@@ -7,7 +7,9 @@ submodule openconfig-bgp-common {
+   import openconfig-extensions { prefix oc-ext; }
+   import openconfig-bgp-types { prefix oc-bgp-types; }
+   import openconfig-routing-policy { prefix oc-rpol; }
++  import openconfig-bgp-policy { prefix oc-bgp-pol; }
+   import openconfig-types { prefix oc-types; }
++  import openconfig-yang-types { prefix oc-yang; }
+   import openconfig-inet-types { prefix oc-inet; }
+ 
+   // meta
+@@ -24,7 +26,13 @@ submodule openconfig-bgp-common {
+     may be application to a subset of global, peer-group or neighbor
+     contexts.";
+ 
+-  oc-ext:openconfig-version "6.0.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2019-07-10" {
+     description
+@@ -119,7 +127,7 @@ submodule openconfig-bgp-common {
+       type decimal64 {
+         fraction-digits 2;
+       }
+-      default 90;
++      default 180;
+       description
+         "Time interval in seconds that a BGP session will be
+         considered active in the absence of keepalive or other
+@@ -133,7 +141,7 @@ submodule openconfig-bgp-common {
+       type decimal64 {
+         fraction-digits 2;
+       }
+-      default 30;
++      default 60;
+       description
+         "Time interval in seconds between transmission of keepalive
+         messages to the neighbor.  Typically set to 1/3 the
+@@ -144,7 +152,7 @@ submodule openconfig-bgp-common {
+       type decimal64 {
+         fraction-digits 2;
+       }
+-      default 30;
++      default 0;
+       description
+         "Minimum time which must elapse between subsequent UPDATE
+         messages relating to a common set of NLRI being transmitted
+@@ -183,13 +191,6 @@ submodule openconfig-bgp-common {
+           (iBGP) or external (eBGP).";
+     }
+ 
+-    leaf auth-password {
+-      type oc-types:routing-password;
+-      description
+-        "Configures an MD5 authentication password for use with
+-        neighboring devices.";
+-    }
+-
+     leaf remove-private-as {
+       // could also make this a container with a flag to enable
+       // remove-private and separate option.  here, option implies
+@@ -223,6 +224,96 @@ submodule openconfig-bgp-common {
+         "An optional textual description (intended primarily for use
+         with a peer or group";
+     }
++
++    leaf disable-ebgp-connected-route-check {
++      type boolean;
++      description
++        "Disable EBGP conntected route check, this helps to connect EBGP neighbors multi-hops away.";
++    }
++
++    leaf enforce-first-as {
++      type boolean;
++      description
++        "Enforces the EBGP peer AS as the first AS PATH segment in the AS_PATH attribute.";
++    }
++
++    leaf solo-peer {
++      type boolean;
++      description
++        "This indicates that routes advertised by the peer should not be reflected back to the peer.";
++    }
++
++    leaf ttl-security-hops {
++      type uint8 {
++        range 1..254;
++      }
++      description
++        "This enforces only the neighbors that are specified number of hops away will be allowed to become neighbors.";
++    }
++
++    leaf capability-extended-nexthop {
++      type boolean;
++      description
++        "Advertise extended next-hop capability to the peer.";
++    }
++
++    leaf capability-dynamic {
++      type boolean;
++      description
++        "Advertise dynamic capability to this neighbor.";
++    }
++
++    leaf dont-negotiate-capability {
++      type boolean;
++      description
++        "Do not perform capability negotiation";
++    }
++
++    leaf enforce-multihop {
++      type boolean;
++      description
++        "Enforce EBGP neighbors perform multihop";
++    }
++
++    leaf override-capability {
++      type boolean;
++      description
++        "Override capability negotiation result.";
++    }
++
++    leaf peer-port {
++      type uint16 {
++        range 0..65535;
++      }
++      description
++        "Neighbor's BGP port.";
++    }
++
++    leaf shutdown-message {
++      type string {
++        length "1..127";
++      }
++      description
++        "Add a shutdown message.";
++    }
++
++    leaf strict-capability-match {
++      type boolean;
++      description
++        "Strict capability negotiation match";
++    }
++
++    leaf local-as-no-prepend {
++      type boolean;
++      description
++        "Do not prepend the local-as number in AS-Path advertisements.";
++    }
++
++    leaf local-as-replace-as {
++      type boolean;
++      description
++        "Replace the configured AS Number with the local-as number in AS-Path advertisements";
++    }
+   }
+ 
+   grouping bgp-common-neighbor-group-transport-config {
+@@ -417,6 +508,15 @@ submodule openconfig-bgp-common {
+         "A reference to a routing policy which can be used to
+         restrict the prefixes for which add-paths is enabled";
+     }
++
++    leaf tx-add-paths {
++      type oc-bgp-types:bgp-tx-add-paths-type;
++      description
++        "Send multiple path or only best path per AS advertisements for an NLRI from
++        the neighbor or group";
++      reference
++        "RFC 7911 - Advertisement of Multiple Paths in BGP";
++    }
+   }
+ 
+   grouping bgp-common-graceful-restart-config {
+@@ -463,6 +563,12 @@ submodule openconfig-bgp-common {
+         its own state during a restart, but supports procedures
+         for the receiving speaker, as defined in RFC4724.";
+     }
++
++    leaf preserve-fw-state {
++      type boolean;
++      description
++        "Set F-bit indication that FIB is preserved while doing Graceful Restart.";
++    }
+   }
+ 
+   grouping bgp-common-use-multiple-paths-config {
+@@ -572,6 +678,12 @@ submodule openconfig-bgp-common {
+       "Maximum number of parallel paths to consider when using
+       BGP multipath. The default is use a single path.";
+     }
++
++    leaf as-set {
++      type boolean;
++      description
++        "Generate an AS_SET.";
++    }
+   }
+ 
+   grouping bgp-common-use-multiple-paths-ibgp-config {
+@@ -585,6 +697,12 @@ submodule openconfig-bgp-common {
+         "Maximum number of parallel paths to consider when using
+         iBGP multipath. The default is to use a single path";
+     }
++
++    leaf equal-cluster-length {
++      type boolean;
++      description
++        "Match the cluster length.";
++    }
+   }
+ 
+   grouping bgp-common-route-selection-options-config {
+@@ -613,7 +731,7 @@ submodule openconfig-bgp-common {
+ 
+     leaf external-compare-router-id {
+       type boolean;
+-      default "true";
++      default "false";
+       description
+         "When comparing similar routes received from external
+         BGP peers, use the router-id as a criterion to select
+@@ -644,6 +762,25 @@ submodule openconfig-bgp-common {
+         BGP best-path. The default is to select the route for
+         which the metric to the next-hop is lowest";
+     }
++
++    leaf med-confed {
++      type boolean;
++      description
++        "Compare MED among confederation paths when set to true.";
++    }
++
++    leaf med-missing-as-worst {
++      type boolean;
++      description
++        "Treat missing MED as the least preferred one when set to true.";
++    }
++
++    leaf compare-confed-as-path {
++      type boolean;
++      description
++        "Compare path lengths including confederation sets & sequences in selecting a route";
++    }
++
+   }
+ 
+   grouping bgp-common-route-selection-options {
+@@ -686,5 +823,203 @@ submodule openconfig-bgp-common {
+     }
+   }
+ 
++  grouping bgp-common-neighbor-group-auth-password-config {
++    description
++      "Configuration data for authentication password";
++    leaf password {
++      type oc-types:routing-password;
++      description
++        "Authentication password for the neighbor group,
++        this will be changed to encrypted text internally
++          when the encrypted flag is configured with false.";
++    }
++
++    leaf encrypted {
++      type boolean;
++      default "false";
++      description
++        "This leaf indicates whether the password is encrypted text,
++        the value of this will be changed to true internally when the password
++          is configured with encrypted false.";
++    }
++  }
++  
++  grouping bgp-common-neighbor-group-state {
++    description
++      "State data for neighbor group";
++
++    leaf connections-dropped {
++      type oc-yang:counter64;
++      description
++        "This indicates the Number of times a TCP and BGP connection has been successfully established.";
++    }
++
++    leaf last-reset-time {
++      type uint64;
++      description
++        "This value indicates the time peering session was last reset in seconds.";
++    }
++
++    leaf last-reset-reason {
++      type string;
++      description
++        "Indicates the reason the BGP neighbor down";
++    }
++
++    leaf last-read {
++      type uint64;
++      description
++        "This value indicates the time that the
++        BGP last received a message from neighbor in seconds";
++    }
++
++    leaf last-write {
++      type uint64;
++      description
++        "This value indicates the time that the
++        BGP last sent message from neighbor in seconds";
++    }
++
++    leaf remote-router-id {
++      type oc-yang:dotted-quad;
++      description
++        "A identifier for the remote network instance - typically
++        used within associated routing protocols or signalling
++        routing information in another network instance";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-allow-own-as-config {
++    description
++      "Configuration data for allow own AS under neighbor group address family";
++    leaf enabled {
++      type boolean;
++      default false;
++      description
++        "This leaf indicates whether to accept as-path update with local AS present in it.";
++    }
++
++    leaf as-count {
++      type uint8 {
++        range 1..10;
++      }
++      description
++        "Number of occurences of AS number.";
++    }
++
++    leaf origin {
++      type boolean;
++      description
++        "Only accept local AS in the as-path if the route was originated in local AS";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-attribute-unchanged-config {
++    description
++      "Configuration data for attribute unchanged to the neighbor";
++    leaf as-path {
++      type boolean;
++      description "Propagate AS-path attribute unchanged to the neighbor.";
++    }
++
++    leaf med {
++      type boolean;
++      description "Propagate MED attribute unchanged to the neighbor.";
++    }
++
++    leaf next-hop {
++      type boolean;
++      description "Propagate next-hop attribute unchanged to the neighbor.";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-filter-list-config {
++    description
++      "Configuration data for filter list";
++    leaf import-policy {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
++          "oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:as-path-sets/" +
++          "oc-bgp-pol:as-path-set/oc-bgp-pol:as-path-set-name";
++      }
++      description "References a defined AS path set";
++    }
++
++    leaf export-policy {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
++          "oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:as-path-sets/" +
++          "oc-bgp-pol:as-path-set/oc-bgp-pol:as-path-set-name";
++      }
++      description "References a defined AS path set";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-next-hop-self-config {
++    description
++      "Configuration data for nexthop self for routes";
++    leaf enabled {
++      type boolean;
++      description
++        "Disable the next hop calculation for the neighbor group";
++    }
++
++    leaf force {
++      type boolean;
++      description "Set the next hop to self for reflected routes";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-prefix-list-config {
++    description
++      "Configuration data for prefix list";
++    leaf import-policy {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
++          "oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
++      }
++      description "References a defined prefix set";
++    }
++
++    leaf export-policy {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:defined-sets/" +
++          "oc-rpol:prefix-sets/oc-rpol:prefix-set/oc-rpol:name";
++      }
++      description "References a defined prefix set";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-remove-private-as-config {
++    description
++      "Configuration data for private AS in outbound updates";
++    leaf enabled {
++      type boolean;
++      description
++        "Remove private ASNs in outbound updates";
++    }
++
++    leaf all {
++      type boolean;
++      description
++        "Apply to all AS numbers";
++    }
++
++    leaf replace-as {
++      type boolean;
++      description
++        "Replace private ASNs with local ASN in outbound updates";
++    }
++  }
++
++  grouping bgp-common-neighbor-group-capability-orf-config {
++    description
++      "Configuration data for outbound route filtering";
++    leaf orf-type {
++      type oc-bgp-types:bgp-orf-type;
++      description
++        "Describes the outbound route filtering (ORF) capability type";
++    }
++  }
+ 
+ }
+diff --git a/common/openconfig-bgp-global.yang b/common/openconfig-bgp-global.yang
+index 1508355..a5e7cd7 100644
+--- a/common/openconfig-bgp-global.yang
++++ b/common/openconfig-bgp-global.yang
+@@ -7,6 +7,8 @@ submodule openconfig-bgp-global {
+   import openconfig-extensions { prefix oc-ext; }
+   import openconfig-yang-types { prefix oc-yang; }
+   import openconfig-inet-types { prefix oc-inet; }
++  import openconfig-bgp-types  { prefix oc-bgp-types; }
++  import openconfig-routing-policy { prefix oc-rpol; }
+ 
+   // Include common submodules
+   include openconfig-bgp-common;
+@@ -26,7 +28,13 @@ submodule openconfig-bgp-global {
+     "This sub-module contains groupings that are specific to the
+     global context of the OpenConfig BGP module";
+ 
+-  oc-ext:openconfig-version "6.0.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2019-07-10" {
+     description
+@@ -117,6 +125,105 @@ submodule openconfig-bgp-global {
+         "RFC4271 - A Border Gateway Protocol 4 (BGP-4),
+         Section 4.2";
+     }
++
++    leaf disable-ebgp-connected-route-check {
++      type boolean;
++      description
++        "Disable EBGP conntected route check, this helps to connect EBGP neighbors multi-hops away.";
++    }
++
++    leaf fast-external-failover {
++      type boolean;
++      default true;
++      description
++        "This causes bgp to take down ebgp peers immediately when a link flaps.";
++    }
++
++    leaf network-import-check {
++      type boolean;
++      default true;
++      description
++        "This helps to advertise a BGP route not present in the routing table.";
++    }
++
++    leaf graceful-shutdown {
++      type boolean;
++      description
++        "This helps to reduce the amount of lost traffic when taking BGP sessions down for maintenance.";
++    }
++
++    leaf clnt-to-clnt-reflection {
++      type boolean;
++      description
++        "Enable client to client route reflection.";
++    }
++
++    leaf max-dynamic-neighbors {
++      type uint16 {
++        range 1..5000;
++      }
++      description
++        "Maximum number of BGP dynamic neighbors that can be created.";
++    }
++
++    leaf read-quanta {
++      type uint8 {
++        range 1..10;
++      }
++      description
++        "This indicates how many packets to read from peer socket per I/O cycle";
++    }
++
++    leaf write-quanta {
++      type uint8 {
++        range 1..10;
++      }
++      description
++        "This indicates how many packets to write to peer socket per run";
++    }
++
++    leaf coalesce-time {
++      type uint32;
++      description
++        "Subgroup coalesce timer value in milli-sec";
++    }
++
++    leaf route-map-process-delay {
++      type uint16 {
++        range 0..600;
++      }
++      description
++        "0 disables the timer, no route updates happen when route-maps change";
++    }
++
++    leaf deterministic-med {
++      type boolean;
++      description
++        "Pick the best-MED path among paths advertised from the neighboring AS.";
++    }
++
++    leaf hold-time {
++      type decimal64 {
++        fraction-digits 2;
++      }
++      default 180;
++      description
++        "Time interval in seconds that a BGP session will be
++        considered active in the absence of keepalive or other
++        messages from the peer.  The hold-time is typically
++        set to 3x the keepalive-interval.";
++    }
++
++    leaf keepalive-interval {
++      type decimal64 {
++        fraction-digits 2;
++      }
++      default 60;
++      description
++        "Time interval in seconds between transmission of keepalive
++        messages to the neighbor.  Typically set to 1/3 the
++        hold-time.";
++    }
+   }
+ 
+   grouping bgp-global-state {
+@@ -148,6 +255,14 @@ submodule openconfig-bgp-global {
+         "Administrative distance for routes learned from internal
+         BGP (iBGP).";
+     }
++
++    leaf local-route-distance {
++      type uint8 {
++        range "1..255";
++      }
++      description
++        "Administrative distance for local routes.";
++    }
+   }
+ 
+   grouping bgp-global-confederation-config {
+@@ -250,6 +365,439 @@ submodule openconfig-bgp-global {
+     }
+   }
+ 
++  grouping bgp-global-route-reflector-config {
++    description
++      "Configuration data for router reflector global address family";
++
++    leaf route-reflector-cluster-id {
++      type oc-bgp-types:rr-cluster-id-type;
++      description
++        "route-reflector cluster id to use when local router is
++        configured as a route reflector.";
++    }
++
++    leaf allow-outbound-policy {
++      type boolean;
++      description
++        "This leaf indicates whether to allow the outbound policy.";
++    }
++  }
++
++  grouping bgp-global-route-reflector-top {
++    description
++      "Configuration parameters determining whether the behaviour of
++      the local system when acting as a route-reflector";
++
++    container route-reflector {
++      description
++        "Parameters relating to BGP route reflector";
++
++      container config {
++        description
++          "Configuration options for BGP route reflector";
++        uses bgp-global-route-reflector-config;
++      }
++
++      container state {
++        config false;
++        description
++          "State information for BGP route reflector";
++        uses bgp-global-route-reflector-config;
++      }
++    }
++  }
++
++  grouping bgp-global-defaults-config {
++    description
++      "Configuration data for global defaults";
++
++    leaf ipv4-unicast {
++      type boolean;
++      description
++        "Activate ipv4-unicast for a peer by default";
++    }
++
++    leaf local-preference {
++      type uint32;
++      description
++        "Configure default local preference value.";
++    }
++
++    leaf show-hostname {
++      type boolean;
++      description
++        "Show hostname in BGP dumps.";
++    }
++
++    leaf shutdown {
++      type boolean;
++      description
++        "Apply administrative shutdown to newly configured peers.";
++    }
++
++    leaf subgroup-pkt-queue-max {
++      type uint8 {
++        range 20..100;
++      }
++      description
++        "Configure subgroup packet queue max.";
++    }
++  }
++
++  grouping bgp-global-defaults-top {
++    description
++      "Configuration data for global defaults";
++
++    container global-defaults {
++      description
++        "Parameters relating to BGP defaults";
++      container config {
++        description
++          "Configuration options for BGP global defaults";
++        uses bgp-global-defaults-config;
++      }
++      container state {
++        config false;
++        description
++          "State information for BGP global defaults";
++        uses bgp-global-defaults-config;
++      }
++    }
++  }
++
++  grouping bgp-global-update-delay-config {
++    description
++      "Configuration data for update delay under global level";
++
++    leaf max-delay {
++      type uint16 {
++        range 0..3600;
++      }
++      description
++        "Maximum delay for best path calculation.";
++    }
++
++    leaf establish-wait {
++      type uint16 {
++        range 0..3600;
++      }
++      description
++        "Maximum delay for updates.";
++    }
++  }
++
++  grouping bgp-global-update-delay-top {
++    description
++      "Configuration data for update delay under global level";
++
++    container update-delay {
++      description
++        "Parameters relating to force initial delay for best-path and updates.";
++
++      container config {
++        description
++          "Configuration options for BGP update delay";
++        uses bgp-global-update-delay-config;
++      }
++
++      container state {
++        config false;
++        description
++          "State information for BGP update delay";
++        uses bgp-global-update-delay-config;
++      }
++    }
++  }
++
++  grouping bgp-global-max-med-config {
++    description
++      "Configuration data for max med under global level";
++
++    leaf time {
++      type uint32{
++        range 5..86400;
++      }
++      description
++        "Time (seconds) period for max-med";
++    }
++
++    leaf max-med-val {
++      type uint32;
++      description
++        "Max MED value to be used";
++    }
++
++    leaf administrative {
++      type boolean;
++      description
++        "Administratively applied, for an indefinite period.";
++    }
++
++    leaf admin-max-med-val {
++      type uint32;
++      description
++        "Administrative Max MED value to be used";
++    }
++  }
++
++  grouping bgp-global-max-med-top {
++    description
++      "Configuration data for max med under global level";
++
++    container max-med {
++      description
++        "Parameters relating to advertise routes with max-med.";
++
++      container config {
++        description
++          "Configuration options for BGP max med.";
++        uses bgp-global-max-med-config;
++      }
++
++      container state {
++        config false;
++        description
++          "State information for BGP max med.";
++        uses bgp-global-max-med-config;
++      }
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-aggregate-address-config {
++    description
++      "Configuration data for aggregate address under global address family";
++
++    leaf prefix {
++      type oc-inet:ip-prefix;
++      description
++        "This specifies an aggregate address.";
++    }
++
++    leaf policy-name {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
++          "oc-rpol:policy-definition/oc-rpol:name";
++      }
++      description
++        "A reference to a routing policy which can be used to
++        restrict the prefixes for which advertisement is enabled";
++    }
++
++    leaf as-set {
++      type boolean;
++      description
++        "This leaf indicates whether the resulting routes include AS set.";
++    }
++
++    leaf summary-only {
++      type boolean;
++      description
++        "This leaf indicates resulting routes will not be announced.";
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-aggregate-address-top {
++    description
++      "Configuration data for route aggregation.";
++    container aggregate-address-config {
++      description
++        "Parameters relating to BGP route aggregation.";
++
++      list aggregate-address {
++        key "prefix";
++        description
++          "BGP aggregate address configurtion.";
++
++        leaf prefix {
++          type leafref {
++            path "../config/prefix";
++          }
++          description
++            "Reference to the aggregate prefix.";
++        }
++
++        container config {
++          description
++            "Configuration options for BGP route aggregation";
++          uses bgp-global-mp-afi-safi-aggregate-address-config;
++        }
++        container state {
++          config false;
++          description
++            "State information for BGP route aggregation";
++          uses bgp-global-mp-afi-safi-aggregate-address-config;
++        }
++      }
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-network-config {
++    description
++      "Configuration data for network address under global address family";
++
++    leaf prefix {
++      type oc-inet:ip-prefix;
++      description
++        "This specifies a network address.";
++    }
++
++    leaf policy-name {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
++          "oc-rpol:policy-definition/oc-rpol:name";
++      }
++      description
++        "A reference to a routing policy which can be used to
++        restrict the prefixes for which advertisement is enabled";
++    }
++
++    leaf backdoor {
++      type boolean;
++      description
++        "This leaf indicates whether to make the prefix less perferred over IGP route
++        and the prefix will not be advertised to the BGP peers.";
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-network-top {
++    description
++      "Configuration data for BGP network announcement.";
++
++    container network-config {
++      description
++        "Parameters relating to BGP network announcement.";
++
++      list network {
++        key "prefix";
++        description
++          "BGP network configurtion.";
++
++        leaf prefix {
++          type leafref {
++            path "../config/prefix";
++          }
++          description
++            "Reference to the IP network.";
++        }
++
++        container config {
++          description
++            "Configuration options for BGP network.";
++          uses bgp-global-mp-afi-safi-network-config;
++        }
++        container state {
++          config false;
++          description
++            "State information for BGP network.";
++          uses bgp-global-mp-afi-safi-network-config;
++        }
++      }
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-default-route-distance-top {
++    description
++      "Configuration data related to default route distance.";
++
++    container default-route-distance {
++      description
++        "Administrative distance (or preference) assigned to
++        routes received from different sources
++        (external, internal, and local).";
++
++      container config {
++        description
++          "Configuration parameters relating to the default route
++          distance";
++        uses bgp-global-default-route-distance-config;
++      }
++      container state {
++        config false;
++        description
++          "State information relating to the default route distance";
++        uses bgp-global-default-route-distance-config;
++      }
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-route-flap-damping-config {
++    description
++      "Configuration data for route flap damping under global level";
++    leaf enabled {
++      type boolean;
++      default false;
++      description
++        "This leaf indicates whether route flap damping is enabled for
++        this AFI-SAFI";
++    }
++
++    leaf half-life {
++      type uint8 {
++        range 1..45;
++      }
++      description
++        "Half-life time for the penalty.";
++    }
++
++    leaf reuse-threshold {
++      type uint16 {
++        range 1..20000;
++      }
++      description
++        "Value to start reusing a route";
++    }
++
++    leaf suppress-threshold {
++      type uint16 {
++        range 1..20000;
++      }
++      description
++        "Value to start suppressing a route";
++    }
++
++    leaf max-suppress {
++      type uint8 {
++        range 1..255;
++      }
++      description
++        "Maximum duration to suppress a stable route.";
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-route-flap-damping-top {
++    description
++      "Configuration data for global route flap damping";
++    container route-flap-damping {
++      description
++        "Parameters relating to BGP route flap damping";
++      container config {
++        description
++          "Configuration options for BGP route flap damping";
++        uses bgp-global-mp-afi-safi-route-flap-damping-config;
++      }
++      container state {
++        config false;
++        description
++          "State information for BGP route flap damping";
++        uses bgp-global-mp-afi-safi-route-flap-damping-config;
++      }
++    }
++  }
++
++  grouping bgp-global-mp-afi-safi-route-policy-config {
++    description
++      "Configuration data for global routing policy";
++    leaf table-map-name {
++      type leafref {
++        path "/oc-rpol:routing-policy/oc-rpol:policy-definitions/" +
++          "oc-rpol:policy-definition/oc-rpol:name";
++      }
++      description
++        "A reference to a routing policy which can be used to
++        apply policy on route updates from BGP to RTM.";
++    }
++  }
++
+   grouping bgp-global-mp-all-afi-safi-list-contents {
+     description
+       "A grouping used for contents of the list of AFI-SAFI
+@@ -295,12 +843,14 @@ submodule openconfig-bgp-global {
+         description
+           "Configuration parameters for the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-global-mp-afi-safi-route-policy-config;
+       }
+       container state {
+         config false;
+         description
+           "State information relating to the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-global-mp-afi-safi-route-policy-config;
+         uses bgp-common-state;
+       }
+ 
+@@ -324,6 +874,10 @@ submodule openconfig-bgp-global {
+       uses bgp-common-global-group-use-multiple-paths;
+       uses bgp-common-structure-neighbor-group-add-paths;
+       uses bgp-global-mp-all-afi-safi-list-contents;
++      uses bgp-global-mp-afi-safi-aggregate-address-top;
++      uses bgp-global-mp-afi-safi-network-top;
++      uses bgp-global-mp-afi-safi-default-route-distance-top;
++      uses bgp-global-mp-afi-safi-route-flap-damping-top;
+     }
+   }
+ 
+@@ -409,6 +963,11 @@ submodule openconfig-bgp-global {
+     }
+ 
+     uses bgp-global-dynamic-neighbors;
++    uses bgp-common-structure-global-neighbor-group-logging-options;
++    uses bgp-global-route-reflector-top;
++    uses bgp-global-defaults-top;
++    uses bgp-global-update-delay-top;
++    uses bgp-global-max-med-top;
+   }
+ 
+ }
+diff --git a/common/openconfig-bgp-neighbor.yang b/common/openconfig-bgp-neighbor.yang
+index dbdd765..f7e0d29 100644
+--- a/common/openconfig-bgp-neighbor.yang
++++ b/common/openconfig-bgp-neighbor.yang
+@@ -30,7 +30,13 @@ submodule openconfig-bgp-neighbor {
+     "This sub-module contains groupings that are specific to the
+     neighbor context of the OpenConfig BGP module.";
+ 
+-  oc-ext:openconfig-version "6.1.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2021-03-17" {
+     description
+@@ -127,9 +133,9 @@ submodule openconfig-bgp-neighbor {
+     }
+ 
+     leaf neighbor-address {
+-        type oc-inet:ip-address;
++        type oc-bgp-types:bgp-neighbor-address;
+         description
+-          "Address of the BGP peer, either in IPv4 or IPv6";
++          "Address of the BGP peer, either in IPv4 or IPv6 or interface name (unnumbered case)";
+     }
+ 
+     leaf enabled {
+@@ -300,6 +306,24 @@ submodule openconfig-bgp-neighbor {
+       "Grouping of BGP message types, included for re-use
+       across counters";
+ 
++    leaf OPEN {
++      type uint64;
++      description
++        "Number of BGP OPEN messages.";
++    }
++
++    leaf KEEPALIVE {
++      type uint64;
++      description
++        "Number of BGP KEEPALIVE messages.";
++    }
++
++    leaf ROUTE-REFRESH {
++      type uint64;
++      description
++        "Number of BGP ROUTE_REFRESH messages.";
++    }
++
+     leaf UPDATE {
+       type uint64;
+       description
+@@ -314,6 +338,12 @@ submodule openconfig-bgp-neighbor {
+         error condition has occurred exchanged.";
+     }
+ 
++    leaf CAPABILITY {
++      type uint64;
++      description
++        "Number of BGP capability messages.";
++    }
++
+     leaf last-notification-time {
+       type oc-types:timeticks64;
+       description
+@@ -591,12 +621,14 @@ submodule openconfig-bgp-neighbor {
+         description
+           "Configuration parameters for the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-common-mp-afi-safi-neighbor-group-config;
+       }
+       container state {
+         config false;
+         description
+           "State information relating to the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-common-mp-afi-safi-neighbor-group-config;
+         uses bgp-neighbor-afi-safi-state;
+       }
+ 
+@@ -621,6 +653,13 @@ submodule openconfig-bgp-neighbor {
+       uses bgp-common-structure-neighbor-group-add-paths;
+       uses bgp-common-mp-all-afi-safi-list-contents;
+       uses bgp-neighbor-use-multiple-paths;
++      uses bgp-common-structure-neighbor-group-allow-own-as;
++      uses bgp-common-structure-neighbor-group-attribute-unchanged;
++      uses bgp-common-structure-neighbor-group-filter-list;
++      uses bgp-common-structure-neighbor-group-next-hop-self;
++      uses bgp-common-structure-neighbor-group-prefix-list;
++      uses bgp-common-structure-neighbor-group-remove-private-as;
++      uses bgp-common-structure-neighbor-group-capability-orf;
+     }
+   }
+ 
+@@ -642,6 +681,7 @@ submodule openconfig-bgp-neighbor {
+       uses bgp-neighbor-config;
+       uses bgp-common-neighbor-group-config;
+       uses bgp-neighbor-state;
++      uses bgp-common-neighbor-group-state;
+     }
+ 
+     container timers {
+@@ -720,10 +760,11 @@ submodule openconfig-bgp-neighbor {
+       }
+     }
+ 
+-    uses bgp-common-structure-neighbor-group-logging-options;
++    uses bgp-common-structure-global-neighbor-group-logging-options;
+     uses bgp-common-structure-neighbor-group-ebgp-multihop;
+     uses bgp-common-structure-neighbor-group-route-reflector;
+     uses bgp-common-structure-neighbor-group-as-path-options;
++    uses bgp-common-structure-neighbor-group-auth-password;
+     uses bgp-neighbor-use-multiple-paths;
+     uses oc-rpol:apply-policy-group;
+ 
+diff --git a/common/openconfig-bgp-peer-group.yang b/common/openconfig-bgp-peer-group.yang
+index 78f747c..d09e880 100644
+--- a/common/openconfig-bgp-peer-group.yang
++++ b/common/openconfig-bgp-peer-group.yang
+@@ -7,6 +7,7 @@ submodule openconfig-bgp-peer-group {
+   import openconfig-extensions { prefix oc-ext; }
+   import openconfig-routing-policy { prefix oc-rpol; }
+   import openconfig-bfd { prefix oc-bfd; }
++  import openconfig-bgp-types { prefix oc-bgp-types; }
+ 
+   // Include the common submodule
+   include openconfig-bgp-common;
+@@ -25,9 +26,14 @@ submodule openconfig-bgp-peer-group {
+     "This sub-module contains groupings that are specific to the
+     peer-group context of the OpenConfig BGP module.";
+ 
+-  oc-ext:openconfig-version "6.1.0";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+-  
+   revision "2021-03-17" {
+     description
+       "Add bfd support without augmentation.";
+@@ -107,6 +113,61 @@ submodule openconfig-bgp-peer-group {
+         "Name of the BGP peer-group";
+     }
+ 
++    leaf enabled {
++      type boolean;
++      default true;
++      description
++        "Whether the BGP peer group is enabled. In cases where the
++        enabled leaf is set to false, the local system should not
++        initiate connections to the peer group associated neighbors, and should not
++        respond to TCP connections attempts from the peer group associated neighbors. If
++        the state of the BGP session is ESTABLISHED at the time
++        that this leaf is set to false, the BGP session should be
++        ceased.";
++    }
++  }
++
++  grouping bgp-peer-group-member-state {
++      description
++          "Operational data for neighbors of the peer group";
++      leaf neighbor {
++          type oc-bgp-types:bgp-neighbor-address;
++          description
++              "Indicates neighbor address or interface.";
++      }
++      leaf dynamic {
++          type boolean;
++          description
++              "Indicates neighbor is dynamic or not.";
++      }
++      leaf state {
++          type string;
++          description
++              "Indicates neighbor current state.";
++      }
++  }
++  
++  grouping bgp-peer-group-member-list {
++    description
++      "Operational data for neighbors of the peer group";
++
++    list member {
++      key "neighbor";
++      description
++        "Neighbors in a peer group";
++      leaf neighbor {
++        type leafref {
++          path "../state/neighbor";
++        }
++        description
++          "Reference to the neighbor key";
++      }
++      container state {
++        description
++          "Operation state parameters relating to members of the peer group";
++        uses bgp-peer-group-member-state;
++      }
++    }
+   }
+ 
+   grouping bgp-peer-group-afi-safi-list {
+@@ -133,12 +194,14 @@ submodule openconfig-bgp-peer-group {
+         description
+           "Configuration parameters for the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-common-mp-afi-safi-neighbor-group-config;
+       }
+       container state {
+         config false;
+         description
+           "State information relating to the AFI-SAFI";
+         uses bgp-common-mp-afi-safi-config;
++        uses bgp-common-mp-afi-safi-neighbor-group-config;
+       }
+ 
+       container graceful-restart {
+@@ -160,6 +223,13 @@ submodule openconfig-bgp-peer-group {
+       uses bgp-common-structure-neighbor-group-add-paths;
+       uses bgp-common-global-group-use-multiple-paths;
+       uses bgp-common-mp-all-afi-safi-list-contents;
++      uses bgp-common-structure-neighbor-group-allow-own-as;
++      uses bgp-common-structure-neighbor-group-attribute-unchanged;
++      uses bgp-common-structure-neighbor-group-filter-list;
++      uses bgp-common-structure-neighbor-group-next-hop-self;
++      uses bgp-common-structure-neighbor-group-prefix-list;
++      uses bgp-common-structure-neighbor-group-remove-private-as;
++      uses bgp-common-structure-neighbor-group-capability-orf;
+     }
+   }
+ 
+@@ -181,6 +251,7 @@ submodule openconfig-bgp-peer-group {
+       uses bgp-peer-group-config;
+       uses bgp-common-neighbor-group-config;
+       uses bgp-common-state;
++      uses bgp-common-neighbor-group-state;
+     }
+ 
+     container timers {
+@@ -257,13 +328,21 @@ submodule openconfig-bgp-peer-group {
+       }
+     }
+ 
+-    uses bgp-common-structure-neighbor-group-logging-options;
++    uses bgp-common-structure-global-neighbor-group-logging-options;
+     uses bgp-common-structure-neighbor-group-ebgp-multihop;
+     uses bgp-common-structure-neighbor-group-route-reflector;
+     uses bgp-common-structure-neighbor-group-as-path-options;
++    uses bgp-common-structure-neighbor-group-auth-password;
+     uses bgp-common-global-group-use-multiple-paths;
+     uses oc-rpol:apply-policy-group;
+ 
++    container members-state {
++      config false;
++      description
++        "Operational data for neighbors of the peer group";
++      uses bgp-peer-group-member-list;
++    }
++
+     container afi-safis {
+       description
+         "Per-address-family configuration parameters associated with
+diff --git a/common/openconfig-bgp-types.yang b/common/openconfig-bgp-types.yang
+index 8b1d2b4..29bfe0a 100644
+--- a/common/openconfig-bgp-types.yang
++++ b/common/openconfig-bgp-types.yang
+@@ -25,7 +25,13 @@ module openconfig-bgp-types {
+     policy. It can be imported by modules that make use of BGP
+     attributes";
+ 
+-  oc-ext:openconfig-version "5.3.0";
++  oc-ext:openconfig-version "6.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "6.0.0";
++  }
+ 
+   revision "2021-01-07" {
+     description
+@@ -167,6 +173,75 @@ module openconfig-bgp-types {
+     reference "RFC5549";
+   }
+ 
++  identity MPBGP_RECEIVED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "Multi-protocol extensions to BGP";
++    reference "RFC2858";
++  }
++
++  identity ROUTE_REFRESH_RECEIVED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "The BGP route-refresh functionality";
++    reference "RFC2918";
++  }
++
++  identity ASN32_RECEIVED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "4-byte (32-bit) AS number functionality";
++    reference "RFC6793";
++  }
++
++  identity GRACEFUL_RESTART_RECEIVED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "Graceful restart functionality";
++    reference "RFC4724";
++  }
++
++  identity ADD_PATHS_RECEIVED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "BGP add-paths";
++    reference "draft-ietf-idr-add-paths";
++  }
++
++  identity MPBGP_ADVERTISED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "Multi-protocol extensions to BGP";
++    reference "RFC2858";
++  }
++  identity ROUTE_REFRESH_ADVERTISED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "The BGP route-refresh functionality";
++    reference "RFC2918";
++  }
++
++  identity ASN32_ADVERTISED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "4-byte (32-bit) AS number functionality";
++    reference "RFC6793";
++  }
++
++  identity GRACEFUL_RESTART_ADVERTISED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "Graceful restart functionality";
++    reference "RFC4724";
++  }
++
++  identity ADD_PATHS_ADVERTISED_ONLY {
++    base oc-bgp-types:BGP_CAPABILITY;
++    description
++      "BGP add-paths";
++    reference "draft-ietf-idr-add-paths";
++  }
++
+   identity AFI_SAFI_TYPE {
+     description
+       "Base identity type for AFI,SAFI tuples for BGP-4";
+@@ -711,6 +786,12 @@ module openconfig-bgp-types {
+       enum BOTH {
+         description "Send both standard and extended communities";
+       }
++      enum LARGE {
++        description "Send only large communities";
++      }
++      enum ALL {
++        description "Send standrd, extended and large communities";
++      }
+       enum NONE {
+         description "Do not send any community attribute";
+       }
+@@ -719,7 +800,9 @@ module openconfig-bgp-types {
+       "type describing variations of community attributes:
+       STANDARD: standard BGP community [rfc1997]
+       EXTENDED: extended BGP community [rfc4360]
+-      BOTH: both standard and extended community";
++      BOTH: both standard and extended community
++      LARGE: large BGP community
++      ALL: standard, extended and large community";
+   }
+ 
+ 
+@@ -751,4 +834,57 @@ module openconfig-bgp-types {
+     description
+       "Defines the types of BGP AS path segments.";
+   }
++
++  typedef bgp-neighbor-address {
++    type union {
++      type oc-inet:ip-address;
++
++      // TODO: in YANG 1.1, unions support leafref types which
++      // should be used here to reference a configured interface by
++      // name
++      // type leafref {
++      //    path "/oc-if:interfaces/oc-if:interface/oc-if:name";
++      // }
++      type string;
++    }
++    description
++      "BGP neighbor can be either IP or interface name";
++  }
++
++  typedef bgp-tx-add-paths-type {
++    type enumeration {
++      enum TX_ALL_PATHS {
++        description
++          "Send multiple path advertisements for an NLRI from
++          the neighbor or group";
++      }
++      enum TX_BEST_PATH_PER_AS {
++        description
++          "Send only best path per AS advertisements for an NLRI from
++          the neighbor or group";
++      }
++    }
++    description
++      "Type to describe the add paths advertisement method.";
++  }
++
++  typedef bgp-orf-type {
++    type enumeration {
++      enum SEND {
++        description
++          "Capability to receive the outbound route filtering from this neighbor";
++      }
++      enum RECEIVE {
++        description
++          "Capability to send the outbound route filtering to this neighbor";
++      }
++      enum BOTH {
++        description
++          "Capability to send and receive the outbound route filtering to/from this neighbor";
++      }
++    }
++    description
++      "Type to describe the BGP ORF(Outbound route filtering) capability";
++  }
++
+ }
+diff --git a/common/openconfig-bgp.yang b/common/openconfig-bgp.yang
+index d863adf..656a141 100644
+--- a/common/openconfig-bgp.yang
++++ b/common/openconfig-bgp.yang
+@@ -60,7 +60,13 @@ module openconfig-bgp {
+           +-> [ optional pointer to peer-group ]
+           +-> AFI / SAFI [ per-AFI overrides ]";
+ 
+-  oc-ext:openconfig-version "0.6.1";
++  oc-ext:openconfig-version "7.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "7.0.0";
++  }
+ 
+   revision "2021-03-17" {
+     description
+diff --git a/common/openconfig-rib-bgp-table-attributes.yang b/common/openconfig-rib-bgp-table-attributes.yang
+index ec1c738..f269ff8 100644
+--- a/common/openconfig-rib-bgp-table-attributes.yang
++++ b/common/openconfig-rib-bgp-table-attributes.yang
+@@ -21,7 +21,13 @@ submodule openconfig-rib-bgp-table-attributes {
+     "This submodule contains common data definitions for data
+     related to a RIB entry, or RIB table.";
+ 
+-  oc-ext:openconfig-version "0.6.0";
++  oc-ext:openconfig-version "1.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "1.0.0";
++  }
+ 
+   revision "2019-04-25" {
+     description
+@@ -109,6 +115,16 @@ submodule openconfig-rib-bgp-table-attributes {
+     }
+   }
+ 
++  grouping bgp-common-route-bestpath-annotations-state {
++    leaf best-path {
++      type boolean;
++      description
++        "Current path was selected as the best path.";
++    }
++    description
++      "Current path was selected as the best path.";
++  }
++
+   grouping bgp-common-table-attrs-state {
+     description
+       "Common attributes attached to all routing tables";
+@@ -134,4 +150,4 @@ submodule openconfig-rib-bgp-table-attributes {
+   }
+ 
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/common/openconfig-rib-bgp-tables.yang b/common/openconfig-rib-bgp-tables.yang
+index 4d9875b..83666f3 100644
+--- a/common/openconfig-rib-bgp-tables.yang
++++ b/common/openconfig-rib-bgp-tables.yang
+@@ -9,6 +9,7 @@ submodule openconfig-rib-bgp-tables {
+   import openconfig-inet-types { prefix oc-inet; }
+   import openconfig-extensions { prefix oc-ext; }
+   import openconfig-policy-types { prefix oc-pol-types; }
++  import openconfig-bgp-types { prefix oc-bgp-types; }
+ 
+   include openconfig-rib-bgp-attributes;
+   include openconfig-rib-bgp-shared-attributes;
+@@ -25,7 +26,13 @@ submodule openconfig-rib-bgp-tables {
+     "This submodule contains structural data definitions for
+     BGP routing tables.";
+ 
+-  oc-ext:openconfig-version "0.7.0";
++  oc-ext:openconfig-version "1.0.0";
++
++  revision "2021-05-27" {
++    description
++      "Enhance BGP modules for additional features.";
++    reference "1.0.0";
++  }
+ 
+   revision "2019-10-15" {
+     description
+@@ -246,6 +253,7 @@ submodule openconfig-rib-bgp-tables {
+             uses bgp-loc-rib-attr-state;
+             uses bgp-common-route-annotations-state;
+             uses bgp-loc-rib-route-annotations-state;
++            uses bgp-common-route-bestpath-annotations-state;
+ 
+            }
+ 
+@@ -302,6 +310,7 @@ submodule openconfig-rib-bgp-tables {
+             uses bgp-loc-rib-attr-state;
+             uses bgp-common-route-annotations-state;
+             uses bgp-loc-rib-route-annotations-state;
++            uses bgp-common-route-bestpath-annotations-state;
+ 
+           }
+ 
+@@ -369,6 +378,7 @@ submodule openconfig-rib-bgp-tables {
+           uses bgp-adj-rib-attr-state;
+           uses bgp-adj-rib-common-attr-refs;
+           uses bgp-common-route-annotations-state;
++          uses bgp-common-route-bestpath-annotations-state;
+         }
+ 
+         uses bgp-unknown-attr-top;
+@@ -450,9 +460,9 @@ submodule openconfig-rib-bgp-tables {
+             "Operational state for each neighbor BGP Adj-RIB";
+ 
+           leaf neighbor-address {
+-            type oc-inet:ip-address;
++            type oc-bgp-types:bgp-neighbor-address;
+             description
+-              "IP address of the BGP neighbor or peer";
++              "IP address of the BGP neighbor or peer or interface name (unnumbered interface)";
+           }
+         }
+ 
+@@ -532,6 +542,7 @@ submodule openconfig-rib-bgp-tables {
+           uses bgp-adj-rib-attr-state;
+           uses bgp-adj-rib-common-attr-refs;
+           uses bgp-common-route-annotations-state;
++          uses bgp-common-route-bestpath-annotations-state;
+         }
+ 
+         uses bgp-unknown-attr-top;
+@@ -608,9 +619,9 @@ submodule openconfig-rib-bgp-tables {
+             "Operational state for each neighbor BGP Adj-RIB";
+ 
+           leaf neighbor-address {
+-            type oc-inet:ip-address;
++            type oc-bgp-types:bgp-neighbor-address;
+             description
+-              "IP address of the BGP neighbor or peer";
++              "IP address of the BGP neighbor or peer or interface name (unnumbered interface)";
+           }
+         }
+ 
+@@ -735,7 +746,7 @@ submodule openconfig-rib-bgp-tables {
+       description
+         "The address of the neighbour for which the SR-TE policy
+         SAFI has been negotiated.";
+-      type oc-inet:ip-address;
++      type oc-bgp-types:bgp-neighbor-address;
+     }
+   }
+ 
+diff --git a/openconfig-bfd.yang b/openconfig-bfd.yang
+index b36fa10..f5ec080 100644
+--- a/openconfig-bfd.yang
++++ b/openconfig-bfd.yang
+@@ -27,7 +27,13 @@ module openconfig-bfd {
+     "An OpenConfig model of Bi-Directional Forwarding Detection (BFD)
+     configuration and operational state.";
+ 
+-  oc-ext:openconfig-version "0.2.2";
++  oc-ext:openconfig-version "0.3.0";
++
++  revision "2021-05-27" {
++    description
++      "Add link dataplane status with control plane.";
++    reference "0.3.0";
++  }
+ 
+   revision "2021-03-17" {
+     description
+@@ -672,6 +678,12 @@ module openconfig-bfd {
+         "When this leaf is set to true, BFD is used to detect the
+         liveliness of the remote peer or next-hop.";
+     }
++
++    leaf check-control-plane-failure {
++      type boolean;
++      description
++        "Link dataplane status with control plane.";
++    }
+   }
+ 
+   grouping enable-bfd-state {
+diff --git a/openconfig-bgp-policy.yang b/openconfig-bgp-policy.yang
+index 80d5d5e..0aa38b0 100644
+--- a/openconfig-bgp-policy.yang
++++ b/openconfig-bgp-policy.yang
+@@ -1184,7 +1184,19 @@ module openconfig-bgp-policy {
+       description "set the med metric attribute in the route
+       update";
+     }
+-  }
++
++    leaf set-ipv6-next-hop-global {
++      type oc-inet:ipv6-address;
++      description "set the IPv6 global next-hop attribute in the route update";
++    }
++
++    leaf set-ipv6-next-hop-prefer-global {
++      type boolean;
++      description
++        "If we receive a ipv6 global and link-local address for the route,
++        then prefer to use the global address as the nexthop.";
++    }
++	}
+ 
+   grouping bgp-actions-state {
+     description
+diff --git a/openconfig-routing-policy.yang b/openconfig-routing-policy.yang
+index 0ed2f93..da17b9c 100644
+--- a/openconfig-routing-policy.yang
++++ b/openconfig-routing-policy.yang
+@@ -77,7 +77,13 @@ module openconfig-routing-policy {
+     the remaining conditions (using a modified route if the
+     subroutine performed any changes to the route).";
+ 
+-  oc-ext:openconfig-version "3.2.2";
++  oc-ext:openconfig-version "3.3.0";
++
++  revision "2021-05-27" {
++    description
++      "Add metric action for the policy.";
++    reference "3.3.0";
++  }
+ 
+   revision "2020-08-18" {
+     description
+@@ -164,6 +170,51 @@ module openconfig-routing-policy {
+       a policy chain";
+   }
+ 
++  identity ROUTEMAP_SET_METRIC_TYPE {
++    description
++      "Type used to specify route metric value to be set in
++      a policy chain.";
++  }
++
++  identity METRIC_SET_VALUE {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Set a specified metric value.";
++  }
++
++  identity METRIC_ADD_VALUE {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Add a specified metric value from current
++      set value of metric.";
++  }
++
++  identity METRIC_SUBTRACT_VALUE {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Subtract a specified metric value from current
++      set value of metric.";
++  }
++
++  identity METRIC_SET_RTT {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Add round trip time value as metric.";
++  }
++
++  identity METRIC_ADD_RTT {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Add round trip time value from current
++      set value of metric.";
++  }
++
++  identity METRIC_SUBTRACT_RTT {
++    base "ROUTEMAP_SET_METRIC_TYPE";
++    description
++      "Subtract round trip time value from current
++      set value of metric.";
++  }
+ 
+   // grouping statements
+ 
+@@ -977,6 +1028,64 @@ module openconfig-routing-policy {
+         prefix.";
+     }
+   }
++ 
++  grouping policy-metric-action-config {
++    description
++      "Metric action to be set for the policy.";
++
++    leaf action {
++      type identityref {
++        base "ROUTEMAP_SET_METRIC_TYPE";
++      }
++      description
++        "Metric set action type for the the policy.";
++    }
++
++    leaf metric {
++      when "../action = 'METRIC_SET_VALUE' " +
++        "or ../action = 'METRIC_ADD_VALUE' " +
++        "or ../action = 'METRIC_SUBTRACT_VALUE'";
++
++      type uint32 {
++        range "0..4294967295";
++      }
++      description
++        "Metric value to be set for the policy.
++        Specified only when action is for set metric or
++        add metric or subtract metric.";
++    }
++  }
++  
++  grouping policy-metric-action-state {
++    description
++      "Operational state data for policy metric action";
++  }
++
++  grouping policy-metric-action-top {
++    description
++      "Definitions for metric set";
++
++    container metric-action {
++      description
++        "Set metric actions for the routing policy";
++
++      container config {
++        description
++          "Configuration data for metric set policy actions";
++
++        uses policy-metric-action-config;
++      }
++
++      container state {
++        config false;
++        description
++          "Operational state data for metric set policy actions";
++
++        uses policy-metric-action-config;
++        uses policy-metric-action-state;
++      }
++    }
++  }
+ 
+   grouping policy-actions-top {
+     description
+@@ -1005,6 +1114,7 @@ module openconfig-routing-policy {
+       }
+ 
+       uses policy-actions-tag-set;
++      uses policy-metric-action-top;
+     }
+   }
+ 
+-- 
+2.7.4
+

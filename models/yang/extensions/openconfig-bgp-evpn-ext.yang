@@ -10,7 +10,7 @@ module openconfig-bgp-evpn-ext {
   import openconfig-network-instance-types { prefix "oc-ni-types"; }
   import openconfig-bgp-types { prefix oc-bgp-types; }
   import openconfig-rib-bgp { prefix oc-rib-bgp; }
-  import openconfig-bgp-ext { prefix oc-bgp-ext; }
+  import openconfig-bgp-deviation { prefix oc-bgp-dev; }
   import openconfig-inet-types { prefix oc-inet; }
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-yang-types { prefix oc-yang; }
@@ -721,19 +721,19 @@ module openconfig-bgp-evpn-ext {
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:loc-rib/oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route {
       description
         "BGP local rib extensions for l2vpn evpn address family";
-      uses oc-bgp-ext:bgp-ext-attr-sets-state;
+      uses oc-bgp-dev:bgp-deviation-attr-sets-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:neighbors/oc-bgp-evpn-ext:neighbor/oc-bgp-evpn-ext:adj-rib-in-pre/oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route {
       description
         "BGP rib extensions for l2vpn evpn address family specific to received routes pre-processing from neighbors";
-      uses oc-bgp-ext:bgp-ext-attr-sets-state;
+      uses oc-bgp-dev:bgp-deviation-attr-sets-state;
   }
  
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:neighbors/oc-bgp-evpn-ext:neighbor/oc-bgp-evpn-ext:adj-rib-out-post/oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route {
       description
         "BGP rib extensions for l2vpn evpn address family specific to received routes post-processing from neighbors";
-      uses oc-bgp-ext:bgp-ext-attr-sets-state;
+      uses oc-bgp-dev:bgp-deviation-attr-sets-state;
   }
 
   augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:loc-rib/oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route/oc-bgp-evpn-ext:attr-sets {
@@ -741,6 +741,27 @@ module openconfig-bgp-evpn-ext {
         "BGP local rib attr-sets extensions for l2vpn evpn address family";
       uses bgp-evpn-ext-loc-rib-attr-state;
   }
+
+  augment "/oc-netinst:network-instances/oc-netinst:network-instance/" +
+    "oc-netinst:protocols/oc-netinst:protocol/" +
+    "oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/" +
+    "oc-netinst:afi-safi/oc-bgp-evpn-ext:l2vpn-evpn/oc-bgp-evpn-ext:loc-rib/" +
+    "oc-bgp-evpn-ext:routes/oc-bgp-evpn-ext:route/oc-bgp-evpn-ext:state" {
+      description
+        "Add best-path field to the Loc-RIB for EVPN";
+
+      leaf best-path {
+        type boolean;
+        description
+          "Current path was selected as the best path.";
+      }
+
+      leaf weight {
+        type uint16;
+        description
+          "Weight of the path.";
+      }
+    }
 
   // Temp deviation for community Open PR: Start
   //https://github.com/openconfig/public/pull/270
