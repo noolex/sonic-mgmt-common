@@ -2015,7 +2015,7 @@ func isValidVrf(configDb *db.DB, vrfName string)(bool) {
 func status(msg string, err error) string {
     if err != nil {
         log.Error(msg, ": ", err)
-        return "% Error: Internal error"
+        return "% Error: Unable to clear all entries, please try again."
     } else {
         return "Success"
     }
@@ -2033,7 +2033,7 @@ func clear_default_vrf(fam_switch string, d *db.DB)  string {
         _, err = exec.Command("ip", fam_switch, "neigh", "flush", "dev", intfName).Output()
         if err != nil {
             log.Error("clear_default_vrf(): ", err)
-            return "% Error: Internal error"
+            return "% Error: Unable to clear all entries, please try again."
         }
     }
     return "Success"
@@ -2045,7 +2045,7 @@ func clear_vrf(fam_switch string, vrf string) string {
     log.Info("In clear_vrf()")
     if (len(vrf) <= 0) {
         log.Error("clear_vrf(): Missing VRF name, returning")
-        return "% Error: Internal error"
+        return "% Error: Missing VRF name."
     }
 
     if (vrf == "all") {
