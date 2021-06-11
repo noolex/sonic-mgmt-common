@@ -37,16 +37,16 @@ var (
 func getReadOnlyDB() [db.MaxDB]*db.DB {
 	if roDBs[0] == nil {
 		roDBs, _ = getAllDbs(true)
+		addCleanupFunc(closeAllTestDB)
 	}
 	return roDBs
 }
 
-func BenchmarkGetAppModule(b *testing.B) {
-	var v Version
-	path := "/benchmark/common_app/creation"
-	for i := 0; i < b.N; i++ {
-		getAppModule(path, v)
+func closeAllTestDB() error {
+	if roDBs[0] != nil {
+		closeAllDbs(roDBs[:])
 	}
+	return nil
 }
 
 func Test_isEmptyStruct_EmptyObj(t *testing.T) {
