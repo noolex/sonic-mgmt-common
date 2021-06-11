@@ -1,0 +1,149 @@
+module openconfig-aft-deviation {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/aft/deviation/extension";
+
+  prefix "oc-aft-dev";
+
+  // import some basic types
+  import openconfig-network-instance { prefix "oc-netinst"; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-aft { prefix oc-aft; }
+
+  organization
+    "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module describes deviation in network instance AFT model.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2021-06-04" {
+    description
+      "Deviation in network instance AFT model.";
+    reference "0.1.0";
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry {
+    description "AFT extensions for IPv4 forwarding entry";
+    uses oc-aft:aft-nhop-structural;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry {
+    description "AFT extensions for IPv6 forwarding entry";
+    uses oc-aft:aft-nhop-structural;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state/oc-netinst:packets-forwarded {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state/oc-netinst:octets-forwarded {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state/oc-netinst:directly-connected {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state/oc-netinst:directly-connected {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state/oc-netinst:decapsulate-header {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:mac-address {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:pushed-mpls-label-stack {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:lsp-name {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:lsp-name {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:encapsulate-header {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:origin-protocol {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:interface-ref/oc-aft-dev:state/oc-aft-dev:subinterface {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state/oc-netinst:packets-forwarded {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state/oc-netinst:octets-forwarded {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state/oc-netinst:decapsulate-header {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:mac-address {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:pushed-mpls-label-stack {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:encapsulate-header {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:state/oc-aft-dev:origin-protocol {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-aft-dev:next-hops/oc-aft-dev:next-hop/oc-aft-dev:interface-ref/oc-aft-dev:state/oc-aft-dev:subinterface {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv4-unicast/oc-netinst:ipv4-entry/oc-netinst:state/oc-netinst:next-hop-group {
+    deviate not-supported;
+	}
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ipv6-unicast/oc-netinst:ipv6-entry/oc-netinst:state/oc-netinst:next-hop-group {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:policy-forwarding {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:mpls {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:ethernet {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:next-hop-groups {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:afts/oc-netinst:next-hops {
+    deviate not-supported;
+  }
+}

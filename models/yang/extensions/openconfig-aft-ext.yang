@@ -7,7 +7,6 @@ module openconfig-aft-ext {
 
     prefix "oc-aft-ext";
 
-    import openconfig-policy-types { prefix "oc-pol-types"; }
     import openconfig-interfaces { prefix oc-if; }
     import openconfig-extensions { prefix oc-ext; }
     import openconfig-types { prefix "oc-types"; }
@@ -28,47 +27,6 @@ module openconfig-aft-ext {
         "Network instance aft common extensions.";
 
       reference "0.1.0";
-    }
-
-    grouping aft-ext-common-ip-state {
-        description "Operational state parameters relating to a forwarding entry";
-
-        leaf origin-protocol {
-          type identityref {
-            base "oc-pol-types:INSTALL_PROTOCOL_TYPE";
-          }
-          description
-          "The protocol from which the AFT entry was learned.";
-        }
-
-        leaf distance {
-           type uint32;
-           description
-              "Admin distance for this route";
-        }
-
-        leaf metric {
-           type uint32;
-           description
-              "Distance metric for this route";
-        }
-
-        leaf uptime {
-         type string;
-         description
-         "Time since route is configured or learned in RIB";
-       }
-     }
-
-    grouping aft-ext-common-entry-nexthop-state {
-      description "State information relating to nexthop";
-      leaf directly-connected {
-        type boolean;
-        default false;
-        description
-          "Defines whether the nexthop is directly connected.";
-      }
-
     }
 
     grouping aft-ext-common-ip-mcast-entry-state {

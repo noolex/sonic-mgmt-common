@@ -142,7 +142,6 @@ func fill_ipv4_nhop_entry(nexthopsArr []interface{},
 				}
 			}
 			ygot.BuildEmptyTree(nextHop)
-			nextHop.Config.Index = nextHop.Index
 
 			var state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Unicast_Ipv4Entry_NextHops_NextHop_State
 			state.Index = nextHop.Index
@@ -151,7 +150,6 @@ func fill_ipv4_nhop_entry(nexthopsArr []interface{},
 				if nextHopKey == "interfaceName" {
 					intfName := nextHopVal.(string)
 					ygot.BuildEmptyTree(nextHop.InterfaceRef)
-					nextHop.InterfaceRef.Config.Interface = &intfName
 					nextHop.InterfaceRef.State.Interface = &intfName
 				} else if nextHopKey == "ip" {
 					ip := nextHopVal.(string)
@@ -194,7 +192,6 @@ func fill_ipv4_entry(prfxValArr []interface{},
 				}
 			}
 			ygot.BuildEmptyTree(ipv4Entry)
-			ipv4Entry.Config.Prefix = &prfxKey
 			ipv4Entry.State.Prefix = &prfxKey
 
 			for prfxValKey, prfxValVal := range prfxValArrValMap {
@@ -260,7 +257,6 @@ func fill_ipv6_nhop_entry(nexthopsArr []interface{},
 				}
 			}
 			ygot.BuildEmptyTree(nextHop)
-			nextHop.Config.Index = nextHop.Index
 
 			var state ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv6Unicast_Ipv6Entry_NextHops_NextHop_State
 			state.Index = nextHop.Index
@@ -269,7 +265,6 @@ func fill_ipv6_nhop_entry(nexthopsArr []interface{},
 				if nextHopKey == "interfaceName" {
 					intfName := nextHopVal.(string)
 					ygot.BuildEmptyTree(nextHop.InterfaceRef)
-					nextHop.InterfaceRef.Config.Interface = &intfName
 					nextHop.InterfaceRef.State.Interface = &intfName
 				} else if nextHopKey == "ip" {
 					ip := nextHopVal.(string)
@@ -315,7 +310,6 @@ func fill_ipv6_entry(prfxValArr []interface{},
 			}
 
 			ygot.BuildEmptyTree(ipv6Entry)
-			ipv6Entry.Config.Prefix = &prfxKey
 			ipv6Entry.State.Prefix = &prfxKey
 
 			for prfxValKey, prfxValVal := range prfxValArrValMap {
