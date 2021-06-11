@@ -7,38 +7,6 @@ import (
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
  )
 
-//ValidateDstIp validates whether dst_ip is configured in any other session
-func (t *CustomValidation) ValidateDstIp(vc *CustValidationCtxt) CVLErrorInfo {
-    if (vc.CurCfg.VOp == OP_DELETE) {
-        return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-    }
-    keys, err := vc.RClient.Keys("MIRROR_SESSION|*").Result()
-    if err == nil {
-        for _, key := range keys {
-            /* for each mirror session */
-            if key == vc.CurCfg.Key {
-                log.Info("ValidateDstIp: Skip current session ", key)
-                continue
-            }
-
-            entry, err := vc.RClient.HGet(key, "dst_ip").Result()
-            if (err == nil) && (entry == vc.YNodeVal) {
-                log.Error("ValidateDstIp: ", vc.YNodeVal, " already configured: ")
-                errStr := "Destination IP already configured in other mirror session"
-                return CVLErrorInfo{
-                    ErrCode: CVL_SEMANTIC_ERROR,
-                    TableName: "MIRROR_SESSION",
-                    CVLErrDetails : errStr,
-                    ConstraintErrMsg : errStr,
-                }
-            }
-        }
-    }
-
-    log.Info("ValidateDstIp ", vc.YNodeVal, " success")
-    return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-}
-
 //ValidateMirrorCapability verify whether mirror config validations are enabled or not
 func validateMirrorCapability(vc *CustValidationCtxt) CVLErrorInfo {
     key := "MIRROR_SESSION_CAPABILITY|validation"
