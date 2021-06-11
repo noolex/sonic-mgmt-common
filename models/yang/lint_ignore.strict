@@ -2,6 +2,8 @@
 #module-name line-number(optional)
 #openconfig-lldp #ignores all errors in the specified module
 #opencofig-interfaces 1 10 20 #ignores errors at specificied line numbers alone
+#Ignore OC style errors in standard openconfig model.
+openconfig-aft-common 281 283 318 319
 openconfig-routing-policy 909 919 934 945 962
 openconfig-rib-bgp-tables
 openconfig-bgp
