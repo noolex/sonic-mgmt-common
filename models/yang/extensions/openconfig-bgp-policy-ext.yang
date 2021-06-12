@@ -42,6 +42,80 @@ module openconfig-bgp-policy-ext {
     reference "0.1.0";
   }
 
+  identity EVPN_ADVERTISE_ROUTE_TYPE {
+    description
+        "Different types of routes in payload carried by BGP EVPN address-family";
+  }
+
+  identity MACIP {
+    base "EVPN_ADVERTISE_ROUTE_TYPE";
+    description
+        "advertise only mac-ip routes (e.g. EVPN type-2 or type-4 prefix)";
+  }
+
+  identity MULTICAST {
+    base "EVPN_ADVERTISE_ROUTE_TYPE";
+    description
+        "advertise only multicast routes (e.g. EVPN type-3 prefix)";
+  }
+
+  identity PREFIX {
+    base "EVPN_ADVERTISE_ROUTE_TYPE";
+    description
+        "Advertise only IP routes (e.g. EVPN type-5 prefix)";
+  }
+
+  grouping bgp-policy-ext-match-evpn-config {
+    description
+        "Configuration data for match conditions on BGP EVPN set";
+
+      leaf vni-number {
+          type uint32;
+          description
+              "VNI-Id of the L3 VPN configured for BGP EVPN";
+      }
+
+      leaf default-type5-route {
+          type boolean;
+          description
+              "Allow EVPN to advertise default route as type-5 prefix";
+      }
+
+      leaf route-type {
+          type identityref {
+              base "EVPN_ADVERTISE_ROUTE_TYPE";
+          }
+          description
+              "Allow EVPN to advertise only a specific route-type (e.g. type-5 only for prefix match)";
+      }
+  }
+
+  grouping bgp-policy-ext-match-evpn-top {
+    description
+        "Top-level grouping for match conditions on BGP EVPN address-family";
+
+      container match-evpn-set {
+        description
+            "Match a referenced EVPN set according to the logic
+             defined in the match-set-options leaf";
+
+        container config {
+          description
+              "Configuration data for match conditions on BGP EVPN set";
+
+            uses bgp-policy-ext-match-evpn-config;
+        }
+
+        container state {
+          config false;
+            description
+                "Operational state data for match conditions on BGP
+                 EVPN set";
+
+                uses bgp-policy-ext-match-evpn-config;
+        }
+      }
+  }
   grouping bgp-policy-ext-action-next-hop-set-config {
     description
         "Configuration data for IP nexthop under BGP policy conditions";
@@ -101,6 +175,11 @@ module openconfig-bgp-policy-ext {
       uses oc-rpol-ext:routing-policy-ext-action-config;
   }
 
+  augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions {
+    description
+        "BGP match EVPN set extensions";
+      uses bgp-policy-ext-match-evpn-top;
+  }
   // rpc statements
 
   // notification statements
