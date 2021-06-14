@@ -152,3 +152,5 @@ openconfig-loadshare-mode-ext.yang
 openconfig-loadshare-mode-ext-annot.yang
 sonic-bgp-neighbor.yang
 sonic-bgp-neighbor-annot.yang
+openconfig-telemetry.yang
+openconfig-telemetry-annot.yang

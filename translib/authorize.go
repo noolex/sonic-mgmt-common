@@ -69,6 +69,16 @@ var OPER_ALLOW_RPC = map[string]bool{
 	"show-counters":                   true,
 	"sum":                             true,
 	"my-echo":                         true,
+	//Non-YANG Based RPCs Below:
+	"GNOI/System/Time":              true,
+	"GNOI/System/Reboot":            true,
+	"GNOI/System/Ping":              true,
+	"GNOI/System/Traceroute":        true,
+	"GNOI/OS/TargetInstallInitiate": true,
+	"GNOI/OS/Activate":              true,
+	"GNOI/OS/CancelTransfer":        true,
+	"GNOI/OS/GetUpgradeStatus":      true,
+	"GNOI/OS/GetBootDetail":         true,
 }
 
 func init() {
@@ -133,4 +143,10 @@ func isAuthorizedForAction(req ActionRequest) bool {
 	}
 
 	return false
+}
+
+//Wrapper function(s) to expose the authorization functions for non-yang based RPCs to use:
+
+func IsAuthorizedForAction(req ActionRequest) bool {
+	return isAuthorizedForAction(req)
 }
