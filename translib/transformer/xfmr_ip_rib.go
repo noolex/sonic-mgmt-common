@@ -446,7 +446,15 @@ type _xfmr_ipv4_mroute_state_key struct {
 }
 
 func fill_ipv4_mroute_state_info(inParams XfmrParams, ipv4MrouteStateKey _xfmr_ipv4_mroute_state_key, srcAddrData map[string]interface{},
-	srcEntryStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State) bool {
+	srcEntryObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry) bool {
+
+	srcEntryStateObj := srcEntryObj.State
+	if srcEntryStateObj == nil {
+		var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_State
+		srcEntryObj.State = &_srcEntryStateObj
+		srcEntryStateObj = srcEntryObj.State
+		ygot.BuildEmptyTree(srcEntryStateObj)
+	}
 	srcEntryStateObj.SourceAddress = &ipv4MrouteStateKey.srcAddr
 
 	if value, ok := srcAddrData["iil"]; ok {
@@ -480,11 +488,11 @@ func fill_ipv4_mroute_state_info(inParams XfmrParams, ipv4MrouteStateKey _xfmr_i
 				continue
 			}
 
-			oilInfoEntries := srcEntryStateObj.OilInfoEntries
+			oilInfoEntries := srcEntryObj.OilInfoEntries
 			if oilInfoEntries == nil {
-				var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries
-				srcEntryStateObj.OilInfoEntries = &_oilInfoEntries
-				oilInfoEntries = srcEntryStateObj.OilInfoEntries
+				var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_OilInfoEntries
+				srcEntryObj.OilInfoEntries = &_oilInfoEntries
+				oilInfoEntries = srcEntryObj.OilInfoEntries
 				ygot.BuildEmptyTree(oilInfoEntries)
 			}
 
@@ -498,7 +506,7 @@ func fill_ipv4_mroute_state_info(inParams XfmrParams, ipv4MrouteStateKey _xfmr_i
 
 			oilInfoStateObj := OifInfoObj.State
 			if oilInfoStateObj == nil {
-				var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries_OifInfo_State
+				var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_OilInfoEntries_OifInfo_State
 				OifInfoObj.State = &_oilInfoStateObj
 				oilInfoStateObj = OifInfoObj.State
 				ygot.BuildEmptyTree(oilInfoStateObj)
@@ -602,11 +610,11 @@ var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 				continue
 			}
 
-			srcEntriesObj := ipv4EntryStateObj.SrcEntries
+			srcEntriesObj := ipv4EntryObj.SrcEntries
 			if srcEntriesObj == nil {
-				var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries
-				ipv4EntryStateObj.SrcEntries = &_srcEntriesObj
-				srcEntriesObj = ipv4EntryStateObj.SrcEntries
+				var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_SrcEntries
+				ipv4EntryObj.SrcEntries = &_srcEntriesObj
+				srcEntriesObj = ipv4EntryObj.SrcEntries
 				ygot.BuildEmptyTree(srcEntriesObj)
 			}
 
@@ -616,17 +624,9 @@ var DbToYang_ipv4_mroute_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams
 				ygot.BuildEmptyTree(srcEntryObj)
 			}
 
-			srcEntryStateObj := srcEntryObj.State
-			if srcEntryStateObj == nil {
-				var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Afts_Ipv4Multicast_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State
-				srcEntryObj.State = &_srcEntryStateObj
-				srcEntryStateObj = srcEntryObj.State
-				ygot.BuildEmptyTree(srcEntryStateObj)
-			}
-
 			ipMrouteKey.srcAddr = srcAddr
 
-			fill_ipv4_mroute_state_info(inParams, ipMrouteKey, srcAddrData, srcEntryStateObj)
+			fill_ipv4_mroute_state_info(inParams, ipMrouteKey, srcAddrData, srcEntryObj)
 		}
 	}
 

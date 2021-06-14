@@ -114,8 +114,6 @@ openconfig-warm-restart.yang
 openconfig-warm-restart-annot.yang
 openconfig-fbs-ext.yang
 openconfig-fbs-ext-annot.yang
-openconfig-aft-ext.yang
-openconfig-aft-ipv4-ext.yang
 openconfig-aft-deviation.yang
 openconfig-ip-sla.yang
 openconfig-ip-sla-annot.yang
@@ -154,3 +152,5 @@ openconfig-loadshare-mode-ext.yang
 openconfig-loadshare-mode-ext-annot.yang
 sonic-bgp-neighbor.yang
 sonic-bgp-neighbor-annot.yang
+openconfig-telemetry.yang
+openconfig-telemetry-annot.yang

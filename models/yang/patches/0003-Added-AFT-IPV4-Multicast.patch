@@ -1,0 +1,244 @@
+From 1fcd5a990d60358458ae028c8fa4babd3bf52177 Mon Sep 17 00:00:00 2001
+From: Rathnasabapathy Velautharaj <rathna_sabapathy@dell.com>
+Date: Fri, 11 Jun 2021 17:54:16 -0700
+Subject: [PATCH] Added AFT IPV4 Multicast
+
+---
+ common/openconfig-aft-common.yang | 70 ++++++++++++++++++++++++++++++++-
+ common/openconfig-aft-ipv4.yang   | 81 ++++++++++++++++++++++++++++++++++++++-
+ common/openconfig-aft.yang        | 22 ++++++++++-
+ 3 files changed, 170 insertions(+), 3 deletions(-)
+
+diff --git a/common/openconfig-aft-common.yang b/common/openconfig-aft-common.yang
+index 398c19a..3e369f9 100644
+--- a/common/openconfig-aft-common.yang
++++ b/common/openconfig-aft-common.yang
+@@ -10,6 +10,7 @@ submodule openconfig-aft-common {
+   import openconfig-mpls-types { prefix "oc-mplst"; }
+   import openconfig-policy-types { prefix "oc-pol-types"; }
+   import openconfig-aft-types { prefix "oc-aftt"; }
++  import openconfig-types { prefix "oc-types"; }
+ 
+   organization
+     "OpenConfig working group";
+@@ -22,7 +23,13 @@ submodule openconfig-aft-common {
+     "Submodule containing definitions of groupings that are re-used
+     across multiple contexts within the AFT model.";
+ 
+-  oc-ext:openconfig-version "0.6.1";
++  oc-ext:openconfig-version "0.7.0";
++
++  revision "2021-06-11" {
++    description
++      "Added AFT IPV4 Multicast.";
++    reference "0.7.0";
++  }
+ 
+   revision "2021-06-06" {
+     description
+@@ -556,4 +563,65 @@ submodule openconfig-aft-common {
+ 
+     uses oc-if:interface-ref-common;
+   }
++
++  grouping aft-common-ip-mcast-entry-state {
++    description
++      "AFT common IP Multicast entry data.";
++
++    leaf incoming-interface {
++      type oc-if:interface-id;
++      description
++        "Incoming interface for this multicast entry.";
++    }
++
++    leaf installed {
++      type boolean;
++      description
++        "When set to TRUE, it states the multicast entry is installed in HW.";
++    }
++  }
++
++  grouping aft-common-ip-mcast-entry-oil-info-entries-top {
++    description
++      "Details about all outgoing interfaces of a particular IP multicast entry.";
++
++    container oil-info-entries {
++      description
++        "Details about all outgoing interfaces of a particular IP multicast entry.";
++
++      list oif-info {
++        key "outgoing-interface";
++
++        description
++          "Details about outgoing interface for this multicast entry.";
++
++        leaf outgoing-interface {
++          type leafref {
++            path "../state/outgoing-interface";
++          }
++          description
++            "Reference to the outgoing-interface key";
++        }
++
++        container state {
++          description
++            "Common Operational state information of an outgoing interface in this multicast entry.";
++
++          leaf outgoing-interface {
++            type oc-if:interface-id;
++            description
++              "Outgoing interface for this multicast entry.";
++          }
++
++          leaf uptime {
++            type oc-types:timeticks64;
++            description
++              "This timestamp indicates the time, since this particular outgoing interface is present in this multicast entry.
++              The value is the timestamp in seconds relative to the Unix Epoch (Jan 1, 1970 00:00:00 UTC).
++              It can be computed by clients as the difference between this value and the current time in UTC.";
++          }
++        }
++      }
++    }
++  }
+ }
+diff --git a/common/openconfig-aft-ipv4.yang b/common/openconfig-aft-ipv4.yang
+index 1474e4f..bc76abb 100644
+--- a/common/openconfig-aft-ipv4.yang
++++ b/common/openconfig-aft-ipv4.yang
+@@ -20,7 +20,13 @@ submodule openconfig-aft-ipv4 {
+     "Submodule containing definitions of groupings for the abstract
+     forwarding tables for IPv4.";
+ 
+-  oc-ext:openconfig-version "0.6.0";
++  oc-ext:openconfig-version "0.7.0";
++
++  revision "2021-06-11" {
++    description
++      "Added AFT IPV4 Multicast.";
++    reference "0.7.0";
++  }
+ 
+   revision "2020-11-06" {
+     description
+@@ -121,4 +127,77 @@ submodule openconfig-aft-ipv4 {
+     uses aft-common-entry-state;
+     uses aft-common-ip-state;
+   }
++
++  grouping aft-ipv4-multicast-structural {
++    description
++      "Structural grouping defining the schema for the IPv4 multicast abstract forwarding table.";
++
++    container ipv4-entries {
++      config false;
++      description
++        "Details about all IPv4 multicast entries present in forwarding table.";
++
++      list ipv4-entry {
++        key "group-address";
++
++        description
++          "List of the IPv4 multicast entries within the abstract forwarding table.
++          This list is keyed by the destination IPv4 multicast group & source address.";
++
++        leaf group-address {
++          type leafref {
++              path "../state/group-address";
++          }
++          description
++              "Reference to the group-address key";
++        }
++
++        container state {
++          description "Operational state information.";
++
++          leaf group-address {
++            type oc-inet:ipv4-address;
++            description
++              "IPv4 Multicast group-address";
++          }
++        }
++
++        container src-entries {
++          description
++            "Details about all multicast-source information of this particular multicast group-address entry.";
++
++          list src-entry {
++            key "source-address";
++
++            description
++              "List of different source-address entries within this particular multicast group-address entry.";
++
++            leaf source-address {
++              type leafref {
++                path "../state/source-address";
++              }
++              description
++                "Reference to the source-address key";
++            }
++
++            container state {
++              description
++                "Operational state parameters for the IPv4 multicast AFT entry.";
++
++              leaf source-address {
++                type oc-inet:ipv4-address;
++                description
++                  "IPv4 Unicast source-address of the device, which originates this particular multicast group traffic.
++                  This address can be 0.0.0.0 in case of *,G multicast group entry.";
++              }
++
++              uses aft-common-ip-mcast-entry-state;
++            }
++
++            uses aft-common-ip-mcast-entry-oil-info-entries-top;
++          }
++        }
++      }
++    }
++  }
+ }
+diff --git a/common/openconfig-aft.yang b/common/openconfig-aft.yang
+index 23aed96..85ea416 100644
+--- a/common/openconfig-aft.yang
++++ b/common/openconfig-aft.yang
+@@ -40,7 +40,13 @@ module openconfig-aft {
+     is referred to as an Abstract Forwarding Table (AFT), rather than
+     the FIB.";
+ 
+-  oc-ext:openconfig-version "0.6.0";
++  oc-ext:openconfig-version "0.7.0";
++
++  revision "2021-06-11" {
++    description
++      "Added AFT IPV4 Multicast.";
++    reference "0.7.0";
++  }
+ 
+   revision "2020-11-06" {
+     description
+@@ -150,6 +156,20 @@ module openconfig-aft {
+ 
+       }
+ 
++      container ipv4-multicast {
++        description
++          "The abstract forwarding table for IPv4 multicast. Entries
++          within this table are uniquely keyed on the IPv4 multicast
++          destination prefix which is matched by ingress packets.
++
++          The data set represented by the IPv4 Multicast AFT is the set
++          of entries from the IPv4 multicast RIB that have been selected
++          for installation into the FIB of the device exporting the
++          data structure.";
++
++        uses aft-ipv4-multicast-structural;
++      }
++
+       container policy-forwarding {
+         description
+           "The abstract forwarding table for policy-based forwarding
+-- 
+2.7.4
+
