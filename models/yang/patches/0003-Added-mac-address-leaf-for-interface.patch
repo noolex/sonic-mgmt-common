@@ -1,0 +1,44 @@
+From db02d15fb9fabd86eec179d1c2c26aac42823bfe Mon Sep 17 00:00:00 2001
+From: Haemanthi Sree KR <Haemanthi_sree_K_r@dell.com>
+Date: Mon, 14 Jun 2021 10:52:41 -0700
+Subject: [PATCH] Added mac address leaf for interface
+
+---
+ openconfig-interfaces.yang | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/openconfig-interfaces.yang b/openconfig-interfaces.yang
+index f3e0fee..4ee992e 100644
+--- a/openconfig-interfaces.yang
++++ b/openconfig-interfaces.yang
+@@ -50,7 +50,13 @@ module openconfig-interfaces {
+     Section 4.c of the IETF Trust's Legal Provisions Relating
+     to IETF Documents (http://trustee.ietf.org/license-info).";
+ 
+-  oc-ext:openconfig-version "2.4.1";
++  oc-ext:openconfig-version "2.4.2";
++
++  revision "2021-06-14" {
++    description
++      "Add MAC address leaf";
++    reference "2.4.2";
++  }
+ 
+   revision "2018-11-21" {
+     description
+@@ -461,6 +467,12 @@ module openconfig-interfaces {
+       oc-ext:telemetry-on-change;
+     }
+ 
++    leaf mac-address {
++      type oc-yang:mac-address;
++      description
++	"MAC address for interface.";
++    }
++
+     leaf admin-status {
+       type enumeration {
+         enum UP {
+-- 
+2.7.4
+

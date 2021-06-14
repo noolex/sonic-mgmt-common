@@ -475,8 +475,7 @@ func updateAliasFromDB(key *db.Key, d *db.DB) {
 	}
 	mac, ok := entry.Field["mac"]
 	if !ok {
-		log.Info("couldn't retrieve MAC address")
-		return
+		log.Info("Retrieval of MAC address for %s failed", key0)
 	}
 	macAddress = mac
 	aliasVal, ok := entry.Field["intf_naming_mode"]
