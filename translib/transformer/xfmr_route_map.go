@@ -1080,6 +1080,13 @@ var Subscribe_route_map_bgp_action_set_community SubTreeXfmrSubscribe = func(inP
 var Subscribe_route_map_bgp_action_set_ext_community SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
 	var err error
 	var result XfmrSubscOutParams
+
+	if inParams.subscProc != TRANSLATE_SUBSCRIBE {
+		result.isVirtualTbl = true
+		log.Info("Subscribe_route_map_bgp_action_set_ext_community:- result.  isVirtualTbl: ", result.isVirtualTbl)
+		return result, nil
+	}
+
 	pathInfo := NewPathInfo(inParams.uri)
 	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
 
