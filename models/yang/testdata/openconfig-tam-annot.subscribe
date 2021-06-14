@@ -1,0 +1,11 @@
+    deviation /oc-tam:tam/oc-tam:switch/oc-tam:state {
+      deviate add {
+        sonic-ext:subscribe-on-change disable;
+      }
+    }
+
+    deviation /oc-tam:tam/oc-tam:collectors/oc-tam:collector/oc-tam:state {
+      deviate add {
+        sonic-ext:subscribe-on-change disable;
+      }
+    }

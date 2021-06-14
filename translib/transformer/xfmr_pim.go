@@ -3,7 +3,6 @@ package transformer
 import (
 	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
@@ -308,11 +307,6 @@ func get_spec_pim_intf_cfg_tbl_entry(cfgDb *db.DB, key *_xfmr_pim_intf_state_key
 func fill_pim_intf_cfg_state_info(inParams XfmrParams, intfKey _xfmr_pim_intf_state_key,
 	intfStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Interfaces_Interface_State) bool {
 	if cfgDbEntry, cfgDbGetErr := get_spec_pim_intf_cfg_tbl_entry(inParams.dbs[db.ConfigDB], &intfKey); cfgDbGetErr == nil {
-		if value, ok := cfgDbEntry["bfd-enabled"]; ok {
-			_bfdEnabled, _ := strconv.ParseBool(value)
-			intfStateObj.BfdEnabled = &_bfdEnabled
-		}
-
 		if value, ok := cfgDbEntry["mode"]; ok {
 			switch value {
 			case "sm":
@@ -472,9 +466,9 @@ func fill_pim_nbr_state_info(inParams XfmrParams, nbrKey _xfmr_pim_nbr_state_key
 			if value, ok := _bfdInfo["status"]; ok {
 				switch value {
 				case "Up":
-					nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPimExt_BfdSessionState_UP
+					nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPim_BfdSessionState_UP
 				case "Down":
-					nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPimExt_BfdSessionState_DOWN
+					nbrStateObj.BfdSessionStatus = ocbinds.OpenconfigPim_BfdSessionState_DOWN
 				}
 			}
 		}
@@ -622,12 +616,21 @@ type _xfmr_pim_tib_state_key struct {
 	niName    string
 	grpAddr   string
 	srcAddr   string
-	routeType ocbinds.E_OpenconfigPimExt_RouteType
+	routeType ocbinds.E_OpenconfigPim_RouteType
 	oifKey    string
 }
 
 func fill_pim_tib_mroute_state_info(inParams XfmrParams, tibKey _xfmr_pim_tib_state_key, srcAddrData map[string]interface{},
-	srcEntryStateObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State) bool {
+	srcEntryObj *ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry) bool {
+
+	srcEntryStateObj := srcEntryObj.State
+	if srcEntryStateObj == nil {
+		var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_State
+		srcEntryObj.State = &_srcEntryStateObj
+		srcEntryStateObj = srcEntryObj.State
+		ygot.BuildEmptyTree(srcEntryStateObj)
+	}
+
 	srcEntryStateObj.SourceAddress = &tibKey.srcAddr
 	srcEntryStateObj.RouteType = tibKey.routeType
 
@@ -659,17 +662,17 @@ func fill_pim_tib_mroute_state_info(inParams XfmrParams, tibKey _xfmr_pim_tib_st
 				srcEntryStateObj.IncomingInterface = &_uiIncomingIntfId
 			}
 
-			rpfInfoObj := srcEntryStateObj.RpfInfo
+			rpfInfoObj := srcEntryObj.RpfInfo
 			if rpfInfoObj == nil {
-				var _rpfInfoObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_RpfInfo
-				srcEntryStateObj.RpfInfo = &_rpfInfoObj
-				rpfInfoObj = srcEntryStateObj.RpfInfo
+				var _rpfInfoObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_RpfInfo
+				srcEntryObj.RpfInfo = &_rpfInfoObj
+				rpfInfoObj = srcEntryObj.RpfInfo
 				ygot.BuildEmptyTree(rpfInfoObj)
 			}
 
 			rpfInfoStateObj := rpfInfoObj.State
 			if rpfInfoStateObj == nil {
-				var _rpfInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_RpfInfo_State
+				var _rpfInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_RpfInfo_State
 				rpfInfoObj.State = &_rpfInfoStateObj
 				rpfInfoStateObj = rpfInfoObj.State
 				ygot.BuildEmptyTree(rpfInfoStateObj)
@@ -703,11 +706,11 @@ func fill_pim_tib_mroute_state_info(inParams XfmrParams, tibKey _xfmr_pim_tib_st
 						continue
 					}
 
-					oilInfoEntries := srcEntryStateObj.OilInfoEntries
+					oilInfoEntries := srcEntryObj.OilInfoEntries
 					if oilInfoEntries == nil {
-						var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries
-						srcEntryStateObj.OilInfoEntries = &_oilInfoEntries
-						oilInfoEntries = srcEntryStateObj.OilInfoEntries
+						var _oilInfoEntries ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_OilInfoEntries
+						srcEntryObj.OilInfoEntries = &_oilInfoEntries
+						oilInfoEntries = srcEntryObj.OilInfoEntries
 						ygot.BuildEmptyTree(oilInfoEntries)
 					}
 
@@ -721,7 +724,7 @@ func fill_pim_tib_mroute_state_info(inParams XfmrParams, tibKey _xfmr_pim_tib_st
 
 					oilInfoStateObj := OifInfoObj.State
 					if oilInfoStateObj == nil {
-						var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State_OilInfoEntries_OilInfoEntry_State
+						var _oilInfoStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_OilInfoEntries_OilInfoEntry_State
 						OifInfoObj.State = &_oilInfoStateObj
 						oilInfoStateObj = OifInfoObj.State
 						ygot.BuildEmptyTree(oilInfoStateObj)
@@ -795,7 +798,7 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 
 	var tibKey _xfmr_pim_tib_state_key
 	tibKey.niName = niName
-	tibKey.routeType = ocbinds.OpenconfigPimExt_RouteType_SG
+	tibKey.routeType = ocbinds.OpenconfigPim_RouteType_SG
 	tibKey.oifKey = oifKey
 
 	for grpAddr := range pimTibOutputJson {
@@ -842,15 +845,15 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 				continue
 			}
 
-			srcEntriesObj := ipv4EntryStateObj.SrcEntries
+			srcEntriesObj := ipv4EntryObj.SrcEntries
 			if srcEntriesObj == nil {
-				var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries
-				ipv4EntryStateObj.SrcEntries = &_srcEntriesObj
-				srcEntriesObj = ipv4EntryStateObj.SrcEntries
+				var _srcEntriesObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries
+				ipv4EntryObj.SrcEntries = &_srcEntriesObj
+				srcEntriesObj = ipv4EntryObj.SrcEntries
 				ygot.BuildEmptyTree(srcEntriesObj)
 			}
 
-			key := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_Key{
+			key := ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_SrcEntries_SrcEntry_Key{
 				SourceAddress: srcAddr,
 				RouteType:     tibKey.routeType,
 			}
@@ -861,17 +864,9 @@ var DbToYang_pim_tib_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) 
 				ygot.BuildEmptyTree(srcEntryObj)
 			}
 
-			srcEntryStateObj := srcEntryObj.State
-			if srcEntryStateObj == nil {
-				var _srcEntryStateObj ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Pim_Global_Tib_Ipv4Entries_Ipv4Entry_State_SrcEntries_SrcEntry_State
-				srcEntryObj.State = &_srcEntryStateObj
-				srcEntryStateObj = srcEntryObj.State
-				ygot.BuildEmptyTree(srcEntryStateObj)
-			}
-
 			tibKey.srcAddr = srcAddr
 
-			fill_pim_tib_mroute_state_info(inParams, tibKey, srcAddrData, srcEntryStateObj)
+			fill_pim_tib_mroute_state_info(inParams, tibKey, srcAddrData, srcEntryObj)
 		}
 	}
 

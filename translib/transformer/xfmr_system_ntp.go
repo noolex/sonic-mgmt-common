@@ -60,6 +60,7 @@ func init() {
 	XlateFuncBind("YangToDb_ntp_server_subtree_xfmr", YangToDb_ntp_server_subtree_xfmr)
 	XlateFuncBind("DbToYang_ntp_server_subtree_xfmr", DbToYang_ntp_server_subtree_xfmr)
 	XlateFuncBind("Subscribe_ntp_server_subtree_xfmr", Subscribe_ntp_server_subtree_xfmr)
+	XlateFuncBind("DbToYangPath_ntp_server_path_xfmr", DbToYangPath_ntp_server_path_xfmr)
 	XlateFuncBind("YangToDb_ntp_authentication_key_table_key_xfmr", YangToDb_ntp_authentication_key_table_key_xfmr)
 	XlateFuncBind("DbToYang_ntp_authentication_key_table_key_xfmr", DbToYang_ntp_authentication_key_table_key_xfmr)
 	XlateFuncBind("YangToDb_ntp_auth_key_id_xfmr", YangToDb_ntp_auth_key_id_xfmr)
@@ -357,7 +358,7 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 	var err error
 	var errStr string
 
-	log.Infof("ProcessGetNtpServer  vrfName: %v isMgmtVrfEnabled %v", vrfName, isMgmtVrfEnabled)
+	log.V(3).Info("ProcessGetNtpServer  vrfName: %v isMgmtVrfEnabled %v", vrfName, isMgmtVrfEnabled)
 
 	requestUriPath, _ := getYangPathFromUri(inParams.requestUri)
 
@@ -365,7 +366,7 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 
 	keyName := pathInfo.Var("address")
 
-	log.Info("ProcessGetNtpServer: request ", requestUriPath,
+	log.V(3).Info("ProcessGetNtpServer: request ", requestUriPath,
 		", key: ", keyName)
 
 	/* If keyName is present, check if it is configured as NTP server */
@@ -386,20 +387,26 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/address") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state") {
-		log.Info("ProcessGetNtpServer: no return of ntp server state at ", requestUriPath)
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:maxpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/address") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		log.Info("ProcessGetNtpServer: no return of ntp server state for ", requestUriPath)
 		return nil
 	}
 
 	var getServConfigOnly = false
 	var getServStateOnly = false
 
-	if (requestUriPath == "/openconfig-system:system/ntp/servers/server/config") ||
-		(requestUriPath == "/openconfig-system:system/ntp/servers/server/config/address") {
+	if strings.Contains(requestUriPath, "/openconfig-system:system/ntp/servers/server/config") {
 		getServConfigOnly = true
 	}
 
-	if requestUriPath == "/openconfig-system:system/ntp/servers/server/state" {
+	if strings.Contains(requestUriPath, "/openconfig-system:system/ntp/servers/server/state") {
 		getServStateOnly = true
 	}
 
@@ -618,6 +625,14 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 		}
 	}
 
+	// Return here if no need to access ntpq
+	if getServConfigOnly ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		return nil
+	}
+
 	cmd := exec.Command("ntpq", "-pnw")
 	if (isMgmtVrfEnabled) &&
 		((vrfName == "mgmt") ||
@@ -722,7 +737,7 @@ var DbToYang_ntp_server_subtree_xfmr SubTreeXfmrDbToYang = func(inParams XfmrPar
 	var err error
 	var errStr string
 
-	log.Info("DbToYang_ntp_server_subtree_xfmr: root ", inParams.ygRoot,
+	log.V(3).Info("DbToYang_ntp_server_subtree_xfmr: root ", inParams.ygRoot,
 		", uri: ", inParams.uri)
 
 	/*
@@ -768,19 +783,68 @@ var Subscribe_ntp_server_subtree_xfmr = func(inParams XfmrSubscInParams) (XfmrSu
 
 	log.Infof("Subscribe_ntp_server_subtree_xfmr path %v key %v ", targetUriPath, keyName)
 
-	if keyName != "" {
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {NTP_SERVER_TABLE_NAME: {keyName: {}}}}
-		log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		// to handle the TRANSLATE_SUBSCRIBE
+		ntpServerPath := "/openconfig-system:system/servers/server"
+		ntpServerStatePath := ntpServerPath + "/state"
+
+		// notification at ntpserver/state is not supported
+		if targetUriPath == ntpServerStatePath || targetUriPath == ntpServerPath {
+			log.Infof("Subscirbe at %v is not supported", targetUriPath)
+			return result, nil
+		}
+
+		result.onChange = OnchangeEnable
+		result.nOpts = &notificationOpts{}
+		result.nOpts.pType = OnChange
+		result.isVirtualTbl = false
+
+		if keyName == "" {
+			keyName = "*"
+		}
+
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"NTP_SERVER": {keyName: {"key_id": "key-id", "minpoll": "minpoll", "maxpoll": "maxpoll"}}}}
+		log.Info("Subscribe_ntp_server_subtree_xfmr: result dbDataMap: ", result.dbDataMap)
+
+		return result, err
 	} else {
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {NTP_SERVER_TABLE_NAME: {"*": {}}}}
-		log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+		if keyName != "" {
+			result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {NTP_SERVER_TABLE_NAME: {keyName: {}}}}
+			log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+		} else {
+			result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {NTP_SERVER_TABLE_NAME: {"*": {}}}}
+			log.Infof("Subscribe_ntp_server_subtree_xfmr keyName %v dbDataMap %v ", keyName, result.dbDataMap)
+		}
+		result.needCache = true
+		result.nOpts = new(notificationOpts)
+		result.nOpts.mInterval = 15
+		result.nOpts.pType = OnChange
+		log.Info("Returning Subscribe_ntp_server_subtree_xfmr")
+		return result, err
 	}
-	result.needCache = true
-	result.nOpts = new(notificationOpts)
-	result.nOpts.mInterval = 15
-	result.nOpts.pType = OnChange
-	log.Info("Returning Subscribe_ntp_server_subtree_xfmr")
-	return result, err
+}
+
+var DbToYangPath_ntp_server_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	log.V(3).Info("DbToYangPath_ntp_server_path_xfmr: params: ", params)
+
+	ntpRoot := "/openconfig-system:system/ntp/servers/server"
+
+	if params.tblName != "NTP_SERVER" {
+		log.Info("DbToYangPath_ntp_server_path_xfmr: from wrong table: ", params.tblName)
+		return nil
+	}
+
+	if len(params.tblKeyComp) > 0 {
+		log.V(3).Info("DbToYangPath_ntp_server_path_xfmr, key: ", params.tblKeyComp[0])
+		params.ygPathKeys[ntpRoot+"/address"] = params.tblKeyComp[0]
+	} else {
+		log.Info("DbToYangPath_ntp_server_path_xfmr, null key")
+		return nil
+	}
+
+	log.V(3).Info("DbToYangPath_ntp_server_path_xfmr, params.ygPathKeys: ", params.ygPathKeys)
+
+	return nil
 }
 
 var YangToDb_ntp_auth_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {

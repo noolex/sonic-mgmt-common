@@ -1,0 +1,70 @@
+From dbe27810d3d1846b52e5e9a5a29c728813812b8a Mon Sep 17 00:00:00 2001
+From: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+Date: Tue, 8 Jun 2021 21:49:26 -0700
+Subject: [PATCH] Add AFT fields for additional features.
+
+Signed-off-by: Venkatesan Mahalingam <venkatesan_mahalinga@dell.com>
+---
+ common/openconfig-aft-common.yang | 32 +++++++++++++++++++++++++++++++-
+ 1 file changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/common/openconfig-aft-common.yang b/common/openconfig-aft-common.yang
+index a4840e0..398c19a 100644
+--- a/common/openconfig-aft-common.yang
++++ b/common/openconfig-aft-common.yang
+@@ -22,7 +22,13 @@ submodule openconfig-aft-common {
+     "Submodule containing definitions of groupings that are re-used
+     across multiple contexts within the AFT model.";
+ 
+-  oc-ext:openconfig-version "0.6.0";
++  oc-ext:openconfig-version "0.6.1";
++
++  revision "2021-06-06" {
++    description
++      "Add additional next-hop fields.";
++    reference "0.6.1";
++  }
+ 
+   revision "2020-11-06" {
+     description
+@@ -157,6 +163,24 @@ submodule openconfig-aft-common {
+         within the AFT. Traffic is distributed across the set of next-hops
+         within the next-hop group according to the weight.";
+     }
++
++    leaf distance {
++      type uint32;
++      description
++        "Admin distance for this route";
++    }
++
++    leaf metric {
++      type uint32;
++      description
++        "Distance metric for this route";
++    }
++
++    leaf uptime {
++      type string;
++      description
++        "Time since route is configured or learned in RIB";
++    }
+   }
+ 
+   grouping aft-labeled-entry-state {
+@@ -242,6 +266,12 @@ submodule openconfig-aft-common {
+         "The protocol from which the AFT entry was learned.";
+     }
+ 
++    leaf directly-connected {
++      type boolean;
++      default false;
++      description
++        "Defines whether the nexthop is directly connected.";
++    }
+   }
+ 
+   grouping aft-common-ip-state {
+-- 
+2.7.4
+

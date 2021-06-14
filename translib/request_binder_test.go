@@ -206,27 +206,12 @@ func TestUnMarshallUri(t *testing.T) {
 		appRootType: reflect.TypeOf(ocbinds.OpenconfigSystem_System{}),
 		want:        "Error: URI is empty",
 	}, {
-		//Negative test case
 		tid:         13,
-		uri:         "/openconfig-acl:acl/acl-sets/openconfig-acl:acl-set[name=Sample][type=ACL_IPV4]/",
+		uri:         "openconfig-acl:acl/acl-sets/acl-set[name=Sample][type=ACL_IPV4]/",
 		opcode:      3,
 		payload:     []byte{},
 		appRootType: reflect.TypeOf(ocbinds.OpenconfigAcl_Acl{}),
-		want:        "OpenconfigAcl_Acl_AclSets_AclSet",
-	}, {
-		tid:         14,
-		uri:         "/openconfig-acl:acl/acl-sets/acl-set[name=MyACL1][type=ACL_IPV4]/acl-entries/acl-entry[sequence-id=8]/transport/config/tcp-flags[tcp-flags=TCP_PSH]",
-		opcode:      4,
-		payload:     []byte{},
-		appRootType: reflect.TypeOf(ocbinds.OpenconfigAcl_Acl{}),
-		want:        "5",
-		//	}, {
-		//		tid:         15,
-		//		uri:         "/openconfig-bgp:bgp/neighbors/neighbor[neighbor-address=30.0.0.1]/",
-		//		opcode:      2,
-		//		payload:     []byte{},
-		//		appRootType: reflect.TypeOf(ocbinds.OpenconfigBgp_Bgp{}),
-		//		want:        "5",
+		want:        "OpenconfigAcl_Acl_AclSets",
 	}}
 
 	for _, tt := range tests {
@@ -244,16 +229,6 @@ func TestUnMarshallUri(t *testing.T) {
 			//			} else {
 			//				t.Error("Error in unmarshalling the URI: OpenconfigBgp_Bgp_Neighbors_Neighbor - object casting failed")
 			//			}
-		} else if tt.tid == 14 {
-			leafList, ok := (*workObj).([]ocbinds.E_OpenconfigPacketMatchTypes_TCP_FLAGS)
-			fmt.Println("leaf list target node value is :", leafList)
-			if ok == true {
-				if len(leafList) != 1 {
-					t.Error("Error in unmarshalling the URI with the target node as leaf-list - type is ", reflect.ValueOf(leafList).Type())
-				}
-			} else {
-				t.Error("Error in unmarshalling the URI with the target node as leaf-list - faile for test case id : ", tt.tid)
-			}
 		} else {
 			_, ok := (*workObj).(ygot.GoStruct)
 			if ok == false {

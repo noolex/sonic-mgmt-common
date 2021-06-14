@@ -47,6 +47,8 @@ func init() {
 	XlateFuncBind("YangToDb_bgp_nbrs_nbr_auth_password_xfmr", YangToDb_bgp_nbrs_nbr_auth_password_xfmr)
 	XlateFuncBind("DbToYang_bgp_nbrs_nbr_auth_password_xfmr", DbToYang_bgp_nbrs_nbr_auth_password_xfmr)
 	XlateFuncBind("bgp_validate_nbr_af", bgp_validate_nbr_af)
+	XlateFuncBind("DbToYangPath_bgp_nbr_path_xfmr", DbToYangPath_bgp_nbr_path_xfmr)
+	XlateFuncBind("Subscribe_bgp_nbrs_nbr_auth_password_xfmr", Subscribe_bgp_nbrs_nbr_auth_password_xfmr)
 }
 
 func bgp_validate_nbr_af(inParams XfmrParams) bool {
@@ -577,12 +579,12 @@ var YangToDb_bgp_nbr_tx_add_paths_fld_xfmr FieldXfmrYangToDb = func(inParams Xfm
 		return res_map, nil
 	}
 
-	tx_add_paths_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_TxAddPathsType)
+	tx_add_paths_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_BgpTxAddPathsType)
 	log.Info("YangToDb_bgp_nbr_tx_add_paths_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " add-paths-type: ", tx_add_paths_type)
 
-	if tx_add_paths_type == ocbinds.OpenconfigBgpExt_TxAddPathsType_TX_ALL_PATHS {
+	if tx_add_paths_type == ocbinds.OpenconfigBgp_BgpTxAddPathsType_TX_ALL_PATHS {
 		res_map["tx_add_paths"] = "tx_all_paths"
-	} else if tx_add_paths_type == ocbinds.OpenconfigBgpExt_TxAddPathsType_TX_BEST_PATH_PER_AS {
+	} else if tx_add_paths_type == ocbinds.OpenconfigBgp_BgpTxAddPathsType_TX_BEST_PATH_PER_AS {
 		res_map["tx_add_paths"] = "tx_best_path_per_as"
 	} else {
 		err = errors.New("Invalid add Paths type Missing")
@@ -835,6 +837,7 @@ var bgp_af_nbr_tbl_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, err
 }
 
 var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+
 	var err error
 	var vrfName string
 
@@ -885,6 +888,9 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 		afName = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afName = "l2vpn_evpn"
+	} else if strings.Contains(afName, "*") {
+		afName = "*"
+		log.Info("Wildcard set  AFI type " + afName)
 	} else {
 		err = errors.New("Unsupported AFI SAFI")
 		log.Info("Unsupported AFI SAFI ", afName)
@@ -1054,11 +1060,11 @@ func fill_nbr_state_cmn_info(nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue i
 
 			if value, ok := statsMap["capabilityRecv"]; ok {
 				_capability_rcvd := uint64(value.(float64))
-				_rcvd_msgs.Capability = &_capability_rcvd
+				_rcvd_msgs.CAPABILITY = &_capability_rcvd
 			}
 			if value, ok := statsMap["keepalivesRecv"]; ok {
 				_keepalive_rcvd := uint64(value.(float64))
-				_rcvd_msgs.Keepalive = &_keepalive_rcvd
+				_rcvd_msgs.KEEPALIVE = &_keepalive_rcvd
 			}
 			if value, ok := statsMap["notificationsRecv"]; ok {
 				_notification_rcvd := uint64(value.(float64))
@@ -1066,11 +1072,11 @@ func fill_nbr_state_cmn_info(nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue i
 			}
 			if value, ok := statsMap["opensRecv"]; ok {
 				_open_rcvd := uint64(value.(float64))
-				_rcvd_msgs.Open = &_open_rcvd
+				_rcvd_msgs.OPEN = &_open_rcvd
 			}
 			if value, ok := statsMap["routeRefreshRecv"]; ok {
 				_routeRefresh_rcvd := uint64(value.(float64))
-				_rcvd_msgs.RouteRefresh = &_routeRefresh_rcvd
+				_rcvd_msgs.ROUTE_REFRESH = &_routeRefresh_rcvd
 			}
 			if value, ok := statsMap["updatesRecv"]; ok {
 				_update_rcvd := uint64(value.(float64))
@@ -1079,11 +1085,11 @@ func fill_nbr_state_cmn_info(nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue i
 
 			if value, ok := statsMap["capabilitySent"]; ok {
 				_capability_sent := uint64(value.(float64))
-				_sent_msgs.Capability = &_capability_sent
+				_sent_msgs.CAPABILITY = &_capability_sent
 			}
 			if value, ok := statsMap["keepalivesSent"]; ok {
 				_keepalive_sent := uint64(value.(float64))
-				_sent_msgs.Keepalive = &_keepalive_sent
+				_sent_msgs.KEEPALIVE = &_keepalive_sent
 			}
 			if value, ok := statsMap["notificationsSent"]; ok {
 				_notification_sent := uint64(value.(float64))
@@ -1091,11 +1097,11 @@ func fill_nbr_state_cmn_info(nbr_key *_xfmr_bgp_nbr_state_key, frrNbrDataValue i
 			}
 			if value, ok := statsMap["opensSent"]; ok {
 				_open_sent := uint64(value.(float64))
-				_sent_msgs.Open = &_open_sent
+				_sent_msgs.OPEN = &_open_sent
 			}
 			if value, ok := statsMap["routeRefreshSent"]; ok {
 				_routeRefresh_sent := uint64(value.(float64))
-				_sent_msgs.RouteRefresh = &_routeRefresh_sent
+				_sent_msgs.ROUTE_REFRESH = &_routeRefresh_sent
 			}
 			if value, ok := statsMap["updatesSent"]; ok {
 				_update_sent := uint64(value.(float64))
@@ -1646,17 +1652,17 @@ var DbToYang_bgp_nbrs_nbr_af_state_xfmr SubTreeXfmrDbToYang = func(inParams Xfmr
 		if value, ok := cfgDbEntry["send_community"]; ok {
 			switch value {
 			case "standard":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_STANDARD
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_STANDARD
 			case "extended":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_EXTENDED
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_EXTENDED
 			case "both":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_BOTH
 			case "none":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_NONE
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_NONE
 			case "large":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_LARGE
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_LARGE
 			case "all":
-				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgpExt_BgpExtCommunityType_ALL
+				nbrs_af_state_obj.SendCommunity = ocbinds.OpenconfigBgp_CommunityType_ALL
 			}
 		}
 
@@ -1797,9 +1803,9 @@ var YangToDb_bgp_nbr_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams X
 		}
 	}
 	/* TEMP FIX:In PATCH case also infra can send default values when body contains the instance/s, curYgotNodeData
-	 * is not nil, So check if it not E_OpenconfigBgpExt_BgpExtCommunityType , then it would be string from infra.
+	 * is not nil, So check if it not E_OpenconfigBgp_CommunityType , then it would be string from infra.
 	* so convert it */
-	if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH) {
+	if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgp_CommunityType_BOTH) {
 		community_type_str, _ := inParams.param.(*string)
 		if *community_type_str == "BOTH" {
 			res_map["send_community"] = "both"
@@ -1807,21 +1813,21 @@ var YangToDb_bgp_nbr_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams X
 		}
 	}
 
-	community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)
+	community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_CommunityType)
 	log.Info("YangToDb_bgp_nbr_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri,
 		" community_type: ", community_type)
 
-	if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_STANDARD {
+	if community_type == ocbinds.OpenconfigBgp_CommunityType_STANDARD {
 		res_map["send_community"] = "standard"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_EXTENDED {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_EXTENDED {
 		res_map["send_community"] = "extended"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_BOTH {
 		res_map["send_community"] = "both"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_NONE {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_NONE {
 		res_map["send_community"] = "none"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_LARGE {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_LARGE {
 		res_map["send_community"] = "large"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_ALL {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_ALL {
 		res_map["send_community"] = "all"
 	} else {
 		err = errors.New("send_community  Missing")
@@ -1878,14 +1884,14 @@ var YangToDb_bgp_nbr_orf_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPar
 		return res_map, nil
 	}
 
-	orf_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpOrfType)
+	orf_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_BgpOrfType)
 	log.Info("YangToDb_bgp_nbr_orf_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " orf_type: ", orf_type)
 
-	if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_SEND {
+	if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_SEND {
 		res_map["cap_orf"] = "send"
-	} else if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_RECEIVE {
+	} else if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_RECEIVE {
 		res_map["cap_orf"] = "receive"
-	} else if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_BOTH {
+	} else if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_BOTH {
 		res_map["cap_orf"] = "both"
 	} else {
 		err = errors.New("ORF type Missing")
@@ -2045,4 +2051,69 @@ var DbToYang_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrDbToYang = func(inParams
 	}
 
 	return err
+}
+
+var DbToYangPath_bgp_nbr_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	niRoot := "/openconfig-network-instance:network-instances/network-instance"
+	bgp_nbr_addr := niRoot + "/protocols/protocol/bgp/neighbors/neighbor"
+	bgp_nbr_af := bgp_nbr_addr + "/afi-safis/afi-safi"
+
+	log.Info("DbToYangPath_bgp_nbr_path_xfmr: tbl:", params.tblName, " params: ", params)
+
+	if (params.tblName != "BGP_NEIGHBOR") && (params.tblName != "BGP_NEIGHBOR_AF") {
+		oper_err := errors.New("wrong config DB table sent")
+		log.Errorf("BGP neighbor Path-xfmr: table name %s not in BGP neighbor/af view", params.tblKeyComp)
+		return oper_err
+	} else {
+		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
+		params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
+		params.ygPathKeys[niRoot+"/protocols/protocol/name"] = "bgp"
+		params.ygPathKeys[bgp_nbr_addr+"/neighbor-address"] = params.tblKeyComp[1]
+		if params.tblName == "BGP_NEIGHBOR_AF" {
+			afi := bgp_afi_convert_to_yang(params.tblKeyComp[2])
+			if afi == "" {
+				oper_err := errors.New("Invalid address family")
+				log.Errorf("bgp_nbr_path_xfmr: Unknown address family key %s", params.tblKeyComp[2])
+				return oper_err
+			}
+			params.ygPathKeys[bgp_nbr_af+"/afi-safi-name"] = afi
+		}
+	}
+
+	log.Info("bgp_nbr_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
+}
+
+var Subscribe_bgp_nbrs_nbr_auth_password_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var result XfmrSubscOutParams
+	var vrfName = "*"
+	var nbrAddr = "*"
+
+	pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+	log.Infof("Subscribe_bgp_nbrs_nbr_auth_password_xfmr path:%s; template:%s targetUriPath:%s",
+		pathInfo.Path, pathInfo.Template, targetUriPath)
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		if pathInfo.HasVar("name") {
+			vrfName = pathInfo.Var("name")
+		}
+		if pathInfo.HasVar("neighbor-address") {
+			nbrAddr = pathInfo.Var("neighbor-address")
+		}
+		util_bgp_get_native_ifname_from_ui_ifname(&nbrAddr)
+		var pNbrKey string = vrfName + "|" + nbrAddr
+
+		result.dbDataMap = make(RedisDbSubscribeMap)
+		log.Infof("Subscribe_bgp_nbrs_nbr_auth_password_xfmr path:%s; key:%s",
+			pathInfo.Path, pNbrKey)
+
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"BGP_NEIGHBOR": {pNbrKey: {"auth_password": "password"}}}}
+		result.onChange = OnchangeEnable
+		result.nOpts = new(notificationOpts)
+		result.nOpts.pType = OnChange
+	} else {
+		result.isVirtualTbl = true
+	}
+	return result, nil
 }

@@ -183,3 +183,25 @@ func (t *CustomValidation) ValidateAfisafiForBackdoor(vc *CustValidationCtxt) CV
 	}
 	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 }
+
+func (t *CustomValidation) ValidateConnectedInterfaceCheck(vc *CustValidationCtxt) CVLErrorInfo {
+	var ttlSecurityHopsValue int64
+	if (vc.CurCfg.VOp == OP_DELETE) || (!strings.Contains(vc.CurCfg.Key, "BGP_NEIGHBOR")) {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+	ttlSecurityHops, hasTtlValue := vc.CurCfg.Data["ttl_security_hops"]
+	if hasTtlValue {
+		ttlSecurityHopsValue, _ = strconv.ParseInt(ttlSecurityHops, 10, 16)
+	}
+
+	if (strings.Contains(vc.CurCfg.Key, "BGP_NEIGHBOR")) && hasTtlValue && (ttlSecurityHopsValue > 1) {
+		if (strings.Contains(vc.CurCfg.Key, "Eth")) || (strings.Contains(vc.CurCfg.Key, "Po")) ||
+			(strings.Contains(vc.CurCfg.Key, "Vlan")) {
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				ConstraintErrMsg: "Hops for connected neighbor cannot exceed 1.",
+			}
+		}
+	}
+	return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+}

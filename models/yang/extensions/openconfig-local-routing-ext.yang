@@ -117,7 +117,7 @@ module openconfig-local-routing-ext {
       deviate not-supported;
   }
 
-    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-bfd:enable-bfd {
+    deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:static-routes/oc-netinst:static/oc-netinst:next-hops/oc-netinst:next-hop/oc-netinst:enable-bfd {
       deviate not-supported;
     }
 

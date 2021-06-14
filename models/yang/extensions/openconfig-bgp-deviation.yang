@@ -1,0 +1,885 @@
+module openconfig-bgp-deviation {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/bgp/deviation/extension";
+
+  prefix "oc-bgp-dev";
+
+  // import some basic types
+  import openconfig-network-instance { prefix oc-netinst; }
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-rib-bgp { prefix oc-rib-bgp; }
+  import openconfig-bgp-ext { prefix oc-bgp-ext; }
+
+  organization
+    "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module describes a YANG model for BGP protocol
+    configuration deviations.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2021-06-04" {
+    description
+      "Add SONiC specific BGP deviations.";
+    reference "0.1.0";
+  }
+
+  grouping bgp-deviation-attr-sets-state {
+    description
+      "Operational data for PATH attributes";
+    container attr-sets {
+      config false;
+      description
+        "Various PATH attributes for a given prefix.";
+      leaf weight {
+        type uint32;
+        description
+          "This indicates the weight value for the neighbor's routes";
+      }
+      uses oc-rib-bgp:bgp-shared-common-attr-state;
+      uses oc-rib-bgp:bgp-aggregator-attr-top;
+      uses oc-rib-bgp:bgp-as-path-attr-top;
+      uses oc-rib-bgp:bgp-as4-path-attr-top;
+      uses oc-rib-bgp:bgp-community-attr-state;
+      uses oc-rib-bgp:bgp-extended-community-attr-state;
+    }
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP local rib extensions for ipv4 address family";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv4 address family specific to received routes pre-processing from neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv4 address family specific to received routes post-processing from neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv4 address family specific to advertised routes to neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP local rib extensions";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv6 address family specific to received routes pre-processing from neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv6 address family specific to received routes post-processing from neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route {
+    description
+      "BGP rib extensions for ipv6 address family specific to advertised routes to neighbors";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path {
+    description
+      "BGP local rib prefix extensions";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+  augment /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path {
+    description
+      "BGP local rib prefix extensions";
+    uses bgp-deviation-attr-sets-state;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:default-route-distance {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-netinst:total-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:state/oc-netinst:total-prefixes {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:graceful-restart/oc-netinst:config/oc-netinst:helper-only {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:graceful-restart/oc-netinst:state/oc-netinst:helper-only {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:config {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:state {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:config/oc-netinst:maximum-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:state/oc-netinst:maximum-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:use-multiple-paths/oc-netinst:ibgp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:config/oc-netinst:advertise-inactive-routes {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:state/oc-netinst:advertise-inactive-routes {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:config/oc-netinst:enable-aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:state/oc-netinst:enable-aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:config/oc-netinst:ignore-next-hop-igp-metric {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:route-selection-options/oc-netinst:state/oc-netinst:ignore-next-hop-igp-metric {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:config/oc-netinst:enabled {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state/oc-netinst:enabled {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state/oc-netinst:total-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state/oc-netinst:total-prefixes {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:graceful-restart {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:config {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:state {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:config/oc-netinst:allow-multiple-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:state/oc-netinst:allow-multiple-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:config/oc-netinst:as-set {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths/oc-netinst:ebgp/oc-netinst:state/oc-netinst:as-set {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:route-selection-options {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-vpls {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:global/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv6 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config/oc-netinst:remove-private-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:remove-private-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config/oc-netinst:route-flap-damping {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:route-flap-damping {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:config/oc-netinst:send-community {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:send-community {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:transport/oc-netinst:config/oc-netinst:tcp-mss {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:transport/oc-netinst:config/oc-netinst:mtu-discovery {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:transport/oc-netinst:state/oc-netinst:tcp-mss {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:transport/oc-netinst:state/oc-netinst:mtu-discovery {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:apply-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:sent/oc-netinst:last-notification-time {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:sent/oc-netinst:last-notification-error-code {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:sent/oc-netinst:last-notification-error-subcode {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:received/oc-netinst:last-notification-time {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:received/oc-netinst:last-notification-error-code {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:state/oc-netinst:messages/oc-netinst:received/oc-netinst:last-notification-error-subcode {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:graceful-restart {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:error-handling {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:logging-options {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:route-reflector {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:as-path-options {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:use-multiple-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:state/oc-netinst:prefixes/oc-netinst:installed {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:graceful-restart {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:receive {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:send {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:send-max {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:eligible-prefix-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:receive {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:send {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:send-max {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:eligible-prefix-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:config/oc-netinst:remove-private-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state/oc-netinst:remove-private-as {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:config/oc-netinst:route-flap-damping {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state/oc-netinst:route-flap-damping {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:config/oc-netinst:send-community {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state/oc-netinst:send-community {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state/oc-netinst:total-prefixes {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:state/oc-netinst:total-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:transport/oc-netinst:config/oc-netinst:tcp-mss {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:transport/oc-netinst:config/oc-netinst:mtu-discovery {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:transport/oc-netinst:state/oc-netinst:tcp-mss {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:transport/oc-netinst:state/oc-netinst:mtu-discovery {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:apply-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:graceful-restart {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:error-handling {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:logging-options {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:route-reflector {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:as-path-options {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:use-multiple-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:graceful-restart {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:use-multiple-paths {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:receive {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:send {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:send-max {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:config/oc-netinst:eligible-prefix-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:receive {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:send {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:send-max {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:add-paths/oc-netinst:state/oc-netinst:eligible-prefix-policy {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-vpls {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv6 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-labeled-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-unicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv4-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l3vpn-ipv6-multicast {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:l2vpn-vpls {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:peer-groups/oc-netinst:peer-group/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:srte-policy-ipv6 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-srte-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-srte-policy {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:attr-sets/oc-netinst:attr-set {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:attr-sets {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:communities {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:ext-communities {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-pre{
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-pre {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-netinst:state/oc-netinst:ext-community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4
+  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:ext-community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:attr-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:community-index {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-ext:state/oc-bgp-ext:ext-community-index {
+    deviate not-supported;
+  }
+
+}

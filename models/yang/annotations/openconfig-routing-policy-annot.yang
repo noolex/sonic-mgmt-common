@@ -20,6 +20,7 @@ module openconfig-routing-policy-annot {
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition {
         deviate add {
             sonic-ext:table-name "ROUTE_MAP_SET";
+            sonic-ext:path-transformer "route_map_path_xfmr";
         }
     }
 
@@ -87,6 +88,8 @@ module openconfig-routing-policy-annot {
     deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-rpol:config/oc-rpol:install-protocol-eq {
       deviate add {
             sonic-ext:field-transformer "route_map_match_protocol_xfmr";
+            sonic-ext:table-name "ROUTE_MAP";
+            sonic-ext:field-name "match_protocol";
       }
     }
 
@@ -222,38 +225,38 @@ module openconfig-routing-policy-annot {
             sonic-ext:field-name "match_local_pref";
       }
     }
-
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:vni-number {
+    
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:vni-number {
       deviate add {
             sonic-ext:field-name "match_evpn_vni_number";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:default-type5-route {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:default-type5-route {
       deviate add {
             sonic-ext:field-name "match_evpn_default_type5_route";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:config/oc-bgp-pol:route-type {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:config/oc-bgp-pol-ext:route-type {
       deviate add {
             sonic-ext:field-name "match_evpn_advertise_route_type";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:vni-number {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:vni-number {
       deviate add {
             sonic-ext:field-name "match_evpn_vni_number";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:default-type5-route {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:default-type5-route {
       deviate add {
             sonic-ext:field-name "match_evpn_default_type5_route";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:match-evpn-set/oc-bgp-pol:state/oc-bgp-pol:route-type {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol-ext:match-evpn-set/oc-bgp-pol-ext:state/oc-bgp-pol-ext:route-type {
       deviate add {
             sonic-ext:field-name "match_evpn_advertise_route_type";
       }
@@ -343,13 +346,13 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol-ext:set-ipv6-next-hop-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol:set-ipv6-next-hop-global {
       deviate add {
             sonic-ext:field-transformer "route_map_set_ipv6_next_hop_xfmr";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol-ext:set-ipv6-next-hop-prefer-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config/oc-bgp-pol:set-ipv6-next-hop-prefer-global {
       deviate add {
             sonic-ext:field-name "set_ipv6_next_hop_prefer_global";
       }
@@ -361,25 +364,25 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:config/oc-rpol-ext:action {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:config/oc-rpol:action {
       deviate add {
             sonic-ext:field-name "set_metric_action";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:config/oc-rpol-ext:metric {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:config/oc-rpol:metric {
       deviate add {
             sonic-ext:field-name "set_metric";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:state/oc-rpol-ext:action {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:state/oc-rpol:action {
       deviate add {
             sonic-ext:field-name "set_metric_action";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol-ext:metric-action/oc-rpol-ext:state/oc-rpol-ext:metric {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-rpol:metric-action/oc-rpol:state/oc-rpol:metric {
       deviate add {
             sonic-ext:field-name "set_metric";
       }
@@ -403,13 +406,13 @@ module openconfig-routing-policy-annot {
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol-ext:set-ipv6-next-hop-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol:set-ipv6-next-hop-global {
       deviate add {
             sonic-ext:field-transformer "route_map_set_ipv6_next_hop_xfmr";
       }
     }
 
-    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol-ext:set-ipv6-next-hop-prefer-global {
+    deviation /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state/oc-bgp-pol:set-ipv6-next-hop-prefer-global {
       deviate add {
             sonic-ext:field-name "set_ipv6_next_hop_prefer_global";
       }
