@@ -114,8 +114,6 @@ openconfig-warm-restart.yang
 openconfig-warm-restart-annot.yang
 openconfig-fbs-ext.yang
 openconfig-fbs-ext-annot.yang
-openconfig-aft-ext.yang
-openconfig-aft-ipv4-ext.yang
 openconfig-aft-deviation.yang
 openconfig-ip-sla.yang
 openconfig-ip-sla-annot.yang
