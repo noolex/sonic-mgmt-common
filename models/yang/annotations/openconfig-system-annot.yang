@@ -969,13 +969,13 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:ntp-source-interface {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-interface {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:ntp-source-interface {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:ntp-source-interface {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
@@ -1005,13 +1005,13 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys-ext:trusted-key {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:trusted-key {
         deviate add {
             sonic-ext:field-name "trusted_key";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys-ext:trusted-key {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:trusted-key {
         deviate add {
             sonic-ext:field-name "trusted_key";
         }
@@ -1030,49 +1030,49 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:refid {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:refid {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peerdelay {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peerdelay {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peeroffset {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peeroffset {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peerjitter {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peerjitter {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:selmode {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:selmode {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:peertype {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peertype {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:now {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:now {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys-ext:reach {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:reach {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
@@ -1138,14 +1138,14 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys-ext:encrypted {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:config/oc-sys:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
             sonic-ext:field-name "encrypted";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys-ext:encrypted {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:ntp-keys/oc-sys:ntp-key/oc-sys:state/oc-sys:encrypted {
         deviate add {
             sonic-ext:field-transformer "ntp_auth_encrypted_xfmr";
             sonic-ext:field-name "encrypted";
