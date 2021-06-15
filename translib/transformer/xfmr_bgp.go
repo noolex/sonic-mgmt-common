@@ -1074,7 +1074,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
-	} else if strings.Contains(afName, "*") {
+	} else if afName == "*" {
 		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)
@@ -1194,7 +1194,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
-	} else if strings.Contains(afName, "*") {
+	} else if afName == "*" {
 		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)
