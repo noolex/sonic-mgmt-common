@@ -17,7 +17,9 @@ import (
 
 func init() {
 	XlateFuncBind("DbToYang_ipv4_route_get_xfmr", DbToYang_ipv4_route_get_xfmr)
+	XlateFuncBind("Subscribe_ipv4_route_get_xfmr", Subscribe_unicast_route_get_xfmr)
 	XlateFuncBind("DbToYang_ipv6_route_get_xfmr", DbToYang_ipv6_route_get_xfmr)
+	XlateFuncBind("Subscribe_ipv6_route_get_xfmr", Subscribe_unicast_route_get_xfmr)
 	XlateFuncBind("DbToYang_ipv4_mroute_get_xfmr", DbToYang_ipv4_mroute_get_xfmr)
 	XlateFuncBind("Subscribe_ipv4_mroute_get_xfmr", Subscribe_ipv4_mroute_get_xfmr)
 	XlateFuncBind("rpc_show_ipmroute", rpc_show_ipmroute)
@@ -436,6 +438,19 @@ var DbToYang_ipv6_route_get_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 		}
 	}
 	return err
+}
+
+var Subscribe_unicast_route_get_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
+
+	pathInfo := NewPathInfo(inParams.uri)
+	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+	log.Infof("Subscribe_unicast_route_get_xfmr path:%s; template:%s targetUriPath:%s", pathInfo.Path, pathInfo.Template, targetUriPath)
+
+	result.isVirtualTbl = true
+	return result, err
 }
 
 type _xfmr_ipv4_mroute_state_key struct {
