@@ -1,0 +1,35 @@
+module openconfig-system-deviation {
+
+    yang-version "1";
+
+    // namespace
+    namespace "http://openconfig.net/yang/system/deviation/extension";
+
+    prefix "oc-sys-dev";
+
+    // import some basic types
+    import openconfig-system { prefix oc-sys; }
+    import openconfig-extensions { prefix oc-ext; }
+
+    organization
+      "SONiC";
+
+    contact
+      "SONiC";
+
+    description
+      "This module describes a YANG model for openconfig-system deviations.";
+
+    oc-ext:openconfig-version "0.1.0";
+
+    revision "2021-06-16" {
+      description
+        "Add SONiC specific System deviations.";
+      reference "0.1.0";
+    }
+
+    deviation /oc-sys:system/oc-sys:license {
+      deviate not-supported;
+    }
+
+}
