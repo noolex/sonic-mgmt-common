@@ -76,50 +76,6 @@ module sonic-errdisable {
 			}
 		}
 	}
-    grouping errdisable_link_flap_config {
-        description
-        "Groups ErrDisable Link-flap configurations ";
-
-		leaf error-disable {
-        	type string;
-		}
-
-        leaf flap-threshold {
-            type uint8 {
-                range 1..50;
-            }
-            default 5;
-            description
-              "This interval is the number of times that the port’s
-               link state goes from up to down and down to up
-               before the recovery-timeout is activated";
-        }
-
-        leaf sampling-interval {
-          type uint32 {
-            range 1..65535;
-          }
-          units seconds;
-          default 10;
-          description
-            "This time period is the amount of time during which
-             the specified flap-threshold can be crossed. If the flap-threshold
-             is crossed during this sampling-time, port will be error-disabled.";
-        }
-
-        leaf recovery-interval {
-          type uint32 {
-            range 0..65534;
-          }
-          units seconds;
-          default 300;
-          description
-            "This period of time is the amount of time the port remains disabled
-             (down) before it becomes enabled. Entering 0 indicates that the
-             port will stay down until an administrative override occurs.";
-        }
-
-    }
 
     container sonic-errdisable {
         container ERRDISABLE {
@@ -137,18 +93,6 @@ module sonic-errdisable {
                 uses errdisable_config;
             }
         }
-        container ERRDISABLE_PORT {
-            list ERRDISABLE_PORT_LIST {
-                key "name";
-        		leaf name {
-            		type leafref {
-                		path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
-            		}
-        		}
-
-                uses errdisable_link_flap_config;
-            }
-        }
         container ERRDISABLE_PORT_STATE {
             list ERRDISABLE_PORT_STATE_LIST {
                 key "name";
@@ -158,7 +102,6 @@ module sonic-errdisable {
             		}
         		}
 
-                uses errdisable_link_flap_config;
                 uses errdisable_link_flap_state;
             }
 		}
