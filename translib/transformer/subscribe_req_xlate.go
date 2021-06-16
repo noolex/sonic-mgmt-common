@@ -600,28 +600,43 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 							yangNodes[ygNameSecDbMap] = true
 						}
 						for dbFld, ygNodeName := range tblFld {
+							if log.V(dbLgLvl) {
+								log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: leaf node name: ", ygNodeName)
+							}
+							// isDbFldYgKey - to identify if the yang node name has tagged with {,} in the subscribe
+							// db map - to represent the mapped db field is actually yang key
+							isDbFldYgKey := false
+							nodeName := ygNodeName
+							if strings.HasPrefix(nodeName, "{") {
+								isDbFldYgKey = true
+								nodeName = strings.TrimPrefix(nodeName, "{")
+								nodeName = strings.TrimSuffix(nodeName, "}")
+								log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate: dbFld map - yang node after trimming: ", nodeName)
+							}
 							if !isTrgtNodeLeaf {
-								ygLeafNodePath := ygLeafNodePathPrefix + "/" + ygNodeName
-								if log.V(dbLgLvl) {
-									log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: ygLeafNodePath: ", ygLeafNodePath)
-								}
 								ygNodeNameWithPrefix := ygNodeName
-								if ygLeafXpathInfo, okLeaf := xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
-									ygNodeNameWithPrefix = *(ygLeafXpathInfo.nameWithMod)
+								if !isDbFldYgKey {
+									ygLeafNodePath := ygLeafNodePathPrefix + "/" + ygNodeName
 									if log.V(dbLgLvl) {
-										log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: subOutPram.dbDataMap: leaf node name: ", ygNodeName)
+										log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate: subOutPram.dbDataMap: ygLeafNodePath: ", ygLeafNodePath)
+									}
+									if ygLeafXpathInfo, okLeaf := xYangSpecMap[ygLeafNodePath]; okLeaf && ygLeafXpathInfo.nameWithMod != nil {
+										ygNodeNameWithPrefix = *(ygLeafXpathInfo.nameWithMod)
+										if log.V(dbLgLvl) {
+											log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate: subOutPram.dbDataMap: leaf node name: ", ygNodeName)
+										}
 									}
 								}
 								dbYgPath.DbFldYgPathMap[dbFld] = ygNodeNameWithPrefix
-								yangNodes[ygNodeName] = true
-							} else if ygNodeName == ygXpathInfo.yangEntry.Name {
+								yangNodes[nodeName] = true
+							} else if nodeName == ygXpathInfo.yangEntry.Name {
 								// for the target node - leaf / leaf-list
 								if log.V(dbLgLvl) {
-									log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
+									log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate:dbDataMap: path is leaf / leaf-list", pathXltr.uriPath)
 								}
 								dbYgPath.DbFldYgPathMap[dbFld] = ""
 								dbTblInfo.DbFldYgMapList = append(dbTblInfo.DbFldYgMapList, &dbYgPath)
-								yangNodes[ygNodeName] = true
+								yangNodes[nodeName] = true
 								break
 							}
 						}
@@ -653,7 +668,7 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 							}
 							if pathXltr.xpathYgNode != nil {
 								// only one db key entry per table for the given subscribe path, so dbTblFldYgPathMap or dbFldYgPathMap won't get overridden
-								if len(subOutPram.dbDataMap) > 1 {
+								if len(tblKeyInfo) > 1 {
 									pathXltr.xpathYgNode.dbTblFldYgPathMap[tblName] = dbYgPath.DbFldYgPathMap
 								} else {
 									pathXltr.xpathYgNode.dbFldYgPathMap = dbYgPath.DbFldYgPathMap
@@ -1219,6 +1234,8 @@ func (ygXpNode *ygXpathNode) addDbFldName(ygNodeName string, dbFldName string) {
 func (ygXpNode *ygXpathNode) addChildNode(rltUri string, ygXpathInfo *yangXpathInfo) *ygXpathNode {
 	chldNode := ygXpathNode{relUriPath: rltUri, ygXpathInfo: ygXpathInfo}
 	chldNode.dbFldYgPathMap = make(map[string]string)
+	chldNode.dbTblFldYgPathMap = make(map[string]map[string]string)
+	chldNode.listKeyMap = make(map[string]bool)
 	ygXpNode.chldNodes = append(ygXpNode.chldNodes, &chldNode)
 	return &chldNode
 }
