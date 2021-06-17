@@ -20,12 +20,32 @@
 package transformer
 
 import (
+        "unicode"
         "strings"
         "errors"
         "github.com/Azure/sonic-mgmt-common/translib/ocbinds"
         "github.com/Azure/sonic-mgmt-common/translib/db"
         "github.com/Azure/sonic-mgmt-common/translib/tlerr"
         log "github.com/golang/glog"
+        "encoding/base64"
+)
+
+const (
+        SECRET_KEY_ATTR = "passkey"
+)
+
+const (
+        SECRET_KEY_LEN = 65
+)
+const (
+        AAA_SECRET_PASSWORD = "ktbSJeed7apq9dZHOD1O5wW9cvSaRWjW767qLyFEurDTSNEvHdYspaCuEzZcMg8R"
+)
+
+const (
+        SECRET_KEY_ENCRYPTED_ATTR = "encrypted"
+)
+const (
+        YANG_SECRET_KEY_ATTR = "secret-key"
 )
 
 func init () {
@@ -48,6 +68,10 @@ func init () {
     XlateFuncBind("DbToYang_ssh_server_vrf_name", DbToYang_ssh_server_vrf_name)
     XlateFuncBind("YangToDb_syslog_server_ip_fld_xfmr", YangToDb_syslog_server_ip_fld_xfmr)
     XlateFuncBind("DbToYang_syslog_server_ip_fld_xfmr", DbToYang_syslog_server_ip_fld_xfmr)
+    XlateFuncBind("YangToDb_secret_key_value_xfmr", YangToDb_secret_key_value_xfmr)
+    XlateFuncBind("DbToYang_secret_key_value_xfmr", DbToYang_secret_key_value_xfmr)
+    XlateFuncBind("YangToDb_secret_key_encrypted_xfmr", YangToDb_secret_key_encrypted_xfmr)
+    XlateFuncBind("DbToYang_secret_key_encrypted_xfmr", DbToYang_secret_key_encrypted_xfmr)
 
   // LDAP
     XlateFuncBind("YangToDb_ldap_use_type_field_xfmr", YangToDb_ldap_use_type_field_xfmr)
@@ -62,7 +86,6 @@ func init () {
     XlateFuncBind("DbToYangPath_sys_server_group_path_xfmr", DbToYangPath_sys_server_group_path_xfmr)
     XlateFuncBind("DbToYangPath_sys_server_path_xfmr", DbToYangPath_sys_server_path_xfmr)
     XlateFuncBind("DbToYangPath_ldap_map_path_xfmr", DbToYangPath_ldap_map_path_xfmr)
-
 }
 
 // authMethodFind takes a slice and looks for an element in it. If found it will
@@ -777,5 +800,135 @@ var DbToYangPath_ldap_map_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToY
     log.Info("DbToYangPath_ldap_map_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
 
     return nil
+}
+
+var YangToDb_secret_key_value_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    res_map := make(map[string]string)
+    var err error
+    var encrypted *bool = nil
+
+    if (inParams.oper == DELETE) {
+        res_map[SECRET_KEY_ATTR] = ""
+        return res_map, nil
+    }
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("YangToDb_secret_key_value_xfmr - pathInfo: ", pathInfo)
+
+    key_value := inParams.param.(*string)
+
+    servergroupname := pathInfo.Var("name")
+    log.Info("YangToDb_secret_key_value_xfmr - servergroupname : ", servergroupname)
+
+    sysObj := getSystemRootObject(inParams)
+    aaaData := sysObj.Aaa
+
+    // Get KeyEncrytped value and use it to determin if need to perform encryt the string
+    address := pathInfo.Var("address")
+
+    if (len(address) > 0) {
+        if (strings.Compare(servergroupname, "RADIUS") == 0) {
+            encrypted = aaaData.ServerGroups.ServerGroup[servergroupname].Servers.Server[address].Radius.Config.Encrypted
+        } else if (strings.Compare(servergroupname, "TACACS") == 0) {
+            encrypted = aaaData.ServerGroups.ServerGroup[servergroupname].Servers.Server[address].Tacacs.Config.Encrypted
+        }
+    } else {
+        encrypted = aaaData.ServerGroups.ServerGroup[servergroupname].Config.Encrypted
+    }
+
+    // go ahead and decrypt
+    if ((encrypted == nil) || (!*encrypted)) {
+        log.Info("YangToDb_secret_key_value_xfmr - received plaintext: ")
+        // if input is plaintext string, validate the string
+        if ((strings.ContainsAny(*key_value, ",#")) ||
+                    (strings.Contains(*key_value, " "))) {
+                        errStr := "Invalid password"
+                        log.Info("YangToDb_secret_key_value_xfmr, error ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+        }
+
+        key_value_byte := []byte(*key_value)
+        encrypted_key_value, err := openssl(key_value_byte, "enc", "-aes-128-cbc", "-A", "-a", "-salt", "-pass", "pass:"+AAA_SECRET_PASSWORD)
+        if (err != nil) {
+            log.Info("YangToDb_secret_key_value_xfmr, encryption failed with err ", err)
+            return res_map, err
+        }
+
+        encrypted_str := string([]byte(encrypted_key_value))
+        encrypted_str = strings.TrimFunc(encrypted_str, func(r rune) bool {
+            return !unicode.IsGraphic(r)
+        })
+        log.Info("YangToDb_secret_key_value_xfmr: encrypted_str ", encrypted_str)
+        res_map[SECRET_KEY_ATTR] = encrypted_str
+    } else {
+        log.Info("YangToDb_secret_key_value_xfmr - received encrypted key: ")
+        // If the key value is encrypted, then validate it by decryption to prevent setting a bad key value in the configDB
+        decrypt_data, err := base64.StdEncoding.DecodeString(*key_value)
+        if (err != nil) {
+                        errStr := "Invalid encrypted text"
+                        log.Info("YangToDb_secret_key_value_xfmr, error ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+        }
+        decrypt_data_byte := []byte(decrypt_data)
+        _, err = openssl(decrypt_data_byte, "enc", "-aes-128-cbc", "-d", "-salt", "-pass", "pass:"+AAA_SECRET_PASSWORD)
+        if (err != nil) {
+                        errStr := "Decryption to plaintext failed, invalid encrypted text"
+                        log.Info("YangToDb_secret_key_value_xfmr, error ", errStr)
+                        err = tlerr.InvalidArgsError{Format: errStr}
+                        return res_map, err
+        }
+        res_map[SECRET_KEY_ATTR] = *key_value
+    }
+
+    return res_map, nil
+}
+
+var DbToYang_secret_key_value_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+
+    pathInfo := NewPathInfo(inParams.uri)
+    log.Info("DbToYang_secret_key_encrypted_xfmr - pathInfo: ", pathInfo)
+    servergroupname := pathInfo.Var("name")
+    log.Info("DbToYang_secret_key_encrypted_xfmr - servergroupname: ", servergroupname)
+    data := (*inParams.dbDataMap)[inParams.curDb]
+
+    if strings.Contains(servergroupname, "RADIUS") {
+        key_tbl := data["RADIUS"]
+        if strings.HasPrefix(inParams.uri, "/openconfig-system:system/aaa/server-groups/server-group[name=RADIUS]/servers/server") {
+            key_tbl = data["RADIUS_SERVER"]
+        }
+        key_entry := key_tbl[inParams.key]
+        key_value := key_entry.Field[SECRET_KEY_ATTR]
+        res_map[YANG_SECRET_KEY_ATTR] = key_value
+    } else if strings.Contains(servergroupname, "TACACS") {
+        key_tbl := data["TACPLUS"]
+        if strings.HasPrefix(inParams.uri, "/openconfig-system:system/aaa/server-groups/server-group[name=TACACS]/servers/server"){
+            key_tbl = data["TACPLUS_SERVER"]
+        }
+        key_entry := key_tbl[inParams.key]
+        key_value := key_entry.Field[SECRET_KEY_ATTR]
+        if (len(key_value) > 0) {
+            res_map[YANG_SECRET_KEY_ATTR] = key_value
+        }
+    }
+
+    return res_map, err
+}
+
+var YangToDb_secret_key_encrypted_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
+    var err error
+    return nil, err
+}
+
+var DbToYang_secret_key_encrypted_xfmr FieldXfmrDbtoYang = func(inParams XfmrParams) (map[string]interface{}, error) {
+    res_map := make(map[string]interface{})
+    var err error
+
+    res_map[SECRET_KEY_ENCRYPTED_ATTR] = true
+
+    return res_map, err
 }
 

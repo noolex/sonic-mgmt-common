@@ -1,0 +1,67 @@
+module openconfig-aaa-tacacs-ext {
+
+  yang-version "1.1";
+
+  namespace "http://openconfig.net/yang/aaa/tacacs/extension";
+
+  prefix "oc-aaa-tacacs-ext";
+
+  // import some basic types
+  import openconfig-extensions { prefix oc-ext; }
+  import openconfig-system { prefix oc-sys; }
+
+  // meta
+  organization "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module defines tacacs protocol extensions.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2021-06-07" {
+    description
+      "Initial revision.";
+    reference "0.1.0";
+  }
+
+  // extension statements
+
+  // feature statements
+
+  // identity statements
+
+  // grouping statements
+
+  grouping aaa-tacacs-ext-server-tacacs-config {
+    description
+      "Grouping for TACACS server configuration data extension.";
+
+    leaf encrypted {
+      type boolean;
+      default false;
+      description "Secret-key is encrypted";
+    }
+  }
+
+  // data definition statements
+
+  // augment statements
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs/oc-sys:config" {
+    description
+      "TACACS server configuration extension.";
+    uses aaa-tacacs-ext-server-tacacs-config;
+  }
+  augment "/oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs/oc-sys:state" {
+    description
+      "TACACS server state extension.";
+    uses aaa-tacacs-ext-server-tacacs-config;
+  }
+
+  // rpc statements
+
+  // notification statements
+
+}
