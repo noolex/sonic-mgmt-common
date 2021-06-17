@@ -1,14 +1,14 @@
-From 2247143dd49d41b14040767bdb42f087e0f9106a Mon Sep 17 00:00:00 2001
+From 3956cd2cc67540aa7cdd5339580760f703b0fc7b Mon Sep 17 00:00:00 2001
 From: Bing Sun <Bing_Sun@dell.com>
-Date: Wed, 16 Jun 2021 21:34:33 -0700
+Date: Thu, 17 Jun 2021 16:40:14 -0700
 Subject: [PATCH] Add NTP additional features
 
 ---
- openconfig-system.yang | 158 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 158 insertions(+)
+ openconfig-system.yang | 160 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 159 insertions(+), 1 deletion(-)
 
 diff --git a/openconfig-system.yang b/openconfig-system.yang
-index 5653e75..5e77d7a 100644
+index 5653e75..ba4ecd9 100644
 --- a/openconfig-system.yang
 +++ b/openconfig-system.yang
 @@ -20,6 +20,8 @@ module openconfig-system {
@@ -20,19 +20,21 @@ index 5653e75..5e77d7a 100644
  
    // meta
    organization "OpenConfig working group";
-@@ -48,6 +50,12 @@ module openconfig-system {
+@@ -46,7 +48,13 @@ module openconfig-system {
+     Section 4.c of the IETF Trust's Legal Provisions Relating
+     to IETF Documents (http://trustee.ietf.org/license-info).";
  
-   oc-ext:openconfig-version "0.9.1";
- 
+-  oc-ext:openconfig-version "0.9.1";
++  oc-ext:openconfig-version "0.9.2";
++
 +  revision "2021-06-16" {
 +    description
 +      "Add additional NTP server statistics and NTP authentication";
 +    reference "0.9.2";
 +  }
-+
+ 
    revision "2020-03-25" {
      description
-       "Fix typo in description statement for ipv4-address
 @@ -139,6 +147,18 @@ module openconfig-system {
        "MD5 encryption method";
    }
