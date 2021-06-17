@@ -90,6 +90,8 @@ func getMaxStpInstances() (int, error) {
 func init() {
 	XlateFuncBind("YangToDb_sw_vlans_xfmr", YangToDb_sw_vlans_xfmr)
 	XlateFuncBind("DbToYang_sw_vlans_xfmr", DbToYang_sw_vlans_xfmr)
+	XlateFuncBind("Subscribe_sw_vlans_xfmr", Subscribe_sw_vlans_xfmr)
+	XlateFuncBind("DbToYangPath_sw_vlans_path_xfmr", DbToYangPath_sw_vlans_path_xfmr)
 }
 
 /*** STP related Actions - Note: This needs to be taken off once STP moves to transformer  ***/
@@ -2446,4 +2448,114 @@ var DbToYang_sw_vlans_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error
 		}
 	}
 	return err
+}
+
+var Subscribe_sw_vlans_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	if log.V(3) {
+		log.Info("Entering Subscribe_sw_vlans_xfmr")
+	}
+	var err error
+	var result XfmrSubscOutParams
+
+	pathInfo := NewPathInfo(inParams.uri)
+	origTargetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+	log.Infof("Subscribe_sw_vlans_xfmr:- subscProc:%v URI: %s", inParams.subscProc, inParams.uri)
+	log.Infof("Subscribe_sw_vlans_xfmr:- Target URI path: %s", origTargetUriPath)
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		// to handle the TRANSLATE_SUBSCRIBE
+		isLag := false
+
+		ifBasePath := "/openconfig-interfaces:interfaces/interface"
+		targetUriPath := origTargetUriPath[len(ifBasePath):]
+
+		if strings.HasPrefix(targetUriPath, "/openconfig-if-ethernet:ethernet") {
+			targetUriPath = targetUriPath[len("/openconfig-if-ethernet:ethernet"):]
+		} else {
+			isLag = true
+			targetUriPath = targetUriPath[len("/openconfig-if-aggregate:aggregation"):]
+		}
+
+		if targetUriPath == "/openconfig-vlan:switched-vlan" {
+			result.isVirtualTbl = true
+			log.Info("Subscribe_sw_vlans_xfmr:- result.isVirtualTbl: ", result.isVirtualTbl)
+			return result, err
+		}
+
+		result.onChange = OnchangeEnable
+		result.nOpts = &notificationOpts{}
+		result.nOpts.pType = OnChange
+		result.isVirtualTbl = false
+
+		uriIfName := pathInfo.Var("name")
+		tableName := ""
+		ifKey := ""
+
+		if uriIfName == "" || uriIfName == "*" {
+			ifKey = "*"
+		} else {
+			sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+			ifKey = *sonicIfName
+		}
+
+		targetUriPath = targetUriPath[len("/openconfig-vlan:switched-vlan"):]
+		if targetUriPath == "/config" {
+			if isLag {
+				tableName = "PORTCHANNEL"
+			} else {
+				tableName = "PORT"
+			}
+		} else {
+			tableName = "VLAN_MEMBER_TABLE"
+		}
+
+		log.Infof("Subscribe_sw_vlans_xfmr: path:%v, ifKey:%v, tbl:[%v]", origTargetUriPath, ifKey, tableName)
+
+		keyName := ""
+		if targetUriPath == "/config" {
+			keyName = ifKey
+			result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tableName: {keyName: {"tagged_vlans": "trunk-vlans", "access_vlan": "access-vlan"}}}}
+		} else if targetUriPath == "/state" {
+			keyName = "*" + ":" + ifKey
+			//result.dbDataMap = RedisDbSubscribeMap{db.ApplDB:{tableName:{keyName:{}}}}
+			result.secDbDataMap = RedisDbYgNodeMap{db.ApplDB: {"VLAN_MEMBER_TABLE": {keyName: "trunk-vlans"}}}
+		}
+
+		log.Info("Subscribe_sw_vlans_xfmr :- result dbDataMap: ", result.dbDataMap)
+		log.Info("Subscribe_sw_vlans_xfmr :- result secDbDataMap: ", result.secDbDataMap)
+
+		return result, err
+	}
+
+	result.isVirtualTbl = true
+	log.Info("Subscribe_sw_vlans_xfmr :- result.isVirtualTbl: ", result.isVirtualTbl)
+	return result, err
+}
+
+var DbToYangPath_sw_vlans_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	log.Info("DbToYangPath_sw_vlans_path_xfmr : params ", params)
+
+	intfRoot := "/openconfig-interfaces:interfaces/interface"
+
+	if (params.tblName != "PORT") &&
+		(params.tblName != "PORTCHANNEL") &&
+		(params.tblName != "VLAN_MEMBER_TABLE") {
+		log.Info("DbToYangPath_sw_vlans_path_xfmr: unsupported table: ", params.tblName)
+		return nil
+	}
+
+	if (params.tblName == "PORT") || (params.tblName == "PORTCHANNEL") {
+		if len(params.tblKeyComp) > 0 {
+			params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+		}
+	} else if params.tblName == "VLAN_MEMBER_TABLE" {
+		if len(params.tblKeyComp) > 1 {
+			params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[1]
+		}
+	}
+
+	log.Info("DbToYangPath_sw_vlans_path_xfmr : params.ygPathkeys: ", params.ygPathKeys)
+
+	return nil
 }

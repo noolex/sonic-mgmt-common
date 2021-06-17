@@ -888,10 +888,7 @@ var YangToDb_bgp_af_nbr_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 		afName = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afName = "l2vpn_evpn"
-	} else if strings.Contains(afName, "*") {
-		afName = "*"
-		log.Info("Wildcard set  AFI type " + afName)
-	} else {
+	} else if afName != "*" {
 		err = errors.New("Unsupported AFI SAFI")
 		log.Info("Unsupported AFI SAFI ", afName)
 		return afName, err
