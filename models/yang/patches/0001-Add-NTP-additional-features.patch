@@ -1,25 +1,39 @@
-From 03af851b4f1a3024dff83b5e5865895ddfc6ebe8 Mon Sep 17 00:00:00 2001
+From 2247143dd49d41b14040767bdb42f087e0f9106a Mon Sep 17 00:00:00 2001
 From: Bing Sun <Bing_Sun@dell.com>
-Date: Tue, 15 Jun 2021 10:30:54 -0700
+Date: Wed, 16 Jun 2021 21:34:33 -0700
 Subject: [PATCH] Add NTP additional features
 
 ---
- openconfig-system.yang | 149 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ openconfig-system.yang | 158 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 158 insertions(+)
 
 diff --git a/openconfig-system.yang b/openconfig-system.yang
-index fd05a3f..d9709e4 100644
+index 5653e75..5e77d7a 100644
 --- a/openconfig-system.yang
 +++ b/openconfig-system.yang
-@@ -19,6 +19,7 @@ module openconfig-system {
-   import openconfig-procmon { prefix oc-proc; }
+@@ -20,6 +20,8 @@ module openconfig-system {
    import openconfig-alarms { prefix oc-alarms; }
    import openconfig-messages { prefix oc-messages; }
+   import openconfig-license { prefix oc-license; }
 +  import openconfig-interfaces { prefix "oc-if"; }
++  import openconfig-network-instance { prefix oc-ni; }
  
    // meta
    organization "OpenConfig working group";
-@@ -119,6 +120,18 @@ module openconfig-system {
+@@ -48,6 +50,12 @@ module openconfig-system {
+ 
+   oc-ext:openconfig-version "0.9.1";
+ 
++  revision "2021-06-16" {
++    description
++      "Add additional NTP server statistics and NTP authentication";
++    reference "0.9.2";
++  }
++
+   revision "2020-03-25" {
+     description
+       "Fix typo in description statement for ipv4-address
+@@ -139,6 +147,18 @@ module openconfig-system {
        "MD5 encryption method";
    }
  
@@ -38,7 +52,7 @@ index fd05a3f..d9709e4 100644
    // typedef statements
  
    typedef timezone-name-type {
-@@ -523,6 +536,42 @@ module openconfig-system {
+@@ -544,6 +564,42 @@ module openconfig-system {
          "Indicates whether this server should be preferred
          or not.";
      }
@@ -54,7 +68,7 @@ index fd05a3f..d9709e4 100644
 +    leaf minpoll {
 +      type uint8 {
 +        range "3..17";
-+      } 
++      }
 +      default 6;
 +
 +      description
@@ -81,12 +95,12 @@ index fd05a3f..d9709e4 100644
    }
  
    grouping system-ntp-server-state {
-@@ -590,6 +639,79 @@ module openconfig-system {
+@@ -611,6 +667,79 @@ module openconfig-system {
        description
          "Polling interval of the peer";
      }
 +
-+    leaf peerdelay {
++    leaf peer-delay {
 +      type decimal64 {
 +        fraction-digits 3;
 +      }
@@ -94,7 +108,7 @@ index fd05a3f..d9709e4 100644
 +        "The round-trip delay to the server using type decimal64, in milliseconds";
 +    }
 +
-+    leaf peeroffset {
++    leaf peer-offset {
 +      type decimal64 {
 +        fraction-digits 3;
 +      }
@@ -104,7 +118,7 @@ index fd05a3f..d9709e4 100644
 +        Using type decimal64, in milliseconds.";
 +    }
 +
-+    leaf peerjitter {
++    leaf peer-jitter {
 +      type decimal64 {
 +        fraction-digits 3;
 +      }
@@ -112,7 +126,7 @@ index fd05a3f..d9709e4 100644
 +        "The mean deviation of multiple time samples from this peer.";
 +    }
 +
-+    leaf selmode {
++    leaf sel-mode {
 +      type string {
 +        length "1";
 +      }
@@ -130,8 +144,8 @@ index fd05a3f..d9709e4 100644
 +      description
 +        "Reference clock type or address for the peer.";
 +    }
-+ 
-+    leaf peertype {
++
++    leaf peer-type {
 +      type string {
 +        length "1";
 +      }
@@ -157,11 +171,11 @@ index fd05a3f..d9709e4 100644
 +      type string;
 +      description
 +        "An bitmap of size 8 bits in octal string indicates the status of the last eight NTP messages.";
-+     }
++    }
    }
  
    grouping system-ntp-server-top {
-@@ -664,6 +786,13 @@ module openconfig-system {
+@@ -685,6 +814,13 @@ module openconfig-system {
        description
          "NTP authentication key value";
      }
@@ -175,7 +189,7 @@ index fd05a3f..d9709e4 100644
    }
  
    grouping system-ntp-auth-keys-state {
-@@ -740,6 +869,26 @@ module openconfig-system {
+@@ -761,6 +897,28 @@ module openconfig-system {
          system will only use packets containing a trusted
          authentication key to synchronize the time.";
      }
@@ -188,16 +202,18 @@ index fd05a3f..d9709e4 100644
 +        the same key id.";
 +    }
 +
-+    leaf-list ntp-source-interface {
++    leaf-list source-interface {
 +      type oc-if:base-interface-ref;
 +      description
 +        "NTP source interface name";
 +    }
 +
-+    leaf vrf {
-+      type string;
++    leaf network-instance {
++      type leafref {
++        path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
++      } 
 +      description
-+        "The VRF instance NTP is enabled in.";
++        "The network instance NTP is enabled in.";
 +    }
    }
  

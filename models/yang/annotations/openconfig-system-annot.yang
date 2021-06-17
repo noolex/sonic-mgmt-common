@@ -969,15 +969,27 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:ntp-source-interface {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:source-interface {
         deviate add {
             sonic-ext:field-name "src_intf";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:ntp-source-interface {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:source-interface {
         deviate add {
             sonic-ext:field-name "src_intf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:config/oc-sys:network-instance {
+        deviate add {
+            sonic-ext:field-name "vrf";
+        }
+    }
+
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:state/oc-sys:network-instance {
+        deviate add {
+            sonic-ext:field-name "vrf";
         }
     }
 
@@ -1036,31 +1048,31 @@ module openconfig-system-annot {
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peerdelay {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peer-delay {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peeroffset {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peer-offset {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peerjitter {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peer-jitter {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:selmode {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:sel-mode {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
     }
 
-    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peertype {
+    deviation /oc-sys:system/oc-sys:ntp/oc-sys:servers/oc-sys:server/oc-sys:state/oc-sys:peer-type {
         deviate add {
             sonic-ext:subscribe-on-change "disable";
         }
