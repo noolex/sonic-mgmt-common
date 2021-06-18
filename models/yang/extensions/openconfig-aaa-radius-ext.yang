@@ -130,6 +130,11 @@ module openconfig-aaa-radius-ext {
       description
         "Source interface whose IP to use as source ip for RADIUS conn.";
     }
+    leaf encrypted {
+      type boolean;
+      default false;
+      description "Indicates whether the key is encrypted or not.";
+    }
   }
 
   // data definition statements
