@@ -387,14 +387,14 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/address") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:key-id") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:minpoll") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:maxpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/maxpoll") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/address") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/maxpoll") {
 		log.Info("ProcessGetNtpServer: no return of ntp server state for ", requestUriPath)
 		return nil
 	}
@@ -627,9 +627,9 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 
 	// Return here if no need to access ntpq
 	if getServConfigOnly ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/key-id") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/minpoll") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/maxpoll") {
 		return nil
 	}
 
