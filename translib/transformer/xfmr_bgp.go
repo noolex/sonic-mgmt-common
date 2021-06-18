@@ -215,7 +215,7 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
 		params.tblName == "BGP_GLOBALS_AF_NETWORK" || params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
 		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
 	} else {
-		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp)
+		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblName)
 		return oper_err
 	}
 	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"

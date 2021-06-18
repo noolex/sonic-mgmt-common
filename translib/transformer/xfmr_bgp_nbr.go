@@ -2059,7 +2059,7 @@ var DbToYangPath_bgp_nbr_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
 
 	if (params.tblName != "BGP_NEIGHBOR") && (params.tblName != "BGP_NEIGHBOR_AF") {
 		oper_err := errors.New("wrong config DB table sent")
-		log.Errorf("BGP neighbor Path-xfmr: table name %s not in BGP neighbor/af view", params.tblKeyComp)
+		log.Errorf("BGP neighbor Path-xfmr: table name %s not in BGP neighbor/af view", params.tblName)
 		return oper_err
 	} else {
 		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
