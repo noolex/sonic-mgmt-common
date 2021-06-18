@@ -59,7 +59,6 @@ func init() {
 	XlateFuncBind("DbToYang_community_match_set_options_fld_xfmr", DbToYang_community_match_set_options_fld_xfmr)
 	XlateFuncBind("YangToDb_community_member_fld_xfmr", YangToDb_community_member_fld_xfmr)
 	XlateFuncBind("DbToYang_community_member_fld_xfmr", DbToYang_community_member_fld_xfmr)
-
 	XlateFuncBind("YangToDb_ext_community_set_name_fld_xfmr", YangToDb_ext_community_set_name_fld_xfmr)
 	XlateFuncBind("DbToYang_ext_community_set_name_fld_xfmr", DbToYang_ext_community_set_name_fld_xfmr)
 	XlateFuncBind("YangToDb_ext_community_match_set_options_fld_xfmr", YangToDb_ext_community_match_set_options_fld_xfmr)
@@ -69,6 +68,87 @@ func init() {
 
 	XlateFuncBind("YangToDb_as_path_set_name_fld_xfmr", YangToDb_as_path_set_name_fld_xfmr)
 	XlateFuncBind("DbToYang_as_path_set_name_fld_xfmr", DbToYang_as_path_set_name_fld_xfmr)
+	XlateFuncBind("DbToYangPath_prefix_set_path_xfmr", DbToYangPath_prefix_set_path_xfmr)
+	XlateFuncBind("DbToYangPath_community_set_path_xfmr", DbToYangPath_community_set_path_xfmr)
+	XlateFuncBind("DbToYangPath_ext_community_set_path_xfmr", DbToYangPath_ext_community_set_path_xfmr)
+	XlateFuncBind("DbToYangPath_as_path_set_path_xfmr", DbToYangPath_as_path_set_path_xfmr)
+}
+
+var DbToYangPath_prefix_set_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+
+	oper_err := errors.New("wrong config DB table sent")
+	pfRoot := "/openconfig-routing-policy:routing-policy/defined-sets/prefix-sets/prefix-set"
+
+	prefixes_ext := pfRoot + "/openconfig-routing-policy-ext:prefixes-ext/prefix"
+
+	log.Info("DbToYangPath_prefix_set_path_xfmr: params: ", params)
+	if params.tblName == "PREFIX_SET" || params.tblName == "PREFIX" {
+		params.ygPathKeys[pfRoot+"/name"] = params.tblKeyComp[0]
+	} else {
+		log.Errorf("route_policy prefix Path-xfmr: table name %s not in view", params.tblName)
+		return oper_err
+	}
+	if params.tblName == "PREFIX" {
+		params.ygPathKeys[prefixes_ext+"/sequence-number"] = params.tblKeyComp[1]
+		params.ygPathKeys[prefixes_ext+"/ip-prefix"] = params.tblKeyComp[2]
+		params.ygPathKeys[prefixes_ext+"/masklength-range"] = params.tblKeyComp[3]
+	}
+
+	log.Info("DbToYangPath_prefix_set_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
+}
+
+var DbToYangPath_community_set_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+
+	oper_err := errors.New("wrong config DB table sent")
+	com_set := "/openconfig-routing-policy:routing-policy/defined-sets/openconfig-bgp-policy:bgp-defined-sets/community-sets/community-set"
+
+	log.Info("DbToYangPath_community_set_path_xfmr: params: ", params)
+
+	if params.tblName == "COMMUNITY_SET" {
+		params.ygPathKeys[com_set+"/community-set-name"] = params.tblKeyComp[0]
+	} else {
+		log.Errorf("DbToYangPath_community_set_path_xfmr table name %s not in view", params.tblName)
+		return oper_err
+	}
+
+	log.Info("DbToYangPath_prefix_set_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
+}
+
+var DbToYangPath_ext_community_set_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+
+	oper_err := errors.New("wrong config DB table sent")
+	com_set := "/openconfig-routing-policy:routing-policy/defined-sets/openconfig-bgp-policy:bgp-defined-sets/ext-community-sets/ext-community-set"
+
+	log.Info("DbToYangPath_ext_community_set_path_xfmr: params: ", params)
+
+	if params.tblName == "EXTENDED_COMMUNITY_SET" {
+		params.ygPathKeys[com_set+"/ext-community-set-name"] = params.tblKeyComp[0]
+	} else {
+		log.Errorf("DbToYangPath_ext_community_set_path_xfmr table name %s not in view", params.tblName)
+		return oper_err
+	}
+
+	log.Info("DbToYangPath_ext_community_set_path_xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
+}
+
+var DbToYangPath_as_path_set_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+
+	oper_err := errors.New("wrong config DB table sent")
+	aspath_set := "/openconfig-routing-policy:routing-policy/defined-sets/openconfig-bgp-policy:bgp-defined-sets/as-path-sets/as-path-set"
+	log.Info("DbToYangPath_as_path_set_path_xfmr: params: ", params)
+
+	if params.tblName == "AS_PATH_SET" {
+		params.ygPathKeys[aspath_set+"/as-path-set-name"] = params.tblKeyComp[0]
+	} else {
+		log.Errorf("DbToYangPath_as_path_set_path_xfmr table name %s not in view", params.tblName)
+		return oper_err
+	}
+
+	log.Info("DbToYangPath_as_path_set_path_xfmr :- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
 }
 
 var YangToDb_defined_sets_action_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrParams) (map[string]string, error) {
@@ -381,7 +461,7 @@ var YangToDb_prefix_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string
 		log.Info("YangToDb_prefix_key_xfmr: PrefixSetName: ", setName, " Sequence-number: ", seqNo,
 			" IP-Prefix: ", ipPrefix, " MaskLenRange: ", masklenrange)
 
-		if masklenrange != "exact" {
+		if (masklenrange != "exact") && (masklenrange != "*") {
 			prefix_mask := strings.Split(ipPrefix, "/")
 			length, _ := strconv.Atoi(prefix_mask[1])
 
