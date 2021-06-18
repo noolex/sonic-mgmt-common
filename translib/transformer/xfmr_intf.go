@@ -2704,12 +2704,13 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
 
 // Validates Prefix Length for all interface types except loopback
 func isValidPrefixLength(pLen *uint8, isIpv4 bool) bool {
+	var minPrfxLen uint8 = 1
 	// maxPrfxLen corresponds to Maximum prefix length for all interface types other than loopback
 	var maxPrfxLen uint8 = 31
 	if !isIpv4 {
 		maxPrfxLen = 127
 	}
-	return *pLen <= maxPrfxLen
+	return *pLen >= minPrfxLen && *pLen <= maxPrfxLen
 }
 
 /* Note: This function can be extended for IP validations for all Interface types */
