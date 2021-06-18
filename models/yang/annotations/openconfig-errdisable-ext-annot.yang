@@ -51,13 +51,13 @@ module openconfig-errdisable-ext-annot {
     deviation /oc-errdisable-ext:errdisable-port/oc-errdisable-ext:port {
       deviate add {
 		sonic-ext:virtual-table "true";
-        sonic-ext:table-name "ERRDISABLE_PORT";
+        sonic-ext:table-name "PORT";
       }
     }
 
 	deviation /oc-errdisable-ext:errdisable-port/oc-errdisable-ext:port/oc-errdisable-ext:link-flap/oc-errdisable-ext:config {
       deviate add {
-        sonic-ext:table-name "ERRDISABLE_PORT";
+        sonic-ext:table-name "PORT";
       }
     }
 
