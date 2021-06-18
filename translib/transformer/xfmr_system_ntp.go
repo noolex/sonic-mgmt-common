@@ -322,9 +322,9 @@ func FillNtpServer(keyName string, ntpqList []string, ntpServers *ocbinds.Openco
 
 		offset_sec, _ := strconv.ParseFloat(offset, 64)
 		offset_milli := offset_sec * 1000
-		currNtpServer.State.Peeroffset = &offset_milli
+		currNtpServer.State.PeerOffset = &offset_milli
 
-		currNtpServer.State.Selmode = &selMode
+		currNtpServer.State.SelMode = &selMode
 
 		poll_num, _ := strconv.ParseUint(poll, 10, 32)
 		poll_num32 := uint32(poll_num)
@@ -334,18 +334,18 @@ func FillNtpServer(keyName string, ntpqList []string, ntpServers *ocbinds.Openco
 		stratum_num8 := uint8(stratum_num)
 		currNtpServer.State.Stratum = &stratum_num8
 
-		currNtpServer.State.Peertype = &peer_type
+		currNtpServer.State.PeerType = &peer_type
 
 		jitter_sec, _ := strconv.ParseFloat(jitter, 64)
 		jitter_milli := jitter_sec * 1000
-		currNtpServer.State.Peerjitter = &jitter_milli
+		currNtpServer.State.PeerJitter = &jitter_milli
 
 		/* reach is octal string */
 		currNtpServer.State.Reach = &reach
 
 		delay_sec, _ := strconv.ParseFloat(delay, 64)
 		delay_milli := delay_sec * 1000
-		currNtpServer.State.Peerdelay = &delay_milli
+		currNtpServer.State.PeerDelay = &delay_milli
 
 		currNtpServer.State.Refid = &refId
 	}
