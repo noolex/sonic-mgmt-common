@@ -52,6 +52,10 @@ module sonic-switch-resource {
         description
           "Minimum flow scale configured.";
       }
+      enum "UNSUPPORTED" {
+        description
+          "flow scale not supported.";
+      }
     }
     description
       "Drop Monitor Flow scale limit ";

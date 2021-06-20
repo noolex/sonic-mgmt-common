@@ -25,26 +25,26 @@ import (
 )
 
 func(t * CustomValidation) IsDropMonitorSupported(vc * CustValidationCtxt) CVLErrorInfo {
-    stateDBClient := util.NewDbClient("STATE_DB")
+    countersDBClient := util.NewDbClient("COUNTERS_DB")
     defer func() {
-        if (stateDBClient != nil) {
-            stateDBClient.Close()
+        if (countersDBClient != nil) {
+            countersDBClient.Close()
         }
     }()
 
     var status string
+    status = "UNSUPPORTED"
     thisKey := strings.Split(vc.CurCfg.Key, "|")[1]
     if (thisKey == "DROP_MONITOR") {
-        status = "UNSUPPORTED"
-        if (stateDBClient != nil) {
-            key := "TAM_STATE_FEATURES_TABLE|DROPMONITOR"
-            status, _ = stateDBClient.HGet(key, "op-status").Result()
+        if (countersDBClient != nil) {
+            key := "SWITCH_RESOURCE_STATE_TABLE:DROP_MONITOR"
+            status, _ = countersDBClient.HGet(key, "flows").Result()
         }
 
-        if ((status == "UNSUPPORTED") || (status == "INSUFFICIENT_RESOURCES")) {
+        if (status == "UNSUPPORTED") {
             return CVLErrorInfo{
                 ErrCode: CVL_SEMANTIC_ERROR,
-                ConstraintErrMsg: "Dropmonitor feature is not supported, operation not allowed",
+                ConstraintErrMsg: "Dropmonitor feature is not supported, operation not allowed.",
                 CVLErrDetails : "Operation not allowed",
                 ErrAppTag : "operation-not-allowed",
             }
