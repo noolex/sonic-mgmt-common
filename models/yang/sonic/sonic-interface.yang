@@ -291,12 +291,6 @@ module sonic-interface {
                                         error-message "Interface configured as a member of PortChannel. Cannot enable IPv6";
                                         error-app-tag intf-po-member;
                                     }
-                                    must "count(/svlan:sonic-vlan/svlan:VLAN_MEMBER/svlan:VLAN_MEMBER_LIST[svlan:ifname=current()/../portname]) = 0"
-                                    {
-                                        error-message "Interface configured as a member of Vlan. Cannot enable IPv6";
-                                        error-app-tag intf-vlan-member;
-                                    }
-
 				}
 
                 leaf unnumbered {
@@ -613,6 +607,7 @@ module sonic-interface {
 
                 leaf ip_prefix {
                     type inet:ip-prefix;
+		    sonic-ext:custom-validation ValidateIntfIp;
                 }
 
                 leaf secondary {
