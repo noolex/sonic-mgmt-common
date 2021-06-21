@@ -20,30 +20,34 @@
 package custom_validation
 
 import (
+    "strings"
     util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
 )
 
 func(t * CustomValidation) IsDropMonitorSupported(vc * CustValidationCtxt) CVLErrorInfo {
-    stateDBClient := util.NewDbClient("STATE_DB")
+    countersDBClient := util.NewDbClient("COUNTERS_DB")
     defer func() {
-        if (stateDBClient != nil) {
-            stateDBClient.Close()
+        if (countersDBClient != nil) {
+            countersDBClient.Close()
         }
     }()
 
     var status string
     status = "UNSUPPORTED"
-    if (stateDBClient != nil) {
-        key := "TAM_STATE_FEATURES_TABLE|DROPMONITOR"
-        status, _ = stateDBClient.HGet(key, "op-status").Result()
-    }
+    thisKey := strings.Split(vc.CurCfg.Key, "|")[1]
+    if (thisKey == "DROP_MONITOR") {
+        if (countersDBClient != nil) {
+            key := "SWITCH_RESOURCE_STATE_TABLE:DROP_MONITOR"
+            status, _ = countersDBClient.HGet(key, "flows").Result()
+        }
 
-    if ((status == "UNSUPPORTED") || (status == "INSUFFICIENT_RESOURCES")) {
-        return CVLErrorInfo{
-            ErrCode: CVL_SEMANTIC_ERROR,
-            ConstraintErrMsg: "Dropmonitor feature is not supported, operation not allowed",
-            CVLErrDetails : "Operation not allowed",
-            ErrAppTag : "operation-not-allowed",
+        if (status == "UNSUPPORTED") {
+            return CVLErrorInfo{
+                ErrCode: CVL_SEMANTIC_ERROR,
+                ConstraintErrMsg: "Dropmonitor feature is not supported, operation not allowed.",
+                CVLErrDetails : "Operation not allowed",
+                ErrAppTag : "operation-not-allowed",
+            }
         }
     }
     return CVLErrorInfo{ErrCode: CVL_SUCCESS}
