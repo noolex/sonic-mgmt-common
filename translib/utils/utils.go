@@ -460,13 +460,13 @@ func devMetaNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) 
 		" event: ", event)
 	switch event {
 	case db.SEventHSet, db.SEventHDel:
-		updateInfoFromDB(key, d)
+		updateGlobalDeviceInfoFromDB(key, d)
 	}
 
 	return nil
 }
 
-func updateInfoFromDB(key *db.Key, d *db.DB) {
+func updateGlobalDeviceInfoFromDB(key *db.Key, d *db.DB) {
 	key0 := key.Get(0)
 	entry, err := d.GetEntry(&db.TableSpec{Name: "DEVICE_METADATA"}, *key)
 	if err != nil {
@@ -475,7 +475,7 @@ func updateInfoFromDB(key *db.Key, d *db.DB) {
 	}
 	mac, ok := entry.Field["mac"]
 	if !ok {
-		log.Info("Retrieval of MAC address for %s failed", key0)
+		log.Errorf("Retrieval of MAC address for %s failed", key0)
 	}
 	macAddress = mac
 	aliasVal, ok := entry.Field["intf_naming_mode"]
@@ -532,7 +532,7 @@ func populatePortDS() error {
 	}
 	populatePortchannel(d)
 
-	updateInfoFromDB(&db.Key{Comp: []string{"localhost"}}, d)
+	updateGlobalDeviceInfoFromDB(&db.Key{Comp: []string{"localhost"}}, d)
 
 	return err
 }
