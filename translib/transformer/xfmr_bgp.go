@@ -215,7 +215,7 @@ var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYg
 		params.tblName == "BGP_GLOBALS_AF_NETWORK" || params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
 		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
 	} else {
-		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblKeyComp)
+		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblName)
 		return oper_err
 	}
 	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
@@ -1074,7 +1074,7 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
-	} else if strings.Contains(afName, "*") {
+	} else if afName == "*" {
 		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)
@@ -1194,7 +1194,7 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
-	} else if strings.Contains(afName, "*") {
+	} else if afName == "*" {
 		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)

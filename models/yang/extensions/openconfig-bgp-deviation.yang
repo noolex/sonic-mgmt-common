@@ -23,7 +23,13 @@ module openconfig-bgp-deviation {
     "This module describes a YANG model for BGP protocol
     configuration deviations.";
 
-  oc-ext:openconfig-version "0.1.0";
+  oc-ext:openconfig-version "1.0.0";
+
+  revision "2021-06-17" {
+    description
+      "Attributes set is enclosed with state container.";
+    reference "1.0.0";
+  }
 
   revision "2021-06-04" {
     description
@@ -38,17 +44,23 @@ module openconfig-bgp-deviation {
       config false;
       description
         "Various PATH attributes for a given prefix.";
-      leaf weight {
-        type uint32;
+      container state {
+        config false;
         description
-          "This indicates the weight value for the neighbor's routes";
+          "State information relating to the PATH attributes.";
+        
+        leaf weight {
+          type uint32;
+          description
+            "This indicates the weight value for the neighbor's routes";
+        }
+        uses oc-rib-bgp:bgp-shared-common-attr-state;
+        uses oc-rib-bgp:bgp-aggregator-attr-top;
+        uses oc-rib-bgp:bgp-as-path-attr-top;
+        uses oc-rib-bgp:bgp-as4-path-attr-top;
+        uses oc-rib-bgp:bgp-community-attr-state;
+        uses oc-rib-bgp:bgp-extended-community-attr-state;
       }
-      uses oc-rib-bgp:bgp-shared-common-attr-state;
-      uses oc-rib-bgp:bgp-aggregator-attr-top;
-      uses oc-rib-bgp:bgp-as-path-attr-top;
-      uses oc-rib-bgp:bgp-as4-path-attr-top;
-      uses oc-rib-bgp:bgp-community-attr-state;
-      uses oc-rib-bgp:bgp-extended-community-attr-state;
     }
   }
 
@@ -742,119 +754,119 @@ module openconfig-bgp-deviation {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
     deviate not-supported;
   }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
-    deviate not-supported;
-  }
-
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
-    deviate not-supported;
-  }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4
   {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
     deviate not-supported;
   }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
-    deviate not-supported;
-  }
-
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
-    deviate not-supported;
-  }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
-    deviate not-supported;
-  }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:loc-rib/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-pre/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-in-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
     deviate not-supported;
   }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp {
-    deviate not-supported;
-  }
-
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path {
-    deviate not-supported;
-  }
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4 {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-netinst:neighbors/oc-netinst:neighbor/oc-netinst:adj-rib-out-post/oc-netinst:routes/oc-netinst:route/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path {
+    deviate not-supported;
+  }
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp  {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aigp  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv4-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path  {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aigp  {
     deviate not-supported;
   }
 
-  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:as4-path  {
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:aggregator/oc-bgp-dev:state/oc-bgp-dev:as4  {
+    deviate not-supported;
+  }
+
+  deviation /oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:bgp/oc-netinst:rib/oc-netinst:afi-safis/oc-netinst:afi-safi/oc-netinst:ipv6-unicast/oc-bgp-ext:loc-rib-prefix/oc-bgp-ext:routes/oc-bgp-ext:route/oc-bgp-ext:loc-rib-prefix-paths/oc-bgp-ext:paths/oc-bgp-ext:path/oc-bgp-dev:attr-sets/oc-bgp-dev:state/oc-bgp-dev:as4-path  {
     deviate not-supported;
   }
 

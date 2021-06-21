@@ -59,8 +59,11 @@ func init() {
 	XlateFuncBind("DbToYang_intf_eth_port_speed_xfmr", DbToYang_intf_eth_port_speed_xfmr)
 	XlateFuncBind("DbToYang_intf_eth_port_fec_xfmr", DbToYang_intf_eth_port_fec_xfmr)
 	XlateFuncBind("DbToYang_intf_eth_port_unreliable_los_xfmr", DbToYang_intf_eth_port_unreliable_los_xfmr)
+	XlateFuncBind("DbToYang_intf_eth_aggr_id_xfmr", DbToYang_intf_eth_aggr_id_xfmr)
 	XlateFuncBind("YangToDb_intf_eth_port_config_xfmr", YangToDb_intf_eth_port_config_xfmr)
 	XlateFuncBind("DbToYang_intf_eth_port_config_xfmr", DbToYang_intf_eth_port_config_xfmr)
+	XlateFuncBind("Subscribe_intf_eth_port_config_xfmr", Subscribe_intf_eth_port_config_xfmr)
+	XlateFuncBind("DbToYangPath_intf_eth_port_config_path_xfmr", DbToYangPath_intf_eth_port_config_path_xfmr)
 	XlateFuncBind("YangToDb_intf_ip_addr_xfmr", YangToDb_intf_ip_addr_xfmr)
 	XlateFuncBind("DbToYang_intf_ip_addr_xfmr", DbToYang_intf_ip_addr_xfmr)
 	XlateFuncBind("YangToDb_ipv6_enabled_xfmr", YangToDb_ipv6_enabled_xfmr)
@@ -94,6 +97,7 @@ func init() {
 	XlateFuncBind("rpc_oc_vlan_replace", rpc_oc_vlan_replace)
 	XlateFuncBind("YangToDb_subif_index_xfmr", YangToDb_subif_index_xfmr)
 	XlateFuncBind("DbToYang_subif_index_xfmr", DbToYang_subif_index_xfmr)
+	XlateFuncBind("DbToYangPath_intf_ip_path_xfmr", DbToYangPath_intf_ip_path_xfmr)
 }
 
 const (
@@ -978,7 +982,6 @@ func resetCounters(d *db.DB, oid string) (error, error) {
 
 //Creates new entry in VLAN_MEMBER table.
 func rpc_create_vlan(d *db.DB, vlanList []string, ifName string) error {
-
 	var err error
 	var cfgredAccessVlan string
 	intTbl := IntfTypeTblMap[IntfTypeVlan]
@@ -1346,10 +1349,16 @@ var YangToDb_intf_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (stri
 	idx := reqpathInfo.Var("index")
 	var i32 uint32
 	i32 = 0
+
 	if idx != "" {
 		i64, _ := strconv.ParseUint(idx, 10, 32)
 		i32 = uint32(i64)
 	}
+
+	if ifName == "*" {
+		return ifName, nil
+	}
+
 	if ifName != "" {
 		log.Info("YangToDb_intf_tbl_key_xfmr: ifName: ", ifName)
 		intfType, _, ierr := getIntfTypeByName(ifName)
@@ -1398,6 +1407,41 @@ var intf_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error) 
 			return dbIdToTblMap[inParams.curDb], nil
 		}
 	}
+
+	if (ifName == "*") && (inParams.oper == SUBSCRIBE) {
+		log.Info("intf_table_xfmr * ifName subscribe with targetUriPath ", targetUriPath)
+
+		// need to check if to add subinterface tbl !!!!
+		if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/config") {
+			tblList = append(tblList, "PORT", "PORTCHANNEL", "VLAN", "LOOPBACK", "MGMT_PORT")
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/state") {
+			tblList = append(tblList, "PORT_TABLE", "LAG_TABLE", "VLAN_TABLE", "LOOPBACK_TABLE", "MGMT_PORT_TABLE")
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/config") {
+			tblList = append(tblList, "PORTCHANNEL")
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-ip:ipv6/config") {
+			tblList = append(tblList, "VLAN_INTERFACE")
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-vlan:routed-vlan/openconfig-ip:ipv6/state") {
+			tblList = append(tblList, "VLAN_INTERFACE")
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state/openconfig-if-aggregate:aggregate-id") {
+			log.Info("onchange subscription not supported for ", targetUriPath)
+		} else if strings.HasPrefix(targetUriPath, "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/state") {
+			tblList = append(tblList, "PORT_TABLE", "MGMT_PORT_TABLE")
+		} else {
+			if _, ok := dbIdToTblMap[inParams.curDb]; !ok {
+				if log.V(3) {
+					log.Info("TableXfmrFunc - intf_table_xfmr db id entry not present")
+				}
+
+				return tblList, errors.New("Key not present")
+			} else {
+				return dbIdToTblMap[inParams.curDb], nil
+			}
+		}
+
+		log.Infof("intf_table_xfmr for * ifName tbllist %v", tblList)
+		return tblList, nil
+	}
+
 	sonicIfName := utils.GetNativeNameFromUIName(&ifName)
 	if log.V(3) {
 		log.Infof("TableXfmrFunc - Sonic Interface name retrieved from alias : %s is %s", ifName, *sonicIfName)
@@ -1603,7 +1647,7 @@ var intf_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string, error) 
 		err = errors.New("Invalid URI")
 	}
 
-	log.Infof("TableXfmrFunc - Uri: (%v), targetUriPath: %s, tblList: (%v)\r\n", inParams.uri, targetUriPath, tblList)
+	log.Infof("TableXfmrFunc - Uri: (%v), targetUriPath: %s, tblList: (%v)", inParams.uri, targetUriPath, tblList)
 
 	return tblList, err
 }
@@ -2227,70 +2271,6 @@ var intf_subintfs_table_xfmr TableXfmrFunc = func(inParams XfmrParams) ([]string
 	return tblList, nil
 }
 
-var Subscribe_intf_ip_addr_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-	if log.V(3) {
-		log.Info("Entering Subscribe_intf_ip_addr_xfmr")
-	}
-	var err error
-	var result XfmrSubscOutParams
-	result.dbDataMap = make(RedisDbSubscribeMap)
-	result.isVirtualTbl = false
-	pathInfo := NewPathInfo(inParams.uri)
-	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-	uriIfName := pathInfo.Var("name")
-	idx := pathInfo.Var("index")
-	sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
-	keyName := *sonicIfName
-
-	log.Infof("Subscribe_intf_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s", pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
-
-	if keyName != "" {
-		intfType, _, _ := getIntfTypeByName(keyName)
-		intTbl := IntfTypeTblMap[intfType]
-		tblName := intTbl.cfgDb.intfTN
-		if idx != "0" {
-			tblName = "VLAN_SUB_INTERFACE"
-			keyName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&keyName, &idx)
-			//for fetch at subint level ???
-		}
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tblName: {keyName: {}}}}
-	}
-	result.needCache = true
-	result.nOpts = new(notificationOpts)
-	result.nOpts.mInterval = 15
-	result.nOpts.pType = OnChange
-	log.Info("Returning Subscribe_intf_ip_addr_xfmr, result:", result)
-	return result, err
-}
-
-var Subscribe_routed_vlan_ip_addr_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
-	if log.V(3) {
-		log.Info("Entering Subscribe_routed_vlan_ip_addr_xfmr")
-	}
-	var err error
-	var result XfmrSubscOutParams
-	pathInfo := NewPathInfo(inParams.uri)
-	targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
-	uriIfName := pathInfo.Var("name")
-	sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
-	keyName := *sonicIfName
-
-	log.Infof("Subscribe_routed_vlan_ip_addr_xfmr path:%s; template:%s targetUriPath:%s key:%s", pathInfo.Path, pathInfo.Template, targetUriPath, keyName)
-
-	if keyName != "" {
-		result.dbDataMap = make(RedisDbSubscribeMap)
-		result.isVirtualTbl = false
-		intfType, _, _ := getIntfTypeByName(keyName)
-		intTbl := IntfTypeTblMap[intfType]
-		tblName := intTbl.cfgDb.intfTN
-		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tblName: {keyName: {}}}}
-	} else {
-		err = errors.New("Invalid or Null Key")
-	}
-	log.Info("Returning Subscribe_routed_vlan_ip_addr_xfmr, result:", result)
-	return result, err
-}
-
 var YangToDb_intf_subintfs_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
 	var subintf_key string
 	var err error
@@ -2352,7 +2332,7 @@ var YangToDb_subintf_ip_addr_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
 	var inst_key string
 	pathInfo := NewPathInfo(inParams.uri)
 	inst_key = pathInfo.Var("ip")
-	log.Info("Interface IP: ", inst_key)
+	log.Infof("URI:%v Interface IP:%v", inParams.uri, inst_key)
 	return inst_key, err
 }
 
@@ -2734,12 +2714,13 @@ func validateIntfExists(d *db.DB, intfTs string, ifName string) error {
 
 // Validates Prefix Length for all interface types except loopback
 func isValidPrefixLength(pLen *uint8, isIpv4 bool) bool {
+	var minPrfxLen uint8 = 1
 	// maxPrfxLen corresponds to Maximum prefix length for all interface types other than loopback
 	var maxPrfxLen uint8 = 31
 	if !isIpv4 {
 		maxPrfxLen = 127
 	}
-	return *pLen <= maxPrfxLen
+	return *pLen >= minPrfxLen && *pLen <= maxPrfxLen
 }
 
 /* Note: This function can be extended for IP validations for all Interface types */
@@ -3344,6 +3325,36 @@ var YangToDb_intf_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (
 	return subIntfmap, err
 }
 
+var DbToYang_intf_eth_aggr_id_xfmr = func(inParams XfmrParams) (map[string]interface{}, error) {
+	var err error
+	result := make(map[string]interface{})
+
+	log.Info("DbToYang_intf_eth_aggr_id_xfmr, interface name ", inParams.key)
+
+	intfType, _, ierr := getIntfTypeByName(inParams.key)
+	if intfType == IntfTypeUnset || ierr != nil {
+		log.Info("DbToYang_intf_eth_aggr_id_xfmr - Invalid interface type IntfTypeUnset")
+		return result, errors.New("Invalid interface type IntfTypeUnset")
+	}
+
+	if IntfTypeEthernet != intfType {
+		return result, nil
+	}
+
+	intf_lagId, _ := retrievePortChannelAssociatedWithIntf(&inParams, &inParams.key)
+	if intf_lagId != nil {
+		lagPrefix := "PortChannel"
+		if strings.HasPrefix(*intf_lagId, lagPrefix) {
+			aggrId := strings.TrimPrefix(*intf_lagId, lagPrefix)
+			result["aggregate-id"] = aggrId
+		}
+	}
+
+	log.Infof("DbToYang_intf_eth_aggr_id_xfmr result %v", result)
+
+	return result, err
+}
+
 var YangToDb_routed_vlan_ip_addr_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
 	var err, oerr error
 	subOpMap := make(map[db.DBNum]map[string]map[string]db.Value)
@@ -3794,6 +3805,212 @@ func interfaceIPcount(tblName string, d *db.DB, intfName *string, ipCnt *int) er
 	return nil
 }
 
+var DbToYangPath_intf_ip_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	ifRoot := "/openconfig-interfaces:interfaces/interface"
+	subIf := ifRoot + "/subinterfaces/subinterface"
+	routedVlan := ifRoot + "/openconfig-vlan:routed-vlan"
+	dbKey := ""
+
+	log.Info("DbToYangPath_intf_ip_path_xfmr: params: ", params)
+
+	uiName := utils.GetUINameFromNativeName(&params.tblKeyComp[0])
+	ifParts := strings.Split(*uiName, ".")
+
+	params.ygPathKeys[ifRoot+"/name"] = ifParts[0]
+
+	if params.tblName == "INTERFACE" || params.tblName == "VLAN_INTERFACE" ||
+		params.tblName == "INTF_TABLE" || params.tblName == "MGMT_INTERFACE" ||
+		params.tblName == "VLAN_SUB_INTERFACE" || params.tblName == "MGMT_INTF_TABLE" ||
+		params.tblName == "PORTCHANNEL_INTERFACE" || params.tblName == "LOOPBACK_INTERFACE" {
+
+		addrPath := "/openconfig-if-ip:ipv4/addresses/address/ip"
+
+		/* For APPL_DB IPv6 case, addr is split [fe80  56bf 64ff feba 3bc0/64] instead of
+		   [fe80::56bf:64ff:feba:3bc0/64]
+		   Handle this case
+		*/
+		dbKey = strings.Join(params.tblKeyComp[1:], ":")
+
+		if len(params.tblKeyComp) > 2 || strings.Contains(dbKey, ":") {
+			addrPath = "/openconfig-if-ip:ipv6/addresses/address/ip"
+		}
+
+		ipKey := strings.Split(dbKey, "/")
+
+		if strings.HasPrefix(params.tblKeyComp[0], "Vlan") {
+			params.ygPathKeys[routedVlan+addrPath] = ipKey[0]
+		} else {
+			if len(ifParts) > 1 {
+				params.ygPathKeys[subIf+"/index"] = ifParts[1]
+			} else {
+				params.ygPathKeys[subIf+"/index"] = "0"
+			}
+			params.ygPathKeys[subIf+addrPath] = ipKey[0]
+		}
+	}
+
+	log.Infof("DbToYangPath_intf_ip_path_xfmr:  tblName:%v dbKey:[%v] params.ygPathKeys: %v", params.tblName, dbKey, params.ygPathKeys)
+	return nil
+}
+
+var Subscribe_intf_ip_addr_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	if log.V(3) {
+		log.Info("Entering Subscribe_intf_ip_addr_xfmr")
+	}
+	var err error
+	var result XfmrSubscOutParams
+
+	pathInfo := NewPathInfo(inParams.uri)
+	origTargetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+	log.Infof("Subscribe_intf_ip_addr_xfmr:- subscProc:%v URI: %s", inParams.subscProc, inParams.uri)
+	log.Infof("Subscribe_intf_ip_addr_xfmr:- Target URI path: %s", origTargetUriPath)
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		// to handle the TRANSLATE_SUBSCRIBE
+		isRoutedVlan := false
+
+		ifBasePath := "/openconfig-interfaces:interfaces/interface"
+		targetUriPath := origTargetUriPath[len(ifBasePath):]
+
+		if strings.HasPrefix(targetUriPath, "/subinterfaces") {
+			targetUriPath = targetUriPath[len("/subinterfaces/subinterface"):]
+		} else {
+			isRoutedVlan = true
+			targetUriPath = targetUriPath[len("/openconfig-vlan:routed-vlan"):]
+		}
+
+		if strings.HasPrefix(targetUriPath, "/openconfig-if-ip:ipv4") {
+			targetUriPath = targetUriPath[len("/openconfig-if-ip:ipv4/addresses"):]
+		} else {
+			targetUriPath = targetUriPath[len("/openconfig-if-ip:ipv6/addresses"):]
+		}
+
+		if targetUriPath == "" || targetUriPath == "/address" {
+			result.isVirtualTbl = true
+			log.Info("Subscribe_intf_ip_addr_xfmr:- result.isVirtualTbl: ", result.isVirtualTbl)
+			return result, err
+		}
+
+		result.onChange = OnchangeEnable
+		result.nOpts = &notificationOpts{}
+		result.nOpts.pType = OnChange
+		result.isVirtualTbl = false
+
+		uriIfName := pathInfo.Var("name")
+		tableName := ""
+		ipKey := ""
+		ifKey := ""
+		subIfKey := "*"
+
+		if uriIfName == "" || uriIfName == "*" {
+			ifKey = "*"
+		} else {
+			sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+			ifKey = *sonicIfName
+		}
+
+		addressConfigPath := "/address/config"
+		addressStatePath := "/address/state"
+
+		idx := pathInfo.Var("index")
+		if ifKey != "" {
+			if idx == "0" {
+				intfType, _, _ := getIntfTypeByName(ifKey)
+				intTbl := IntfTypeTblMap[intfType]
+				if targetUriPath == addressStatePath {
+					tableName = intTbl.appDb.intfTN
+				} else {
+					tableName = intTbl.cfgDb.intfTN
+				}
+			} else if idx == "*" || idx == "" {
+				subIfKey = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifKey, &idx)
+			} else {
+				tableName = "VLAN_SUB_INTERFACE"
+				ifKey = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&ifKey, &idx)
+			}
+		}
+
+		ipKey = pathInfo.Var("ip")
+		if ipKey == "" {
+			ipKey = "*"
+		}
+
+		if ipKey != "*" {
+			ipKey = ipKey + "/*"
+		}
+
+		log.Infof("path:%v ifKey:%v, ipKey:%v tbl:[%v]", origTargetUriPath, ifKey, ipKey, tableName)
+
+		keyName := ""
+		if targetUriPath == addressConfigPath {
+			keyName = ifKey + "|" + ipKey
+			if tableName != "" {
+				result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tableName: {keyName: {}}}}
+			} else {
+				if isRoutedVlan {
+					result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"VLAN_INTERFACE": {keyName: {}}}}
+				} else {
+					subIfKeyName := subIfKey + "|" + ipKey
+					result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"INTERFACE": {keyName: {}},
+						"MGMT_INTERFACE":        {keyName: {}},
+						"LOOPBACK_INTERFACE":    {keyName: {}},
+						"VLAN_SUB_INTERFACE":    {subIfKeyName: {}},
+						"PORTCHANNEL_INTERFACE": {keyName: {}}}}
+				}
+			}
+		} else if targetUriPath == addressStatePath {
+			keyName = ifKey + ":" + ipKey
+			if tableName != "" {
+				result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {tableName: {keyName: {}}}}
+			} else {
+				if isRoutedVlan {
+					result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {"INTF_TABLE": {keyName: {}}}}
+				} else {
+					result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {"INTF_TABLE": {keyName: {}},
+						"MGMT_INTF_TABLE": {keyName: {}}}}
+				}
+			}
+		}
+
+		log.Info("Subscribe_intf_ip_addr_xfmr:- result dbDataMap: ", result.dbDataMap)
+		log.Info("Subscribe_intf_ip_addr_xfmr:- result secDbDataMap: ", result.secDbDataMap)
+
+		return result, err
+	}
+
+	result.isVirtualTbl = false
+
+	result.dbDataMap = make(RedisDbSubscribeMap)
+	uriIfName := pathInfo.Var("name")
+	idx := pathInfo.Var("index")
+	sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+	keyName := *sonicIfName
+
+	if keyName != "" {
+		intfType, _, _ := getIntfTypeByName(keyName)
+		intTbl := IntfTypeTblMap[intfType]
+		tblName := intTbl.cfgDb.intfTN
+		if idx != "" && idx != "0" {
+			tblName = "VLAN_SUB_INTERFACE"
+			keyName = *utils.GetSubInterfaceDBKeyfromParentInterfaceAndSubInterfaceID(&keyName, &idx)
+			//for fetch at subint level ???
+		}
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tblName: {keyName: {}}}}
+	}
+	result.needCache = true
+	result.nOpts = new(notificationOpts)
+	result.nOpts.mInterval = 15
+	result.nOpts.pType = OnChange
+	log.Info("Returning Subscribe_intf_ip_addr_xfmr, result:", result)
+	return result, err
+
+}
+
+var Subscribe_routed_vlan_ip_addr_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	return Subscribe_intf_ip_addr_xfmr(inParams)
+}
+
 /* Function to delete Vxlan Interface */
 func deleteVxlanIntf(inParams *XfmrParams, ifName *string) error {
 	var err error
@@ -3932,7 +4149,7 @@ func handleIntfIPGetByTargetURI(inParams XfmrParams, targetUriPath string, ifNam
 	intfType, _, ierr := getIntfTypeByName(ifName)
 	if intfType == IntfTypeUnset || ierr != nil {
 		errStr := "Invalid interface type IntfTypeUnset"
-		log.Info("YangToDb_intf_subintf_ip_xfmr : " + errStr)
+		log.Info("YangToDb_intf_subintf_ip_xfmr : uri:" + inParams.uri + ": " + errStr)
 		return errors.New(errStr)
 	}
 	intTbl := IntfTypeTblMap[intfType]
@@ -4067,7 +4284,7 @@ var DbToYang_intf_ip_addr_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) e
 	if err != nil {
 		return err
 	}
-	log.Info("DbToYang_intf_ip_addr_xfmr: targetUriPath is ", targetUriPath)
+	log.Infof("DbToYang_intf_ip_addr_xfmr: uri:%v path:%v", inParams.uri, targetUriPath)
 
 	var intfObj *ocbinds.OpenconfigInterfaces_Interfaces_Interface
 
@@ -5262,7 +5479,8 @@ var YangToDb_intf_eth_port_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrP
 	}
 
 	/* unreliable los mode */
-	if strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-unreliable-los") {
+	if strings.Contains(inParams.requestUri, "openconfig-if-ethernet-ext2:port-unreliable-los") ||
+		(requestUriPath == "/openconfig-interfaces:interfaces/interface/ethernet/config/port-unreliable-los") {
 		res_map := make(map[string]string)
 		value := db.Value{Field: res_map}
 		intTbl := IntfTypeTblMap[intfType]
@@ -5378,6 +5596,12 @@ var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
 			if !is_id_populated {
 				errStr = "aggregate-id not set"
 			}
+
+			// subscribe for aggregate-id needs "Resource not found" for delete notification
+			if (targetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-if-ethernet:ethernet/config/openconfig-if-aggregate:aggregate-id") && (!is_id_populated) {
+				err = tlerr.NotFoundError{Format: "Resource not found"}
+				return err
+			}
 		}
 
 		if entry.IsPopulated() {
@@ -5424,6 +5648,76 @@ var DbToYang_intf_eth_port_config_xfmr SubTreeXfmrDbToYang = func(inParams XfmrP
 	}
 
 	return err
+}
+
+var Subscribe_intf_eth_port_config_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		log.Info("Subscribe_intf_eth_port_config_xfmr: inParams.subscProc: ", inParams.subscProc)
+
+		pathInfo := NewPathInfo(inParams.uri)
+		targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+		log.Infof("Subscribe_intf_eth_port_config_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
+		log.Infof("Subscribe_intf_eth_port_config_xfmr:- Target URI path:%s", targetUriPath)
+
+		// to handle the TRANSLATE_SUBSCRIBE
+		result.nOpts = new(notificationOpts)
+		result.nOpts.pType = OnChange
+		result.nOpts.mInterval = 15
+		result.isVirtualTbl = false
+		result.needCache = true
+
+		ifName := pathInfo.Var("name")
+		log.Info("Subscribe_intf_eth_port_config_xfmr: ifName: ", ifName)
+
+		// for PORTCHANNEL_MEMBER table
+		po_mem_key := "*" + "|" + "*"
+
+		if ifName == "" {
+			ifName = "*"
+		} else if ifName != "*" {
+			ifName = *(utils.GetNativeNameFromUIName(&ifName))
+			po_mem_key = "*" + "|" + ifName
+		}
+
+		result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"PORT": {ifName: {"speed": "port-speed", "fec": "port-fec"}},
+			"MGMT_PORT": {ifName: {"autoneg": "auto-negotiate", "speed": "port-speed"}}}}
+
+		result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB: {"PORTCHANNEL_MEMBER": {po_mem_key: "aggregate-id"}}}
+
+		log.Info("Subscribe_intf_eth_port_config_xfmr: result ", result)
+	}
+	return result, err
+}
+
+var DbToYangPath_intf_eth_port_config_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	log.Info("DbToYangPath_intf_eth_port_config_path_xfmr: params: ", params)
+
+	intfRoot := "/openconfig-interfaces:interfaces/interface"
+
+	if (params.tblName != "PORT") && (params.tblName != "PORTCHANNEL_MEMBER") &&
+		(params.tblName != "MGMT_PORT") {
+		log.Info("DbToYangPath_intf_eth_port_config_path_xfmr: from wrong table: ", params.tblName)
+		return nil
+	}
+
+	if (params.tblName == "PORT") && (len(params.tblKeyComp) > 0) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+	} else if (params.tblName == "PORTCHANNEL_MEMBER") && (len(params.tblKeyComp) > 1) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[1]
+	} else if (params.tblName == "MGMT_PORT") && (len(params.tblKeyComp) > 0) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+	} else {
+		log.Info("DbToYangPath_intf_eth_port_config_path_xfmr, wrong param: tbl ", params.tblName, " key ", params.tblKeyComp)
+		return nil
+	}
+
+	log.Info("DbToYangPath_intf_eth_port_config_path_xfmr: params.ygPathkeys: ", params.ygPathKeys)
+
+	return nil
 }
 
 // YangToDb_subintf_ipv6_tbl_key_xfmr is a YangToDB Key transformer for IPv6 config.

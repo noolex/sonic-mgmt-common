@@ -322,9 +322,9 @@ func FillNtpServer(keyName string, ntpqList []string, ntpServers *ocbinds.Openco
 
 		offset_sec, _ := strconv.ParseFloat(offset, 64)
 		offset_milli := offset_sec * 1000
-		currNtpServer.State.Peeroffset = &offset_milli
+		currNtpServer.State.PeerOffset = &offset_milli
 
-		currNtpServer.State.Selmode = &selMode
+		currNtpServer.State.SelMode = &selMode
 
 		poll_num, _ := strconv.ParseUint(poll, 10, 32)
 		poll_num32 := uint32(poll_num)
@@ -334,18 +334,18 @@ func FillNtpServer(keyName string, ntpqList []string, ntpServers *ocbinds.Openco
 		stratum_num8 := uint8(stratum_num)
 		currNtpServer.State.Stratum = &stratum_num8
 
-		currNtpServer.State.Peertype = &peer_type
+		currNtpServer.State.PeerType = &peer_type
 
 		jitter_sec, _ := strconv.ParseFloat(jitter, 64)
 		jitter_milli := jitter_sec * 1000
-		currNtpServer.State.Peerjitter = &jitter_milli
+		currNtpServer.State.PeerJitter = &jitter_milli
 
 		/* reach is octal string */
 		currNtpServer.State.Reach = &reach
 
 		delay_sec, _ := strconv.ParseFloat(delay, 64)
 		delay_milli := delay_sec * 1000
-		currNtpServer.State.Peerdelay = &delay_milli
+		currNtpServer.State.PeerDelay = &delay_milli
 
 		currNtpServer.State.Refid = &refId
 	}
@@ -387,14 +387,14 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/address") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:key-id") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:minpoll") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/openconfig-system-ext:maxpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/config/maxpoll") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state") &&
 		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/address") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") &&
-		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/key-id") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/minpoll") &&
+		(requestUriPath != "/openconfig-system:system/ntp/servers/server/state/maxpoll") {
 		log.Info("ProcessGetNtpServer: no return of ntp server state for ", requestUriPath)
 		return nil
 	}
@@ -627,9 +627,9 @@ func ProcessGetNtpServer(inParams XfmrParams, vrfName string, isMgmtVrfEnabled b
 
 	// Return here if no need to access ntpq
 	if getServConfigOnly ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:key-id") ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:minpoll") ||
-		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/openconfig-system-ext:maxpoll") {
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/key-id") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/minpoll") ||
+		(requestUriPath == "openconfig-system:system/ntp/servers/server/state/maxpoll") {
 		return nil
 	}
 

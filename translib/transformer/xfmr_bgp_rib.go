@@ -143,7 +143,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 		}
 	}
 
-	ipv4LocRibRouteAttrSets := ipv4LocRibRoute_obj.AttrSets
+	ipv4LocRibRouteAttrSets := ipv4LocRibRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		ipv4LocRibRouteAttrSets.AtomicAggregate = &value
@@ -181,7 +181,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv4LocRibRouteAttrSets.AsPath.AsSegment = append(ipv4LocRibRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -211,7 +211,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv4LocRibRouteAttrSets.Community = append(ipv4LocRibRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -222,7 +222,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRib_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv4LocRibRouteAttrSets.ExtCommunity = append(ipv4LocRibRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -348,7 +348,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_data(ipv6LocRibRoutes_obj *ocbinds.Openconf
 		}
 	}
 
-	ipv6LocRibRouteAttrSets := ipv6LocRibRoute_obj.AttrSets
+	ipv6LocRibRouteAttrSets := ipv6LocRibRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		ipv6LocRibRouteAttrSets.AtomicAggregate = &value
@@ -386,7 +386,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_data(ipv6LocRibRoutes_obj *ocbinds.Openconf
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv6LocRibRouteAttrSets.AsPath.AsSegment = append(ipv6LocRibRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -418,7 +418,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_data(ipv6LocRibRoutes_obj *ocbinds.Openconf
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv6LocRibRouteAttrSets.Community = append(ipv6LocRibRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -429,7 +429,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_data(ipv6LocRibRoutes_obj *ocbinds.Openconf
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRib_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv6LocRibRouteAttrSets.ExtCommunity = append(ipv6LocRibRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -606,7 +606,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_prefix_data(ipv4LocRibPaths_obj *ocbinds.Op
 		}
 	}
 
-	ipv4LocRibRouteAttrSets := ipv4LocRibPath_obj.AttrSets
+	ipv4LocRibRouteAttrSets := ipv4LocRibPath_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		ipv4LocRibRouteAttrSets.AtomicAggregate = &value
@@ -644,7 +644,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_prefix_data(ipv4LocRibPaths_obj *ocbinds.Op
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv4LocRibRouteAttrSets.AsPath.AsSegment = append(ipv4LocRibRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -674,7 +674,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_prefix_data(ipv4LocRibPaths_obj *ocbinds.Op
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv4LocRibRouteAttrSets.Community = append(ipv4LocRibRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -685,7 +685,7 @@ func fill_ipv4_spec_pfx_path_loc_rib_prefix_data(ipv4LocRibPaths_obj *ocbinds.Op
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv4LocRibRouteAttrSets.ExtCommunity = append(ipv4LocRibRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -752,7 +752,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_prefix_data(ipv6LocRibPaths_obj *ocbinds.Op
 		}
 	}
 
-	ipv6LocRibRouteAttrSets := ipv6LocRibPath_obj.AttrSets
+	ipv6LocRibRouteAttrSets := ipv6LocRibPath_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		ipv6LocRibRouteAttrSets.AtomicAggregate = &value
@@ -790,7 +790,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_prefix_data(ipv6LocRibPaths_obj *ocbinds.Op
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv6LocRibRouteAttrSets.AsPath.AsSegment = append(ipv6LocRibRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -820,7 +820,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_prefix_data(ipv6LocRibPaths_obj *ocbinds.Op
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv6LocRibRouteAttrSets.Community = append(ipv6LocRibRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -831,7 +831,7 @@ func fill_ipv6_spec_pfx_path_loc_rib_prefix_data(ipv6LocRibPaths_obj *ocbinds.Op
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv6LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_LocRibPrefix_Routes_Route_LocRibPrefixPaths_Paths_Path_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv6LocRibRouteAttrSets.ExtCommunity = append(ipv6LocRibRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1087,7 +1087,7 @@ func fill_ipv4_spec_pfx_nbr_in_pre_rib_data(ipv4InPreRoute_obj *ocbinds.
 	}
 
 	/* Attr Sets */
-	routeAttrSets := ipv4InPreRoute_obj.AttrSets
+	routeAttrSets := ipv4InPreRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		routeAttrSets.AtomicAggregate = &value
@@ -1131,7 +1131,7 @@ func fill_ipv4_spec_pfx_nbr_in_pre_rib_data(ipv4InPreRoute_obj *ocbinds.
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					routeAttrSets.AsPath.AsSegment = append(routeAttrSets.AsPath.AsSegment, &_segment)
@@ -1156,7 +1156,7 @@ func fill_ipv4_spec_pfx_nbr_in_pre_rib_data(ipv4InPreRoute_obj *ocbinds.
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					routeAttrSets.Community = append(routeAttrSets.Community, _community_union)
 				}
 			}
@@ -1167,7 +1167,7 @@ func fill_ipv4_spec_pfx_nbr_in_pre_rib_data(ipv4InPreRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					routeAttrSets.ExtCommunity = append(routeAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1261,7 +1261,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data(ipv6InPreRoute_obj *ocbinds.
 	}
 
 	/* Attr Sets */
-	routeAttrSets := ipv6InPreRoute_obj.AttrSets
+	routeAttrSets := ipv6InPreRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		routeAttrSets.AtomicAggregate = &value
@@ -1305,7 +1305,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data(ipv6InPreRoute_obj *ocbinds.
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					routeAttrSets.AsPath.AsSegment = append(routeAttrSets.AsPath.AsSegment, &_segment)
@@ -1330,7 +1330,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data(ipv6InPreRoute_obj *ocbinds.
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					routeAttrSets.Community = append(routeAttrSets.Community, _community_union)
 				}
 			}
@@ -1341,7 +1341,7 @@ func fill_ipv6_spec_pfx_nbr_in_pre_rib_data(ipv6InPreRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					routeAttrSets.ExtCommunity = append(routeAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1427,7 +1427,7 @@ func fill_ipv4_spec_pfx_nbr_in_post_rib_data(ipv4InPostRoute_obj *ocbinds.
 	}
 
 	/* Attr Sets */
-	routeAttrSets := ipv4InPostRoute_obj.AttrSets
+	routeAttrSets := ipv4InPostRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		routeAttrSets.AtomicAggregate = &value
@@ -1471,7 +1471,7 @@ func fill_ipv4_spec_pfx_nbr_in_post_rib_data(ipv4InPostRoute_obj *ocbinds.
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					routeAttrSets.AsPath.AsSegment = append(routeAttrSets.AsPath.AsSegment, &_segment)
@@ -1503,7 +1503,7 @@ func fill_ipv4_spec_pfx_nbr_in_post_rib_data(ipv4InPostRoute_obj *ocbinds.
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					routeAttrSets.Community = append(routeAttrSets.Community, _community_union)
 				}
 			}
@@ -1514,7 +1514,7 @@ func fill_ipv4_spec_pfx_nbr_in_post_rib_data(ipv4InPostRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					routeAttrSets.ExtCommunity = append(routeAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1615,7 +1615,7 @@ func fill_ipv6_spec_pfx_nbr_in_post_rib_data(ipv6InPostRoute_obj *ocbinds.
 	}
 
 	/* Attr Sets */
-	routeAttrSets := ipv6InPostRoute_obj.AttrSets
+	routeAttrSets := ipv6InPostRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		routeAttrSets.AtomicAggregate = &value
@@ -1659,7 +1659,7 @@ func fill_ipv6_spec_pfx_nbr_in_post_rib_data(ipv6InPostRoute_obj *ocbinds.
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					routeAttrSets.AsPath.AsSegment = append(routeAttrSets.AsPath.AsSegment, &_segment)
@@ -1695,7 +1695,7 @@ func fill_ipv6_spec_pfx_nbr_in_post_rib_data(ipv6InPostRoute_obj *ocbinds.
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					routeAttrSets.Community = append(routeAttrSets.Community, _community_union)
 				}
 			}
@@ -1706,7 +1706,7 @@ func fill_ipv6_spec_pfx_nbr_in_post_rib_data(ipv6InPostRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibInPost_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					routeAttrSets.ExtCommunity = append(routeAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1806,7 +1806,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data(ipv4OutPostRoute_obj *ocbinds.
 		}
 	}
 
-	ipv4OutPostRouteAttrSets := ipv4OutPostRoute_obj.AttrSets
+	ipv4OutPostRouteAttrSets := ipv4OutPostRoute_obj.AttrSets.State
 
 	if value, ok := prefixData["atomicAggregate"].(bool); ok {
 		ipv4OutPostRouteAttrSets.AtomicAggregate = &value
@@ -1849,7 +1849,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data(ipv4OutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv4OutPostRouteAttrSets.AsPath.AsSegment = append(ipv4OutPostRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -1874,7 +1874,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data(ipv4OutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv4OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv4OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv4OutPostRouteAttrSets.Community = append(ipv4OutPostRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -1885,7 +1885,7 @@ func fill_ipv4_spec_pfx_nbr_out_post_rib_data(ipv4OutPostRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv4OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv4OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv4Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv4OutPostRouteAttrSets.ExtCommunity = append(ipv4OutPostRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1960,7 +1960,7 @@ func fill_ipv6_spec_pfx_nbr_out_post_rib_data(ipv6OutPostRoute_obj *ocbinds.
 		}
 	}
 
-	ipv6OutPostRouteAttrSets := ipv6OutPostRoute_obj.AttrSets
+	ipv6OutPostRouteAttrSets := ipv6OutPostRoute_obj.AttrSets.State
 
 	if value, ok := prefixData["atomicAggregate"].(bool); ok {
 		ipv6OutPostRouteAttrSets.AtomicAggregate = &value
@@ -2003,7 +2003,7 @@ func fill_ipv6_spec_pfx_nbr_out_post_rib_data(ipv6OutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv6OutPostRouteAttrSets.AsPath.AsSegment = append(ipv6OutPostRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -2028,7 +2028,7 @@ func fill_ipv6_spec_pfx_nbr_out_post_rib_data(ipv6OutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := ipv6OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := ipv6OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					ipv6OutPostRouteAttrSets.Community = append(ipv6OutPostRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -2039,7 +2039,7 @@ func fill_ipv6_spec_pfx_nbr_out_post_rib_data(ipv6OutPostRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv6OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv6OutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_Ipv6Unicast_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv6OutPostRouteAttrSets.ExtCommunity = append(ipv6OutPostRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}

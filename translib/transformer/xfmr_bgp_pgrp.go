@@ -306,7 +306,7 @@ var DbToYangPath_bgp_peer_group_path_xfmr PathXfmrDbToYangFunc = func(params Xfm
 	if params.tblName == "BGP_PEER_GROUP" || params.tblName == "BGP_PEER_GROUP_AF" {
 		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
 	} else {
-		log.Errorf("BGP peer group  Path-xfmr: table name %s not in view", params.tblKeyComp)
+		log.Errorf("BGP peer group  Path-xfmr: table name %s not in view", params.tblName)
 		return oper_err
 	}
 	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"

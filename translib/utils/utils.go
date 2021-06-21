@@ -460,13 +460,13 @@ func devMetaNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) 
 		" event: ", event)
 	switch event {
 	case db.SEventHSet, db.SEventHDel:
-		updateAliasFromDB(key, d)
+		updateInfoFromDB(key, d)
 	}
 
 	return nil
 }
 
-func updateAliasFromDB(key *db.Key, d *db.DB) {
+func updateInfoFromDB(key *db.Key, d *db.DB) {
 	key0 := key.Get(0)
 	entry, err := d.GetEntry(&db.TableSpec{Name: "DEVICE_METADATA"}, *key)
 	if err != nil {
@@ -532,7 +532,7 @@ func populatePortDS() error {
 	}
 	populatePortchannel(d)
 
-	updateAliasFromDB(&db.Key{Comp: []string{"localhost"}}, d)
+	updateInfoFromDB(&db.Key{Comp: []string{"localhost"}}, d)
 
 	return err
 }
