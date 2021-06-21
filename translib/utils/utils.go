@@ -49,6 +49,9 @@ const (
 /* Representation of FEC derivation table */
 type fec_info_t map[string]map[string]map[string][]string
 
+/* MAC address from localhost entry */
+var macAddress string
+
 /* VLAN to tagged & untagged member sets map */
 var vlanMemberCache *sync.Map
 
@@ -457,19 +460,25 @@ func devMetaNotifHandler(d *db.DB, skey *db.SKey, key *db.Key, event db.SEvent) 
 		" event: ", event)
 	switch event {
 	case db.SEventHSet, db.SEventHDel:
-		updateAliasFromDB(key, d)
+		updateInfoFromDB(key, d)
 	}
 
 	return nil
 }
 
-func updateAliasFromDB(key *db.Key, d *db.DB) {
+// updateInfoFromDB retrieves info about alias mode and MAC Address from DEVICE_METADATA table.
+func updateInfoFromDB(key *db.Key, d *db.DB) {
 	key0 := key.Get(0)
 	entry, err := d.GetEntry(&db.TableSpec{Name: "DEVICE_METADATA"}, *key)
 	if err != nil {
 		log.Errorf("Retrieval of entry for %s failed from port table", key0)
 		return
 	}
+	mac, ok := entry.Field["mac"]
+	if !ok {
+		log.Errorf("Retrieval of MAC address for %s failed", key0)
+	}
+	macAddress = mac
 	aliasVal, ok := entry.Field["intf_naming_mode"]
 	if !ok {
 		// don't return error, keep populating data structures
@@ -524,7 +533,7 @@ func populatePortDS() error {
 	}
 	populatePortchannel(d)
 
-	updateAliasFromDB(&db.Key{Comp: []string{"localhost"}}, d)
+	updateInfoFromDB(&db.Key{Comp: []string{"localhost"}}, d)
 
 	return err
 }
@@ -636,6 +645,11 @@ func GetFromCacheVlanMemberList(vlanName string) (Set, Set) {
 		return memberlist.(*vlan_member_list).tagged, memberlist.(*vlan_member_list).untagged
 	}
 	return Set{}, Set{}
+}
+
+// GetMacAddress gets MAC address in localhost entry from DEVICE_METADATA table
+func GetMacAddress() string {
+	return macAddress
 }
 
 // SortAsPerTblDeps - sort transformer result table list based on dependencies (using CVL API) tables to be used for CRUD operations

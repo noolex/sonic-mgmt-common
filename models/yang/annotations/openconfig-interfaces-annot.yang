@@ -133,7 +133,11 @@ module openconfig-interfaces-annot {
             sonic-ext:field-name "oper_status";
         }
     }
-
+    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:mac-address {
+        deviate add {
+            sonic-ext:field-transformer "intf_mac_address_xfmr";
+        }
+    }
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf-ext:rate-interval {
         deviate add {
             sonic-ext:field-name "port_load_interval";
