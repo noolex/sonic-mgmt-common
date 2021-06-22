@@ -20,10 +20,12 @@ package transformer
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
 	log "github.com/golang/glog"
 )
@@ -31,6 +33,7 @@ import (
 func init() {
 	XlateFuncBind("rpc_get_interface_counters", rpc_get_interface_counters)
 	XlateFuncBind("rpc_clear_relay_counters", rpc_clear_relay_counters)
+	XlateFuncBind("rpc_get_rif_counters", rpc_get_rif_counters)
 }
 
 const (
@@ -280,4 +283,190 @@ var rpc_clear_relay_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.
 	err = dbs[db.ApplDB].Publish("DHCP_RELAY_NOTIFICATIONS", data)
 
 	return nil, err
+}
+
+func rifGetSubInterfaceShortName(longName *string) *string {
+
+	var shortName string
+
+	if strings.Contains(*longName, "Ethernet") {
+		shortName = strings.Replace(*longName, "Ethernet", "Eth", -1)
+	} else if strings.Contains(*longName, "PortChannel") {
+		shortName = strings.Replace(*longName, "PortChannel", "Po", -1)
+	} else {
+		shortName = *longName
+	}
+
+	log.V(3).Infof("rifGetSubInterfaceShortName %s => %s", *longName, shortName)
+
+	return &shortName
+}
+
+var rpc_get_rif_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+	var err error
+	var result struct {
+		Output struct {
+			Status        int32  `json:"status"`
+			Status_detail string `json:"status-detail"`
+			Interfaces    struct {
+				Interface map[string]InterfaceObj `json:"interface"`
+			} `json:"interfaces"`
+		} `json:"sonic-counters:output"`
+	}
+
+	log.Infof("Inside rpc_get_rif_counters Input: %s\n", string(body))
+	var rifKeyPerIntf bool = false
+	var rifKeyStr string
+	/* Get input data */
+	var inputParams map[string]interface{}
+	err = json.Unmarshal(body, &inputParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if input, err := inputParams["sonic-counters:rif_count:input"]; err {
+		inputParams = input.(map[string]interface{})
+	} else {
+		return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
+	}
+
+	rifKey, found := inputParams["riface"]
+	if !found {
+		return nil, tlerr.InvalidArgs("INVALID_PAYLOAD")
+	}
+	log.V(1).Info("rifKey=", rifKey)
+	rifKeyStr = fmt.Sprintf("%v", rifKey)
+	if rifKey != nil && rifKeyStr != "all" {
+		rifKeyPerIntf = true
+		intfType, _, _ := getIntfTypeByName(rifKeyStr)
+		if intfType == IntfTypeSubIntf {
+			rifKeyStr = *rifGetSubInterfaceShortName(&rifKeyStr)
+			log.Info("Updated rifKeyStr=", rifKeyStr)
+		}
+	}
+	log.Info("rifKeyPerIntf=", rifKeyPerIntf)
+
+	result.Output.Status = 1
+	result.Output.Interfaces.Interface = make(map[string]InterfaceObj)
+
+	pList := []string{"Ethernet", "PortChannel", "Vlan", "Eth", "Po"}
+
+	portOidmapTs := &db.TableSpec{Name: "COUNTERS_RIF_NAME_MAP"}
+	ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+	if err != nil {
+		result.Output.Status_detail = "Server error, data not found!"
+		return json.Marshal(&result)
+	}
+	cntTs := &db.TableSpec{Name: "COUNTERS"}
+	cntTs_cp := &db.TableSpec{Name: "COUNTERS_BACKUP"}
+
+	for ifName, oid := range ifCountInfo.Field {
+		if rifKeyPerIntf && ifName != rifKeyStr {
+			continue
+		}
+		if checkPrefixMatch(pList, ifName) {
+			var intfObj InterfaceObj
+			entry, dbErr := dbs[db.CountersDB].GetEntry(cntTs, db.Key{Comp: []string{oid}})
+			if dbErr != nil {
+				log.Info("rpc_get_rif_counters : not able find the oid entry in DB Counters table")
+				continue
+			}
+			entry_backup, dbErr := dbs[db.CountersDB].GetEntry(cntTs_cp, db.Key{Comp: []string{oid}})
+			if dbErr != nil {
+				m := make(map[string]string)
+				for attr := range entry.Field {
+					m[attr] = "0"
+				}
+				m["LAST_CLEAR_TIMESTAMP"] = "0"
+				entry_backup = db.Value{Field: m}
+			}
+			intfType, _, _ := getIntfTypeByName(ifName)
+			intTbl := IntfTypeTblMap[intfType]
+			prtEntry, prtErr := dbs[db.ApplDB].GetEntry(&db.TableSpec{Name: intTbl.appDb.portTN}, db.Key{Comp: []string{ifName}})
+			if prtErr != nil {
+				log.Info("rpc_get_rif_counters : PORT entry not found in AppDb " + ifName)
+				continue
+			}
+			uiName := *utils.GetUINameFromNativeName(&ifName)
+			intfObj.Name = uiName
+			intfObj.State.Oper_Status = "DOWN"
+			operStatus, ok := prtEntry.Field[PORT_OPER_STATUS]
+			if ok {
+				if operStatus == "up" {
+					intfObj.State.Oper_Status = "UP"
+				}
+			}
+			interval, ok := prtEntry.Field[PORT_RATE_INTERVAL]
+			if ok {
+				tmp, err := strconv.ParseUint(interval, 10, 16)
+				if err == nil {
+					intfObj.State.Rate_Interval = uint16(tmp)
+				}
+			}
+
+			var e error
+			for attr, dbAttrList := range rpcCountersMap {
+				cnt_val := uint64(0)
+				for _, dbAttr := range dbAttrList {
+					var val *uint64
+					e = getCounters(&entry, &entry_backup, dbAttr, &val)
+					if e != nil {
+						log.Info("RPC getCounters failed, ", e)
+						continue
+					}
+					cnt_val = cnt_val + *val
+				}
+				switch attr {
+				case "in-octets":
+					intfObj.State.Counters.In_Octets = cnt_val
+				case "in-pkts":
+					intfObj.State.Counters.In_Pkts = cnt_val
+				case "in-discards":
+					intfObj.State.Counters.In_Discards = cnt_val
+				case "in-errors":
+					intfObj.State.Counters.In_Errors = cnt_val
+				case "in-oversize-frames":
+					intfObj.State.Counters.In_Oversize_Frames = cnt_val
+				case "out-octets":
+					intfObj.State.Counters.Out_Octets = cnt_val
+				case "out-pkts":
+					intfObj.State.Counters.Out_Pkts = cnt_val
+				case "out-discards":
+					intfObj.State.Counters.Out_Discards = cnt_val
+				case "out-errors":
+					intfObj.State.Counters.Out_Errors = cnt_val
+				case "out-oversize-frames":
+					intfObj.State.Counters.Out_Oversize_Frames = cnt_val
+				}
+			}
+			for attr, dbAttr := range rpcRateCountersMap {
+				value, err := getIntfCounterValue(&entry, dbAttr)
+				if err == nil {
+					switch attr {
+					case "in-octets-per-second":
+						intfObj.State.Counters.In_Octets_Per_Second = value
+					case "in-bits-per-second":
+						intfObj.State.Counters.In_Bits_Per_Second = value
+					case "in-pkts-per-second":
+						intfObj.State.Counters.In_Pkts_Per_Second = value
+					case "in-utilization":
+						intfObj.State.Counters.In_Utilization = uint8(value)
+					case "out-bits-per-second":
+						intfObj.State.Counters.Out_Bits_Per_Second = value
+					case "out-octets-per-second":
+						intfObj.State.Counters.Out_Octets_Per_Second = value
+					case "out-pkts-per-second":
+						intfObj.State.Counters.Out_Pkts_Per_Second = value
+					case "out-utilization":
+						intfObj.State.Counters.Out_Utilization = uint8(value)
+					}
+				}
+			}
+			result.Output.Interfaces.Interface[uiName] = intfObj
+		}
+	}
+
+	result.Output.Status = 0
+	result.Output.Status_detail = "Success!"
+	return json.Marshal(&result)
 }

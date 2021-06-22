@@ -148,4 +148,114 @@ module sonic-counters {
             }
         }
     }
+
+    rpc rif_counters {
+        description "RPC to get routing interface counters.";
+    input {
+        leaf riface {
+            type string;
+            description
+                "Shows counters for given routing iface name. if routing iface is not present, the default all is used";
+        }
+    }
+
+        output {
+            leaf status {
+                type int32;
+                description
+                    "The status of the operation execution request.";
+            }
+            leaf status-detail {
+                type string;
+                description
+                    "The detailed status of the operation execution request.";
+            }
+
+            container rifs {
+                list rif {
+                    key "name";
+
+                    leaf name {
+                        type string;
+                    }
+                    container state {
+                        leaf oper-status {
+                            type string;
+                        }
+                        leaf rate-interval {
+                            type uint16;
+                        }
+                        container counters {
+                            leaf in-octets {
+                                type uint64;
+                            }
+                            leaf in-pkts {
+                                type uint64;
+                            }
+                            leaf in-discards {
+                                type uint64;
+                            }
+                            leaf in-errors {
+                                type uint64;
+                            }
+                            leaf in-oversize-frames {
+                                type uint64;
+                            }
+                            leaf in-octets-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-pkts-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-bits-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf in-utilization {
+                                type scommon:percentage;
+                            }
+                            leaf out-octets {
+                                type uint64;
+                            }
+                            leaf out-pkts {
+                                type uint64;
+                            }
+                            leaf out-discards {
+                                type uint64;
+                            }
+                            leaf out-errors {
+                                type uint64;
+                            }
+                            leaf out-oversize-frames {
+                                type uint64;
+                            }
+                            leaf out-octets-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-pkts-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-bits-per-second {
+                                type decimal64 {
+                                    fraction-digits 2;
+                                }
+                            }
+                            leaf out-utilization {
+                                type scommon:percentage;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

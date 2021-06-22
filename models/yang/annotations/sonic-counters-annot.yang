@@ -18,4 +18,9 @@ module sonic-counters-annot {
             sonic-ext:rpc-callback "rpc_clear_relay_counters";
         }
     }
+    deviation /scnts:rif_counters {
+        deviate add {
+            sonic-ext:rpc-callback "rpc_get_rif_counters";
+        }
+    }
 }
