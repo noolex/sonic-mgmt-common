@@ -185,7 +185,11 @@ func (ni *notificationAppInfo) isLeafPath() bool {
 		return false
 	}
 	for _, yfield := range pmap.dbFldYgPathMap {
-		return len(yfield) == 0
+		if len(yfield) == 0 {
+			return true
+		} else if yfield[0] != '{' {
+			return false
+		}
 	}
 	return false
 }
