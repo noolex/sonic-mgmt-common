@@ -212,12 +212,6 @@ module sonic-portchannel-interface {
                     default disable;
                     description
                         "Enable IPv6 link local address on interface";
-                    must "count(/svlan:sonic-vlan/svlan:VLAN_MEMBER/svlan:VLAN_MEMBER_LIST[svlan:ifname=current()/../pch_name]) = 0"
-                    {
-                        error-message "Interface configured as a member of Vlan. Cannot enable IPv6";
-                        error-app-tag intf-po-member;
-                    }
-
                 }
 
                 leaf unnumbered {
