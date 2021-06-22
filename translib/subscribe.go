@@ -55,6 +55,7 @@ const (
 	niWildcardPath
 	niPartial
 	niOnChangeSupported
+	niKeyFields // some db fields mapped to yang keys
 )
 
 type notificationInfo struct {
@@ -230,6 +231,12 @@ func (sc *subscribeContext) newNInfo(nAppInfo *notificationAppInfo, aInfo *appIn
 		if len(pi.rltvPath) != 0 && pi.rltvPath[0] != '/' {
 			pi.rltvPath = "/" + pi.rltvPath
 		}
+		// Look for fields mapped to yang key - formatted as "{xyz}"
+		for _, leaf := range pi.dbFldYgPathMap {
+			if len(leaf) != 0 && leaf[0] == '{' {
+				nInfo.flags.Set(niKeyFields)
+			}
+		}
 	}
 
 	if nAppInfo.isLeafPath() {
@@ -401,7 +408,7 @@ func (sc *subscribeContext) startSubscribe() error {
 func (ng *notificationGroup) add(nInfo *notificationInfo) {
 	keyStr := strings.Join(nInfo.key.Comp, "/")
 	if ng.nInfos == nil {
-		ng.nInfos = map[string][]*notificationInfo{keyStr: []*notificationInfo{nInfo}}
+		ng.nInfos = map[string][]*notificationInfo{keyStr: {nInfo}}
 	} else {
 		ng.nInfos[keyStr] = append(ng.nInfos[keyStr], nInfo)
 	}
@@ -570,31 +577,39 @@ func (ne *notificationEvent) process() {
 			ne.sInfo = nInfo.sInfo
 			log.Infof("[%s] processing path: %s", ne.id, path.String(nInfo.path))
 
-			modFields := ne.findModifiedFields(nInfo, dbDiff)
-			if len(modFields) == 0 {
-				log.Infof("[%s] no fields updated", ne.id)
-				continue
+			yInfos := ne.findModifiedFields(nInfo, dbDiff)
+			changed := false
+			if len(yInfos.old) != 0 {
+				changed = true
+				ne.entry = &dbDiff.oldValue
+				ne.sendNotification(nInfo, yInfos.old)
 			}
-
-			ne.sendNotification(nInfo, modFields)
+			if len(yInfos.new) != 0 {
+				changed = true
+				ne.entry = &dbDiff.newValue
+				ne.sendNotification(nInfo, yInfos.new)
+			}
+			if !changed {
+				log.Infof("[%s] no fields updated", ne.id)
+			}
 		}
 	}
 }
 
 type onchangeCacheDiff struct {
+	oldValue      db.Value
+	newValue      db.Value
 	EntryCreated  bool
 	EntryDeleted  bool
+	CreatedFields []string
 	UpdatedFields []string
 	DeletedFields []string
 }
 
 func (c *onchangeCacheDiff) String() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s[%t], ", "EntryCreated", c.EntryCreated)
-	fmt.Fprintf(&b, "%s[%t], ", "EntryDeleted", c.EntryDeleted)
-	fmt.Fprintf(&b, "%s->%v, ", "UpdatedFields", c.UpdatedFields)
-	fmt.Fprintf(&b, "%s->%v, ", "DeletedFields", c.DeletedFields)
-	return b.String()
+	return fmt.Sprintf(
+		"{EntryCreated=%t, EntryDeleted=%t, CreatedFields=%v, UpdatedFields=%v, DeletedFields=%v}",
+		c.EntryCreated, c.EntryDeleted, c.CreatedFields, c.UpdatedFields, c.DeletedFields)
 }
 
 // DiffAndMergeOnChangeCache Compare modified entry with cached entry and
@@ -613,9 +628,12 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 	key := ne.key
 	entryDeleted := (ne.event == db.SEventDel)
 
-	cacheEntryDiff := &onchangeCacheDiff{}
-
 	cachedEntry, val, e := d.OnChangeCacheUpdate(ts, *key)
+
+	cacheEntryDiff := &onchangeCacheDiff{
+		oldValue: cachedEntry,
+		newValue: val,
+	}
 
 	exists := !((e != nil) || (len(cachedEntry.Field) == 0))
 	if exists { // Already exists in cache
@@ -623,11 +641,6 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 		if entryDeleted {
 			// Entry deleted.
 			cacheEntryDiff.EntryDeleted = true
-			for fldName := range cachedEntry.Field {
-				cacheEntryDiff.DeletedFields = append(
-					cacheEntryDiff.DeletedFields, fldName)
-			}
-			ne.entry = &cachedEntry
 			return cacheEntryDiff, nil
 		}
 
@@ -637,8 +650,7 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 			}
 			if _, fldOk := val.Field[fldName]; !fldOk {
 				cacheEntryDiff.DeletedFields = append(
-					cacheEntryDiff.DeletedFields, fldName)
-				cachedEntry.Remove(fldName)
+					cacheEntryDiff.DeletedFields, strings.TrimSuffix(fldName, "@"))
 			}
 		}
 
@@ -646,10 +658,12 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 			if nf == "NULL" {
 				continue
 			}
-			if cachedEntry.Field[nf] != nv {
+			if cv, exists := cachedEntry.Field[nf]; !exists {
+				cacheEntryDiff.CreatedFields = append(
+					cacheEntryDiff.CreatedFields, strings.TrimSuffix(nf, "@"))
+			} else if cv != nv {
 				cacheEntryDiff.UpdatedFields = append(
-					cacheEntryDiff.UpdatedFields, nf)
-				cachedEntry.Set(nf, nv)
+					cacheEntryDiff.UpdatedFields, strings.TrimSuffix(nf, "@"))
 			}
 		}
 
@@ -660,68 +674,124 @@ func (ne *notificationEvent) DiffAndMergeOnChangeCache() (*onchangeCacheDiff, er
 
 	log.Infof("[%s] DiffAndMergeOnChangeCache: %v", ne.id, cacheEntryDiff)
 
-	ne.entry = &val
 	return cacheEntryDiff, nil
 }
 
+func (ne *notificationEvent) getFieldNames(v db.Value) []string {
+	var fields []string
+	for f := range v.Field {
+		if f != "NULL" {
+			fields = append(fields, strings.TrimSuffix(f, "@"))
+		}
+	}
+	return fields
+}
+
 // findModifiedFields determines db fields changed since last notification
-func (ne *notificationEvent) findModifiedFields(nInfo *notificationInfo, entryDiff *onchangeCacheDiff) []*yangNodeInfo {
-	var modFields []*yangNodeInfo
+func (ne *notificationEvent) findModifiedFields(nInfo *notificationInfo, entryDiff *onchangeCacheDiff) yangNodeInfoSet {
+	var yInfos yangNodeInfoSet
+	targetPathCreate := entryDiff.EntryCreated
+	targetPathDelete := entryDiff.EntryDeleted
+
+	if nInfo.flags.Has(niKeyFields) && !targetPathCreate && !targetPathDelete {
+		targetPathCreate, targetPathDelete = ne.processKeyFields(nInfo, entryDiff)
+	}
 
 	// When a new db entry is created, the notification infra can fetch full
 	// content of target path.
-	if entryDiff.EntryCreated {
+	if targetPathCreate {
 		log.Infof("[%s] Entry created;", ne.id)
-		modFields = append(modFields, &yangNodeInfo{})
-		return modFields
+		yInfos.new = append(yInfos.new, &yangNodeInfo{})
 	}
 
 	// Treat entry delete as update when 'partial' flag is set
 	if entryDiff.EntryDeleted && nInfo.flags.Has(niPartial) {
-		log.Infof("[%s] Entry deleted; but treating it as update", ne.id)
-		modFields = ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, false)
-		if len(modFields) == 0 {
-			log.Infof("[%s] empty entry; use target path", ne.id)
-			modFields = append(modFields, &yangNodeInfo{})
+		delFields := ne.getFieldNames(entryDiff.oldValue)
+		yInfos.old = ne.createYangPathInfos(nInfo, delFields, "update")
+		if len(yInfos.old) != 0 {
+			log.Infof("[%s] Entry deleted; but treating it as update", ne.id)
+			return yInfos
 		}
-		return modFields
 	}
 
-	// When entry is deleted, mark the whole target path as deleted if the
-	if entryDiff.EntryDeleted {
+	// When entry is deleted, mark the whole target path as deleted
+	if targetPathDelete {
 		log.Infof("[%s] Entry deleted;", ne.id)
-		modFields = append(modFields, &yangNodeInfo{deleted: true})
-		return modFields
+		yInfos.old = append(yInfos.old, &yangNodeInfo{deleted: true})
+	}
+
+	if targetPathCreate || targetPathDelete {
+		log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, yInfos)
+		return yInfos
 	}
 
 	// Collect yang leaf info for updated fields
 	if len(entryDiff.UpdatedFields) != 0 {
-		modFields = ne.createYangPathInfos(nInfo, entryDiff.UpdatedFields, false)
+		yInfos.new = ne.createYangPathInfos(nInfo, entryDiff.UpdatedFields, "update")
+	}
+
+	// Collect yang leaf info for created fields
+	if len(entryDiff.CreatedFields) != 0 {
+		yy := ne.createYangPathInfos(nInfo, entryDiff.CreatedFields, "create")
+		if len(yy) != 0 {
+			yInfos.new = append(yInfos.new, yy...)
+		}
 	}
 
 	// Collect yang leaf info for deleted fields
 	if len(entryDiff.DeletedFields) != 0 {
-		modFields = append(modFields,
-			ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, true)...)
+		yy := ne.createYangPathInfos(nInfo, entryDiff.DeletedFields, "delete")
+		if len(yy) != 0 {
+			yInfos.new = append(yInfos.new, yy...)
+		}
 	}
 
-	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, modFields)
-
-	return modFields
+	log.V(3).Infof("[%s] findModifiedFields returns %v", ne.id, yInfos)
+	return yInfos
 }
 
-func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields []string, isDelete bool) []*yangNodeInfo {
-	var yInfos []*yangNodeInfo
-	var opStr string
-	if isDelete {
-		opStr = "delete "
+func (ne *notificationEvent) processKeyFields(nInfo *notificationInfo, entryDiff *onchangeCacheDiff) (keyCreate, keyDelete bool) {
+	keyFields := map[string]bool{}
+	for _, nDbFldInfo := range nInfo.fields {
+		for field, leaf := range nDbFldInfo.dbFldYgPathMap {
+			if len(leaf) != 0 && leaf[0] == '{' {
+				keyFields[field] = true
+			}
+		}
 	}
+	for _, f := range entryDiff.DeletedFields {
+		if keyFields[f] {
+			log.Infof("[%s] deleted field %s is mapped to yang key; treat as path delete", ne.id, f)
+			keyDelete = true
+			break
+		}
+	}
+	for _, f := range entryDiff.CreatedFields {
+		if keyFields[f] {
+			log.Infof("[%s] created field %s is mapped to yang key; treat as path create", ne.id, f)
+			keyCreate = true
+			break
+		}
+	}
+	for _, f := range entryDiff.UpdatedFields {
+		if keyFields[f] {
+			log.Infof("[%s] updated field %s is mapped to yang key; treat as path delete+create", ne.id, f)
+			keyDelete = true
+			keyCreate = true
+			break
+		}
+	}
+	return
+}
+
+func (ne *notificationEvent) createYangPathInfos(nInfo *notificationInfo, fields []string, action string) []*yangNodeInfo {
+	var yInfos []*yangNodeInfo
+	isDelete := (action == "delete")
 
 	for _, f := range fields {
-		f = strings.TrimSuffix(f, "@") // Apps do not fill @ suffix for array fields
 		for _, nDbFldInfo := range nInfo.fields {
 			if leaf, ok := nDbFldInfo.dbFldYgPathMap[f]; ok {
-				log.Infof("[%s] %sfield=%s, path=%s/%s", ne.id, opStr, f, nDbFldInfo.rltvPath, leaf)
+				log.Infof("[%s] %s field=%s, path=%s/%s", ne.id, action, f, nDbFldInfo.rltvPath, leaf)
 				yInfos = append(yInfos, &yangNodeInfo{
 					parentPrefix: nDbFldInfo.rltvPath,
 					leafName:     leaf,
@@ -958,6 +1028,14 @@ func nextYangNodeForUpdate(nodes []*yangNodeInfo, indx int) (*yangNodeInfo, int)
 		}
 	}
 	return nil, -1
+}
+
+// yangNodeInfoSet contains yangNodeInfo mappings for old and new db entries.
+// Old mappings usually include db entry delete operations. New mappings
+// include entry create or update operations (including field delete).
+type yangNodeInfoSet struct {
+	old []*yangNodeInfo
+	new []*yangNodeInfo
 }
 
 // yangNodeInfo holds path and value for a yang leaf
