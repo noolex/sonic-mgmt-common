@@ -122,10 +122,6 @@ module sonic-mirror-session {
                         }
                     }
                     sonic-ext:custom-validation ValidateDstPort;
-                    must "count(../../MIRROR_SESSION_LIST[src_port=current()]) = 0" {
-                        error-message "destination port already configured in other mirror session";
-                        error-app-tag dst-port-already-configured;
-                    }
                     description
                         "Destination port configuration for port mirroring(SPAN).
                         For ERSPAN session set as erspan,
@@ -141,10 +137,7 @@ module sonic-mirror-session {
                             path "/spc:sonic-portchannel/spc:PORTCHANNEL/spc:PORTCHANNEL_LIST/spc:name";
                         }
                     }
-                    must "count(../../MIRROR_SESSION_LIST[dst_port=current()]) = 0" {
-                        error-message "source port already configured in other mirror session as destination port";
-                        error-app-tag src-port-already-configured-as-dst-port;
-                    }
+                    sonic-ext:custom-validation ValidateSrcPort;
                     description
                         "Source port configuration for mirroring. Can be configured for both SPAN/ERSPAN.
                         Supports both port and port-channel as arguments";

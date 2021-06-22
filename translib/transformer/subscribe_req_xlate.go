@@ -24,6 +24,8 @@ import (
 	"reflect"
 	"strings"
 
+	"strconv"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -367,6 +369,37 @@ func (reqXlator *subscribeReqXlator) translateTargetNodePath(trgtYgxPath *yangXp
 	return nil
 }
 
+func (pathXltr *subscribePathXlator) getKeyCompCnt(tblFld map[string]string) (int, error) {
+	if len(tblFld) > 0 {
+		ygXpathInfo := pathXltr.pathXlateInfo.ygXpathInfo
+		keyCmpCnt := 0
+		if cmpCntVal, ok := tblFld[KEY_COMP_CNT]; ok {
+			var err error
+			if keyCmpCnt, err = strconv.Atoi(cmpCntVal); err != nil {
+				log.Error(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate:getKeyCompCnt: Invalid value: ", cmpCntVal, " mentioned for the attribute: ", KEY_COMP_CNT, " in the subscribe function: ", ygXpathInfo.xfmrFunc)
+				return 0, tlerr.InternalError{Format: "Invalid value: " + cmpCntVal + " mentioned for the attribute: " + KEY_COMP_CNT + " in the subscribe function: " + ygXpathInfo.xfmrFunc, Path: pathXltr.uriPath}
+			}
+			log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate:getKeyCompCnt: ", KEY_COMP_CNT, ": ", keyCmpCnt, " in the subscribe function: ", ygXpathInfo.xfmrFunc, "for the path :", pathXltr.uriPath)
+			delete(tblFld, KEY_COMP_CNT)
+			return keyCmpCnt, nil
+		}
+	}
+	return 0, nil
+}
+
+func (pathXltr *subscribePathXlator) getKeyComp(dbKey string, keyCmpCnt int, dbNum db.DBNum) []string {
+	var keyComp []string
+	keyComp = strings.SplitN(dbKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator, 2)
+	if len(keyComp) > 1 {
+		if keyCmpCnt > 0 {
+			keyComp = strings.SplitN(keyComp[1], pathXltr.subReq.dbs[dbNum].Opts.KeySeparator, keyCmpCnt)
+		} else {
+			keyComp = strings.Split(keyComp[1], pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+		}
+	}
+	return keyComp
+}
+
 func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 	log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: reqUri: ", pathXltr.uriPath)
 
@@ -469,15 +502,19 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 						dbFldYgNameMap[intfVal] = intfVal
 					case map[string]string:
 						dbFldYgNameMap = intfVal
+						if keyCmpCnt, err := pathXltr.getKeyCompCnt(dbFldYgNameMap); err != nil {
+							return err
+						} else {
+							tblSpec.CompCt = keyCmpCnt
+						}
 					default:
 						log.Errorf(pathXltr.subReq.reqLogId+"Error: Onchange subscription: handleSubtreeNodeXlate: Incorrect type recieved from the Subscribe "+
 							"transformer callback: %v and the type is %v ", ygXpathInfo.xfmrFunc, intfVal)
 						return tlerr.InternalError{Format: "Onchange subscription: Incorrect type recieved from the Subscribe transformer callback", Path: pathXltr.uriPath}
 					}
-
-					keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+					keyComp := pathXltr.getKeyComp(dBKey, tblSpec.CompCt, dbNum)
 					if log.V(dbLgLvl) {
-						log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: secDbDataMap: keyComp: ", keyComp)
+						log.Info(pathXltr.subReq.reqLogId, "handleSubtreeNodeXlate: secDbDataMap: keyComp: ", keyComp, "; dBKey: ", dBKey)
 					}
 
 					for dbField, yangNodeName := range dbFldYgNameMap {
@@ -588,9 +625,14 @@ func (pathXltr *subscribePathXlator) handleSubtreeNodeXlate() error {
 						if log.V(dbLgLvl) {
 							log.Info(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: pathXltr.subReq.dbs[dbNum].Opts.KeySeparator: ", pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 						}
-						keyComp := strings.Split(dBKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
+						if keyCmpCnt, err := pathXltr.getKeyCompCnt(tblFld); err != nil {
+							return err
+						} else {
+							tblSpec.CompCt = keyCmpCnt
+						}
+						keyComp := pathXltr.getKeyComp(dBKey, tblSpec.CompCt, dbNum)
 						if log.V(dbLgLvl) {
-							log.Infof(pathXltr.subReq.reqLogId+"handleSubtreeNodeXlate: keyComp: %v ; tblFld %v", keyComp, tblFld)
+							log.Infof("%v handleSubtreeNodeXlate: keyComp: %v ; dBKey %v", pathXltr.subReq.reqLogId, keyComp, dBKey)
 						}
 						dbTblInfo := pathXltr.pathXlateInfo.addPathXlateInfo(tblSpec, &db.Key{keyComp}, dbNum)
 						dbYgPath := DbFldYgPathInfo{"", make(map[string]string)}

@@ -172,7 +172,8 @@ module sonic-mclag {
             list MCLAG_UNIQUE_IP_LIST {
                 key "if_name";
 
-                must "count(../../MCLAG_DOMAIN/MCLAG_DOMAIN_LIST/domain_id) != 0" {
+                must "(/scommon:operation/scommon:operation = 'DELETE') or "
+                    + "count(../../MCLAG_DOMAIN/MCLAG_DOMAIN_LIST/domain_id) != 0" {
                     error-message "mclag not configured";
                     error-app-tag mclag-invalid;
                 }

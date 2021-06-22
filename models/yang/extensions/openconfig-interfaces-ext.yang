@@ -604,6 +604,47 @@ module openconfig-interfaces-ext {
         }
     }
 
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state" {
+        description "Additional remote attribute for neighbor state";
+        leaf remote {
+            type uint8 {
+                range "0..2";
+            }
+            description "Entry remote status";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state" {
+        description "Additional remote attribute for neighbor state";
+        leaf remote {
+            type uint8 {
+                range "0..2";
+            }
+            description "Entry remote status";
+        }
+    }
+
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state" {
+        description "Additional remote attribute for neighbor state";
+        leaf remote {
+            type uint8 {
+                range "0..2";
+            }
+            description "Entry remote status";
+        }
+    }
+
+    augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv6/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state" {
+        description "Additional remote attribute for neighbor state";
+        leaf remote {
+            type uint8 {
+                range "0..2";
+            }
+            description "Entry remote status";
+        }
+    }
+
 
     augment "/oc-intf:interfaces/oc-intf:interface/oc-vlan:routed-vlan/oc-ip:ipv4/oc-ip:addresses/oc-ip:address/oc-ip:vrrp/oc-ip:vrrp-group" {
         description "Track interface priority for IPv4 VRRP instance";
@@ -813,14 +854,6 @@ module openconfig-interfaces-ext {
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-tun:tunnel {
         deviate not-supported;
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv4/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state/oc-ip:origin {
-      deviate not-supported;
-    }
-
-    deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state/oc-ip:origin {
-      deviate not-supported;
     }
 
     deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-ip:ipv6/oc-ip:neighbors/oc-ip:neighbor/oc-ip:state/oc-ip:is-router {
