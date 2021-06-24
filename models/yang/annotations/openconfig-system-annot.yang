@@ -23,6 +23,7 @@ module openconfig-system-annot {
     import openconfig-aaa-radius-ext { prefix oc-aaa-radius-ext; }
     import openconfig-aaa-ldap-ext { prefix oc-aaa-ldap-ext; }
     import openconfig-system-crm { prefix oc-sys-crm; }
+    import openconfig-aaa-tacacs-ext { prefix oc-aaa-tacacs-ext; }
 
 
     deviation /oc-sys:system {
@@ -127,7 +128,15 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:secret-key {
       deviate add {
           sonic-ext:field-name "passkey";
+          sonic-ext:field-transformer "secret_key_value_xfmr";
       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:encrypted {
+        deviate add {
+            sonic-ext:field-name "encrypted";
+            sonic-ext:field-transformer "secret_key_encrypted_xfmr";
+        }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-address {
@@ -177,7 +186,15 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs/oc-sys:config/oc-sys:secret-key {
       deviate add {
           sonic-ext:field-name "passkey";
+          sonic-ext:field-transformer "secret_key_value_xfmr";
       }
+    }
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:tacacs/oc-sys:config/oc-aaa-tacacs-ext:encrypted {
+        deviate add {
+            sonic-ext:field-name "encrypted";
+            sonic-ext:field-transformer "secret_key_encrypted_xfmr";
+        }
     }
 
     deviation /oc-sys:system/oc-sys:processes {
@@ -354,12 +371,6 @@ module openconfig-system-annot {
       }
     }
 
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:secret-key {
-      deviate add {
-          sonic-ext:field-name "passkey";
-      }
-    }
-
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:config/oc-sys-ext:source-address {
       deviate add {
           sonic-ext:field-name "src_ip";
@@ -381,12 +392,6 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:auth-type {
       deviate add {
           sonic-ext:field-name "auth_type";
-      }
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:state/oc-sys-ext:secret-key {
-      deviate add {
-          sonic-ext:field-name "passkey";
       }
     }
 
@@ -566,7 +571,16 @@ module openconfig-system-annot {
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-sys:secret-key {
       deviate add {
           sonic-ext:field-name "passkey";
+          sonic-ext:field-transformer "secret_key_value_xfmr";
       }
+    }
+
+
+    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-aaa-radius-ext:encrypted {
+        deviate add {
+            sonic-ext:field-name "encrypted";
+            sonic-ext:field-transformer "secret_key_encrypted_xfmr";
+        }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:config/oc-sys:source-address {
@@ -600,12 +614,6 @@ module openconfig-system-annot {
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:acct-port {
         deviate not-supported;
-    }
-
-    deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:secret-key {
-      deviate add {
-          sonic-ext:field-name "passkey";
-      }
     }
 
     deviation /oc-sys:system/oc-sys:aaa/oc-sys:server-groups/oc-sys:server-group/oc-sys:servers/oc-sys:server/oc-sys:radius/oc-sys:state/oc-sys:source-address {
