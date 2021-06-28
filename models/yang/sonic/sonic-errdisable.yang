@@ -1,7 +1,12 @@
 module sonic-errdisable {
     namespace "http://github.com/Azure/sonic-errdisable";
     prefix serrdisable;
+
     yang-version 1.1;
+
+    import sonic-port {
+        prefix prt;
+    }
 
     organization
         "SONiC";
@@ -48,7 +53,29 @@ module sonic-errdisable {
             description
                 "Enable/Disable Err Disable Recovery for BPDUGUARD";
         }
+
+        leaf link_flap {
+            type is_enabled;
+            description
+                "Enable/Disable Err Disable Recovery for LINK_FLAP";
+        }
     }
+
+
+    grouping errdisable_link_flap_state {
+        description
+        "Groups ErrDisable Link-flap state ";
+
+		leaf status {
+        	type string;
+		}
+
+        leaf time-left {
+            type uint32 {
+            	range 1..65535;
+			}
+		}
+	}
 
     container sonic-errdisable {
         container ERRDISABLE {
@@ -66,5 +93,17 @@ module sonic-errdisable {
                 uses errdisable_config;
             }
         }
+        container ERRDISABLE_PORT_STATE {
+            list ERRDISABLE_PORT_STATE_LIST {
+                key "name";
+        		leaf name {
+            		type leafref {
+                		path "/prt:sonic-port/prt:PORT/prt:PORT_LIST/prt:ifname";
+            		}
+        		}
+
+                uses errdisable_link_flap_state;
+            }
+		}
     }
 }

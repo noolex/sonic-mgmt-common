@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -525,7 +526,14 @@ var rpc_infra_show_sys_in_memory_log_cb RpcCallpoint = func(body []byte, dbs [db
 	}
 
 	output, _ = host_output.Body[1].(string)
-	out_list = strings.Split(output, "\n")
+	_output := strings.Map(func(r rune) rune {
+		if r > unicode.MaxASCII {
+			return -1
+		}
+		return r
+	}, output)
+
+	out_list = strings.Split(_output, "\n")
 	total := len(out_list)
 	if num_lines > 0 && num_lines < total {
 		exec.Output.Result = out_list[total-num_lines:]

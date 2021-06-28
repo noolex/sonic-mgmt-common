@@ -172,7 +172,8 @@ module sonic-mclag {
             list MCLAG_UNIQUE_IP_LIST {
                 key "if_name";
 
-                must "count(../../MCLAG_DOMAIN/MCLAG_DOMAIN_LIST/domain_id) != 0" {
+                must "(/scommon:operation/scommon:operation = 'DELETE') or "
+                    + "count(../../MCLAG_DOMAIN/MCLAG_DOMAIN_LIST/domain_id) != 0" {
                     error-message "mclag not configured";
                     error-app-tag mclag-invalid;
                 }
@@ -182,12 +183,47 @@ module sonic-mclag {
                     error-app-tag vlan-intf-ip-invalid;
                 }
 
+                must "(/scommon:operation/scommon:operation != 'DELETE') or "
+                    + "count(../../MCLAG_PEER_GATEWAY/MCLAG_PEER_GATEWAY_LIST[if_name=current()/if_name]) = 0" {
+                    error-message "mclag-peer-gateway configured";
+                    error-app-tag peer-gw-config;
+                }
+
                 leaf if_name {
                     type leafref {
                         path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
                     }
                 }
                 leaf unique_ip {
+                    type enumeration {
+                        enum enable;
+                    }
+                }
+            }
+        }
+
+        container MCLAG_PEER_GATEWAY {
+
+            list MCLAG_PEER_GATEWAY_LIST {
+                key "if_name";
+
+                must "(/scommon:operation/scommon:operation = 'DELETE') or "
+                    + "count(../../MCLAG_DOMAIN/MCLAG_DOMAIN_LIST/domain_id) != 0" {
+                    error-message "mclag not configured";
+                    error-app-tag mclag-invalid;
+                }
+
+                must "count(../../MCLAG_UNIQUE_IP/MCLAG_UNIQUE_IP_LIST[if_name=current()/if_name]) != 0" {
+                    error-message "mclag-separate-ip not configured";
+                    error-app-tag no-unique-ip;
+                }
+
+                leaf if_name {
+                    type leafref {
+                        path "/svlan:sonic-vlan/svlan:VLAN/svlan:VLAN_LIST/svlan:name";
+                    }
+                }
+                leaf peer_gateway {
                     type enumeration {
                         enum enable;
                     }

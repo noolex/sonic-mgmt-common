@@ -796,7 +796,7 @@ var Subscribe_tam_flowgroups_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscO
 			"id": "id",
 		}}}}
 	case "state/statistics":
-		//result.onChange = OnchangeDisable
+		result.onChange = OnchangeDisable
 		result.dbDataMap = RedisDbSubscribeMap{db.CountersDB: {"COUNTERS": {"TAM:" + keyName: {
 			"Packets": "packets",
 			"Bytes":   "bytes",

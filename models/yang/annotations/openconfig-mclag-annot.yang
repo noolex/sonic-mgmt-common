@@ -41,13 +41,17 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:vlan-if/oc-mclag:vlan-interface {
+        deviate add {
+            sonic-ext:table-name "MCLAG_PEER_GATEWAY";
+        }
+    }
+
     deviation /oc-mclag:mclag/oc-mclag:mclag-gateway-macs/oc-mclag:mclag-gateway-mac {
         deviate add {
             sonic-ext:table-name "MCLAG_GW_MAC";
         }
     }
-
-
 
     deviation /oc-mclag:mclag/oc-mclag:mclag-domains/oc-mclag:mclag-domain/oc-mclag:config/oc-mclag:domain-id {
         deviate add {
@@ -185,6 +189,20 @@ module openconfig-mclag-annot {
         }
     }
 
+    deviation /oc-mclag:mclag/oc-mclag:vlan-if/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:name {
+        deviate add {
+            sonic-ext:field-name "if_name";
+            sonic-ext:field-transformer "mclag_vlan_name_fld_xfmr";
+        }
+    }
+
+    deviation /oc-mclag:mclag/oc-mclag:vlan-if/oc-mclag:vlan-interface/oc-mclag:config/oc-mclag:peer-gateway-enable {
+        deviate add {
+            sonic-ext:field-name "peer_gateway";
+            sonic-ext:field-transformer "mclag_peer_gateway_enable_fld_xfmr";
+        }
+    }
+
     deviation /oc-mclag:mclag/oc-mclag:vlan-interfaces/oc-mclag:vlan-interface/oc-mclag:state/oc-mclag:name {
         deviate add {
             sonic-ext:field-name "if_name";
@@ -196,6 +214,20 @@ module openconfig-mclag-annot {
         deviate add {
             sonic-ext:field-name "unique_ip";
             sonic-ext:field-transformer "mclag_unique_ip_enable_fld_xfmr";
+        }
+    }
+
+    deviation /oc-mclag:mclag/oc-mclag:vlan-if/oc-mclag:vlan-interface/oc-mclag:state/oc-mclag:name {
+        deviate add {
+            sonic-ext:field-name "if_name";
+            sonic-ext:field-transformer "mclag_vlan_name_fld_xfmr";
+        }
+    }
+
+    deviation /oc-mclag:mclag/oc-mclag:vlan-if/oc-mclag:vlan-interface/oc-mclag:state/oc-mclag:peer-gateway-enable {
+        deviate add {
+            sonic-ext:field-name "peer_gateway";
+            sonic-ext:field-transformer "mclag_peer_gateway_enable_fld_xfmr";
         }
     }
 

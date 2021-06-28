@@ -29,6 +29,50 @@ module sonic-port {
             "Initial revision.";
     }
 
+    grouping errdisable_link_flap_config {
+        description
+        "Groups ErrDisable Link-flap configurations ";
+
+		leaf error-disable {
+        	type string;
+		}
+
+        leaf flap-threshold {
+            type uint8 {
+                range 1..50;
+            }
+            default 5;
+            description
+              "This interval is the number of times that the port’s
+               link state goes from up to down and down to up
+               before the recovery-timeout is activated";
+        }
+
+        leaf sampling-interval {
+          type uint32 {
+            range 1..65535;
+          }
+          units seconds;
+          default 10;
+          description
+            "This time period is the amount of time during which
+             the specified flap-threshold can be crossed. If the flap-threshold
+             is crossed during this sampling-time, port will be error-disabled.";
+        }
+
+        leaf recovery-interval {
+          type uint32 {
+            range 0..65534;
+          }
+          units seconds;
+          default 300;
+          description
+            "This period of time is the amount of time the port remains disabled
+             (down) before it becomes enabled. Entering 0 indicates that the
+             port will stay down until an administrative override occurs.";
+        }
+
+    }
     container sonic-port {
 
         container PORT {
@@ -107,6 +151,7 @@ module sonic-port {
 			"Access VLAN to be associated with port";
             sonic-ext:custom-validation ValidateSwitchPortConfig;
 		}
+				uses errdisable_link_flap_config;
             }
         }
         container PORT_TABLE {

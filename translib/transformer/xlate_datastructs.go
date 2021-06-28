@@ -47,6 +47,9 @@ const (
 	OnChange
 )
 
+//KEY_COMP_CNT - To specify the number of key components for the given key in the RedisDbSubscribeMap map
+const KEY_COMP_CNT = "@KEY_COMP_CNT"
+
 type XfmrTranslateSubscribeInfo struct {
 	DbDataMap   RedisDbMap
 	MinInterval int

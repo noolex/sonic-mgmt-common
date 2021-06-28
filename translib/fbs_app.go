@@ -2757,7 +2757,7 @@ func (app *FbsApp) fillFbsPolicyDetails(dbs [db.MaxDB]*db.DB, policyName string,
 	}
 
 	for className, sectionPtr := range policyData.Sections.Section {
-		err := app.fillFbsPolicySectionDetails(dbs, policyName, className, sectionPtr)
+		err := app.fillFbsPolicySectionDetails(dbs, policyName, policyType, className, sectionPtr)
 		if err != nil {
 			return err
 		}
@@ -2766,7 +2766,7 @@ func (app *FbsApp) fillFbsPolicyDetails(dbs [db.MaxDB]*db.DB, policyName string,
 	return nil
 }
 
-func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName string, className string, policySectionData *ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section) error {
+func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName string, policyType string, className string, policySectionData *ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section) error {
 	log.Infof("Policy:%v Class:%v", policyName, className)
 
 	policySectionTblVal, err := app.getSectionEntryFromDB(dbs[db.ConfigDB], policyName+"|"+className)
@@ -2789,170 +2789,179 @@ func (app *FbsApp) fillFbsPolicySectionDetails(dbs [db.MaxDB]*db.DB, policyName 
 
 	//Forwarding START
 	//forwarding Config
-	if strVal, found := policySectionTblVal.Field["DEFAULT_PACKET_ACTION"]; found {
-		ygot.BuildEmptyTree(policySectionData.Forwarding)
-		dropFlag := false
-		if strVal == SONIC_PACKET_ACTION_DROP {
-			dropFlag = true
+	if policyType == SONIC_POLICY_TYPE_FORWARDING {
+		if strVal, found := policySectionTblVal.Field["DEFAULT_PACKET_ACTION"]; found {
+			ygot.BuildEmptyTree(policySectionData.Forwarding)
+			dropFlag := false
+			if strVal == SONIC_PACKET_ACTION_DROP {
+				dropFlag = true
+			}
+			policySectionData.Forwarding.Config.Discard = &dropFlag
+			policySectionData.Forwarding.State.Discard = &dropFlag
 		}
-		policySectionData.Forwarding.Config.Discard = &dropFlag
-		policySectionData.Forwarding.State.Discard = &dropFlag
-	}
 
-	//forwarding EgressInterfaces
-	if intfs := policySectionTblVal.GetList("SET_INTERFACE"); len(intfs) > 0 {
-		ygot.BuildEmptyTree(policySectionData.Forwarding)
-		ygot.BuildEmptyTree(policySectionData.Forwarding.EgressInterfaces)
-		for i := range intfs {
-			intfSplits := strings.Split(intfs[i], "|")
-			egressIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
-			egressIfData, _ := policySectionData.Forwarding.EgressInterfaces.NewEgressInterface(egressIfName)
-			ygot.BuildEmptyTree(egressIfData)
-			egressIfData.IntfName = &egressIfName
-			egressIfData.Config.IntfName = &egressIfName
-			egressIfData.State.IntfName = &egressIfName
-			if len(intfSplits[1]) > 0 {
-				prio, _ := strconv.Atoi(intfSplits[1])
-				ocPriority := uint16(prio)
-				egressIfData.Config.Priority = &ocPriority
-				egressIfData.State.Priority = &ocPriority
+		//forwarding EgressInterfaces
+		if intfs := policySectionTblVal.GetList("SET_INTERFACE"); len(intfs) > 0 {
+			ygot.BuildEmptyTree(policySectionData.Forwarding)
+			ygot.BuildEmptyTree(policySectionData.Forwarding.EgressInterfaces)
+			for i := range intfs {
+				intfSplits := strings.Split(intfs[i], "|")
+				egressIfName := *(utils.GetUINameFromNativeName(&intfSplits[0]))
+				egressIfData, _ := policySectionData.Forwarding.EgressInterfaces.NewEgressInterface(egressIfName)
+				ygot.BuildEmptyTree(egressIfData)
+				egressIfData.IntfName = &egressIfName
+				egressIfData.Config.IntfName = &egressIfName
+				egressIfData.State.IntfName = &egressIfName
+				if len(intfSplits[1]) > 0 {
+					prio, _ := strconv.Atoi(intfSplits[1])
+					ocPriority := uint16(prio)
+					egressIfData.Config.Priority = &ocPriority
+					egressIfData.State.Priority = &ocPriority
+				}
 			}
 		}
-	}
 
-	//forwarding NextHops
-	var ipNhops []string
-	if ipNhops = policySectionTblVal.GetList("SET_IP_NEXTHOP"); len(ipNhops) == 0 {
-		ipNhops = policySectionTblVal.GetList("SET_IPV6_NEXTHOP")
-	}
-	if len(ipNhops) > 0 {
-		ygot.BuildEmptyTree(policySectionData.Forwarding)
-		ygot.BuildEmptyTree(policySectionData.Forwarding.NextHops)
-		for i := range ipNhops {
-			nhopSplits := strings.Split(ipNhops[i], "|")
-			nhopIp := nhopSplits[0]
-			vrf := nhopSplits[1]
+		//forwarding NextHops
+		var ipNhops []string
+		if ipNhops = policySectionTblVal.GetList("SET_IP_NEXTHOP"); len(ipNhops) == 0 {
+			ipNhops = policySectionTblVal.GetList("SET_IPV6_NEXTHOP")
+		}
+		if len(ipNhops) > 0 {
+			ygot.BuildEmptyTree(policySectionData.Forwarding)
+			ygot.BuildEmptyTree(policySectionData.Forwarding.NextHops)
+			for i := range ipNhops {
+				nhopSplits := strings.Split(ipNhops[i], "|")
+				nhopIp := nhopSplits[0]
+				vrf := nhopSplits[1]
 
-			var temp ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config
-			var vrfUnion ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union
-			if vrf != "" {
-				vrfUnion, _ = temp.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union(vrf)
-			} else {
-				vrfUnion, _ = temp.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union(ocbinds.OpenconfigFbsExt_NEXT_HOP_NETWORK_INSTANCE_INTERFACE_NETWORK_INSTANCE)
-			}
+				var temp ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config
+				var vrfUnion ocbinds.OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union
+				if vrf != "" {
+					vrfUnion, _ = temp.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union(vrf)
+				} else {
+					vrfUnion, _ = temp.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_Config_NetworkInstance_Union(ocbinds.OpenconfigFbsExt_NEXT_HOP_NETWORK_INSTANCE_INTERFACE_NETWORK_INSTANCE)
+				}
 
-			nhopData, _ := policySectionData.Forwarding.NextHops.NewNextHop(nhopIp, vrfUnion)
-			ygot.BuildEmptyTree(nhopData)
-			nhopData.IpAddress = &nhopIp
-			nhopData.NetworkInstance = vrfUnion
+				nhopData, _ := policySectionData.Forwarding.NextHops.NewNextHop(nhopIp, vrfUnion)
+				ygot.BuildEmptyTree(nhopData)
+				nhopData.IpAddress = &nhopIp
+				nhopData.NetworkInstance = vrfUnion
 
-			nhopData.Config.IpAddress = &nhopIp
-			nhopData.Config.NetworkInstance = vrfUnion
-			nhopData.State.IpAddress = &nhopIp
-			if vrf != "" {
-				nhopData.State.NetworkInstance, _ = nhopData.State.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_State_NetworkInstance_Union(vrf)
-			} else {
-				nhopData.State.NetworkInstance, _ = nhopData.State.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_State_NetworkInstance_Union(ocbinds.OpenconfigFbsExt_NEXT_HOP_NETWORK_INSTANCE_INTERFACE_NETWORK_INSTANCE)
-			}
+				nhopData.Config.IpAddress = &nhopIp
+				nhopData.Config.NetworkInstance = vrfUnion
+				nhopData.State.IpAddress = &nhopIp
+				if vrf != "" {
+					nhopData.State.NetworkInstance, _ = nhopData.State.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_State_NetworkInstance_Union(vrf)
+				} else {
+					nhopData.State.NetworkInstance, _ = nhopData.State.To_OpenconfigFbsExt_Fbs_Policies_Policy_Sections_Section_Forwarding_NextHops_NextHop_State_NetworkInstance_Union(ocbinds.OpenconfigFbsExt_NEXT_HOP_NETWORK_INSTANCE_INTERFACE_NETWORK_INSTANCE)
+				}
 
-			if len(nhopSplits[2]) > 0 {
-				prio, _ := strconv.Atoi(nhopSplits[2])
-				ocPrio := uint16(prio)
-				nhopData.Config.Priority = &ocPrio
-				nhopData.State.Priority = &ocPrio
+				if len(nhopSplits[2]) > 0 {
+					prio, _ := strconv.Atoi(nhopSplits[2])
+					ocPrio := uint16(prio)
+					nhopData.Config.Priority = &ocPrio
+					nhopData.State.Priority = &ocPrio
+				}
 			}
 		}
 	}
 	//Forwarding - END
 
 	//Monitoring - START
-	if strVal, found := policySectionTblVal.Field["SET_MIRROR_SESSION"]; found {
-		ygot.BuildEmptyTree(policySectionData.Monitoring)
-		mirrorData, _ := policySectionData.Monitoring.MirrorSessions.NewMirrorSession(strVal)
-		ygot.BuildEmptyTree(mirrorData)
-		mirrorData.Config.SessionName = &strVal
-		mirrorData.State.SessionName = &strVal
+	if policyType == SONIC_POLICY_TYPE_MONITORING {
+		if strVal, found := policySectionTblVal.Field["SET_MIRROR_SESSION"]; found {
+			ygot.BuildEmptyTree(policySectionData.Monitoring)
+			mirrorData, _ := policySectionData.Monitoring.MirrorSessions.NewMirrorSession(strVal)
+			ygot.BuildEmptyTree(mirrorData)
+			mirrorData.Config.SessionName = &strVal
+			mirrorData.State.SessionName = &strVal
+		}
 	}
 	//Monitoring - END
 
 	//QOS - START
-	log.Infof("Policy GET  className:%v ", className)
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_CIR"]; found {
-		ygot.BuildEmptyTree(policySectionData.Qos)
-		ygot.BuildEmptyTree(policySectionData.Qos.Policer)
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Cir = &val
-		policySectionData.Qos.Policer.State.Cir = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Cbs = &val
-		policySectionData.Qos.Policer.State.Cbs = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Pir = &val
-		policySectionData.Qos.Policer.State.Pir = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Qos.Policer.Config.Pbs = &val
-		policySectionData.Qos.Policer.State.Pbs = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_PCP"]; found {
-		ygot.BuildEmptyTree(policySectionData.Qos)
-		ygot.BuildEmptyTree(policySectionData.Qos.Remark)
-		val, _ := strconv.ParseUint(strVal, 10, 8)
-		val8 := uint8(val)
-		policySectionData.Qos.Remark.Config.SetDot1P = &val8
-		policySectionData.Qos.Remark.State.SetDot1P = &val8
-	}
-	if strVal, found := policySectionTblVal.Field["SET_DSCP"]; found {
-		ygot.BuildEmptyTree(policySectionData.Qos)
-		ygot.BuildEmptyTree(policySectionData.Qos.Remark)
-		val, _ := strconv.ParseUint(strVal, 10, 8)
-		val8 := uint8(val)
-		policySectionData.Qos.Remark.Config.SetDscp = &val8
-		policySectionData.Qos.Remark.State.SetDscp = &val8
-	}
-	if strVal, found := policySectionTblVal.Field["SET_TC"]; found {
-		ygot.BuildEmptyTree(policySectionData.Qos)
-		ygot.BuildEmptyTree(policySectionData.Qos.Queuing)
-		val, _ := strconv.ParseUint(strVal, 10, 8)
-		val8 := uint8(val)
-		policySectionData.Qos.Queuing.Config.OutputQueueIndex = &val8
-		policySectionData.Qos.Queuing.State.OutputQueueIndex = &val8
+	if policyType == SONIC_POLICY_TYPE_QOS {
+		log.Infof("Policy GET  className:%v ", className)
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_CIR"]; found {
+			ygot.BuildEmptyTree(policySectionData.Qos)
+			ygot.BuildEmptyTree(policySectionData.Qos.Policer)
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Qos.Policer.Config.Cir = &val
+			policySectionData.Qos.Policer.State.Cir = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Qos.Policer.Config.Cbs = &val
+			policySectionData.Qos.Policer.State.Cbs = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Qos.Policer.Config.Pir = &val
+			policySectionData.Qos.Policer.State.Pir = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Qos.Policer.Config.Pbs = &val
+			policySectionData.Qos.Policer.State.Pbs = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_PCP"]; found {
+			ygot.BuildEmptyTree(policySectionData.Qos)
+			ygot.BuildEmptyTree(policySectionData.Qos.Remark)
+			val, _ := strconv.ParseUint(strVal, 10, 8)
+			val8 := uint8(val)
+			policySectionData.Qos.Remark.Config.SetDot1P = &val8
+			policySectionData.Qos.Remark.State.SetDot1P = &val8
+		}
+		if strVal, found := policySectionTblVal.Field["SET_DSCP"]; found {
+			ygot.BuildEmptyTree(policySectionData.Qos)
+			ygot.BuildEmptyTree(policySectionData.Qos.Remark)
+			val, _ := strconv.ParseUint(strVal, 10, 8)
+			val8 := uint8(val)
+			policySectionData.Qos.Remark.Config.SetDscp = &val8
+			policySectionData.Qos.Remark.State.SetDscp = &val8
+		}
+		if strVal, found := policySectionTblVal.Field["SET_TC"]; found {
+			ygot.BuildEmptyTree(policySectionData.Qos)
+			ygot.BuildEmptyTree(policySectionData.Qos.Queuing)
+			val, _ := strconv.ParseUint(strVal, 10, 8)
+			val8 := uint8(val)
+			policySectionData.Qos.Queuing.Config.OutputQueueIndex = &val8
+			policySectionData.Qos.Queuing.State.OutputQueueIndex = &val8
+		}
 	}
 	//QOS - END
+
 	//ACL_COPP-START
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_CIR"]; found {
-		ygot.BuildEmptyTree(policySectionData.Copp)
-		ygot.BuildEmptyTree(policySectionData.Copp.Policer)
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Copp.Policer.Config.Cir = &val
-		policySectionData.Copp.Policer.State.Cir = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Copp.Policer.Config.Cbs = &val
-		policySectionData.Copp.Policer.State.Cbs = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Copp.Policer.Config.Pir = &val
-		policySectionData.Copp.Policer.State.Pir = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
-		val, _ := strconv.ParseUint(strVal, 10, 64)
-		policySectionData.Copp.Policer.Config.Pbs = &val
-		policySectionData.Copp.Policer.State.Pbs = &val
-	}
-	if strVal, found := policySectionTblVal.Field["SET_TRAP_QUEUE"]; found {
-		ygot.BuildEmptyTree(policySectionData.Copp)
-		val, _ := strconv.ParseUint(strVal, 10, 8)
-		val8 := uint8(val)
-		policySectionData.Copp.Config.CpuQueueIndex = &val8
-		policySectionData.Copp.State.CpuQueueIndex = &val8
+	if policyType == SONIC_POLICY_TYPE_COPP {
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_CIR"]; found {
+			ygot.BuildEmptyTree(policySectionData.Copp)
+			ygot.BuildEmptyTree(policySectionData.Copp.Policer)
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Copp.Policer.Config.Cir = &val
+			policySectionData.Copp.Policer.State.Cir = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_CBS"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Copp.Policer.Config.Cbs = &val
+			policySectionData.Copp.Policer.State.Cbs = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_PIR"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Copp.Policer.Config.Pir = &val
+			policySectionData.Copp.Policer.State.Pir = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_POLICER_PBS"]; found {
+			val, _ := strconv.ParseUint(strVal, 10, 64)
+			policySectionData.Copp.Policer.Config.Pbs = &val
+			policySectionData.Copp.Policer.State.Pbs = &val
+		}
+		if strVal, found := policySectionTblVal.Field["SET_TRAP_QUEUE"]; found {
+			ygot.BuildEmptyTree(policySectionData.Copp)
+			val, _ := strconv.ParseUint(strVal, 10, 8)
+			val8 := uint8(val)
+			policySectionData.Copp.Config.CpuQueueIndex = &val8
+			policySectionData.Copp.State.CpuQueueIndex = &val8
+		}
 	}
 	//ACL_COPP-END
 
@@ -3144,7 +3153,7 @@ func (app *FbsApp) fillFbsForwardingStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey d
 func (app *FbsApp) fillFbsPolicerStateEntry(dbs [db.MaxDB]*db.DB, polPbfKey db.Key, qosState *FbsPolicerStateEntry) (err error) {
 	stateDbPtr := dbs[db.StateDB]
 	var policerTblVal db.Value
-	policerTblVal, err = stateDbPtr.GetEntry(policerCtrTbl, polPbfKey)
+	policerTblVal, err = stateDbPtr.GetEntry(policerCtrTbl, asKey(strings.Join(polPbfKey.Comp, ":")))
 	log.Infof("Key:%v Val:%v Err:%v", polPbfKey, policerTblVal, err)
 	if err == nil {
 		if str_val, found := policerTblVal.Field["CIR"]; found {

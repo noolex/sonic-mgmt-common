@@ -18,24 +18,45 @@
 #                                                                              #
 ################################################################################
 
+function print_usage() {
+echo "usage: $(basename $0) [OPTIONS] [TESTARGS]"
+echo ""
+echo "OPTIONS:"
+echo "  -pkg PACKAGE    Test package name. Should be translib or its child package."
+echo "                  Defaults to translib."
+echo "  -run PATTERN    Testcase pattern. Equivalent of 'go test -run PATTERN ...'"
+echo "  -bench PATTERN  Benchmark pattern. Only one of -run or -bench is allowed."
+echo "                  Equivalent of 'go test -bench PATTERN -benchmem -run ^$ ...'"
+echo "  -nosub          Do not include subscribe test annotations and related tests."
+echo "  -app            Enable all app module tests. WARNING: many tests may fail."
+echo "  -json           Dump test logs in json format. Output can be piped to tools"
+echo "                  like tparse or gotestsum."
+echo ""
+echo "TESTARGS:         Any other arguments to be passed to TestMain. All values that"
+echo "                  do not match above listed options are treated as test args."
+echo "                  Equivalent of 'go test ... -args TESTARGS'"
+echo ""
+}
+
 set -e
 
 TOPDIR=$(git rev-parse --show-toplevel)
 GO=${GO:-go}
 
-TARGS=( -mod=vendor -v -cover -tags test )
+TARGS=( -mod=vendor -v -cover )
 PARGS=()
-PKG=translib/...
+PKG=translib
+TAG=test
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-    -h|-help|--help)
-        echo "usage: $(basename $0) [-pkg PACKAGE] [-run TESTNAME|-bench PATTERN] [-json] [ARGS...]"
-        exit 0;;
+    -h|-help|--help)  print_usage; exit 0;;
     -p|-pkg|-package) PKG=$2; shift 2;;
-    -r|-run)   TARGS+=( -run $2 ); shift 2;;
-    -b|-bench) TARGS+=( -bench $2 -run XXX ); shift 2;;
-    -j|-json)  TARGS+=( -json ); shift;;
+    -r|-run)   TARGS+=( -run "$2" ); shift 2;;
+    -b|-bench) TARGS+=( -bench "$2" -benchmem -run "^$" ); shift 2;;
+    -j|-json)  TARGS+=( -json ); ECHO=0; shift;;
+    -nosub)    NOSUBSCRIBE=1; shift;;
+    -app)      TAG+=",app_test"; shift;;
     *) PARGS+=( "$1"); shift;;
     esac
 done
@@ -65,7 +86,24 @@ if [[ -z ${YANG_MODELS_PATH} ]]; then
     ${TOPDIR}/tools/test/yangpath_init.sh
 fi
 
+# Include extra annotations for translib package
+if [[ ${PKG} == translib ]] && [[ -z ${NOSUBSCRIBE} ]]; then
+    TAG+=',subscribe_annot'
+    for F in $(find models/yang/testdata -name '*-annot.subscribe'); do
+        ANNOT=${YANG_MODELS_PATH}/$(basename $F .subscribe).yang
+        [[ -f ${ANNOT} ]] || continue
+        # Remove last '}' from xxxx-annot.yang and append xxxx-annot.subscribe contents.
+        # Assumes there are no comments after the last '}'.
+        tac ${ANNOT} | awk 'NF {p=1} p' | tac | sed '$s/}\s*$//' > ${ANNOT}.tmp
+        echo -e "\n//===== subscribe test annotations =====\n" >> ${ANNOT}.tmp
+        cat $F >> ${ANNOT}.tmp
+        echo -e "\n}" >> ${ANNOT}.tmp
+        mv ${ANNOT}.tmp ${ANNOT}
+    done
+fi
+
+[[ -z ${TAG} ]] || TARGS+=( -tags ${TAG} )
 [[ "${PARGS[@]}" =~ -(also)?log* ]] || PARGS+=( -logtostderr )
 
-set -x
+[[ ${ECHO} == 0 ]] || set -x
 ${GO} test ./${PKG} "${TARGS[@]}" -args "${PARGS[@]}"
