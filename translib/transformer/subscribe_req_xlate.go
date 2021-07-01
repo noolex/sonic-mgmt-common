@@ -389,14 +389,12 @@ func (pathXltr *subscribePathXlator) getKeyCompCnt(tblFld map[string]string) (in
 
 func (pathXltr *subscribePathXlator) getKeyComp(dbKey string, keyCmpCnt int, dbNum db.DBNum) []string {
 	var keyComp []string
-	keyComp = strings.SplitN(dbKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator, 2)
-	if len(keyComp) > 1 {
-		if keyCmpCnt > 0 {
-			keyComp = strings.SplitN(keyComp[1], pathXltr.subReq.dbs[dbNum].Opts.KeySeparator, keyCmpCnt)
-		} else {
-			keyComp = strings.Split(keyComp[1], pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
-		}
+	if keyCmpCnt > 0 {
+		keyComp = strings.SplitN(dbKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator, keyCmpCnt)
+	} else {
+		keyComp = strings.Split(dbKey, pathXltr.subReq.dbs[dbNum].Opts.KeySeparator)
 	}
+	log.Info(pathXltr.subReq.reqLogId, "getKeyComp: keyComp: ", keyComp)
 	return keyComp
 }
 
