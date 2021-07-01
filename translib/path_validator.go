@@ -40,6 +40,7 @@ type pathValidator struct {
 	rootObj      *ocbinds.Device
 	sField       *reflect.StructField
 	sValIntf     interface{}
+	parentIntf   interface{}
 	opts         []PathValidatorOpt
 	parentSchema *yang.Entry
 	err          error
@@ -55,6 +56,7 @@ func (pv *pathValidator) init(gPath *gnmi.Path) {
 	pv.gPath = gPath
 	pv.sField = nil
 	pv.sValIntf = pv.rootObj
+	pv.parentIntf = pv.rootObj
 	pv.parentSchema = nil
 	pv.err = nil
 }
@@ -75,12 +77,16 @@ func (pv *pathValidator) getYangSchema() (*yang.Entry, error) {
 	sVal := reflect.ValueOf(pv.sValIntf)
 	if sVal.Elem().Type().Kind() == reflect.Struct {
 		objName := sVal.Elem().Type().Name()
-		log.Info("getYangSchema: ygot object name: ", objName)
+		if log.V(5) {
+			log.Info("getYangSchema: ygot object name: ", objName)
+		}
 		if ygSchema := ocbinds.SchemaTree[objName]; ygSchema == nil {
 			log.Errorf("Error: ygot object name %v not found in the schema for the given path: %v", objName, pv.gPath)
 			return ygSchema, fmt.Errorf("Invalid path %v", pv.gPath)
 		} else {
-			log.Infof("getYangSchema: found schema: %v for the field: %v", ygSchema.Name, *pv.sField)
+			if log.V(5) {
+				log.Infof("getYangSchema: found schema: %v for the field: %v", ygSchema.Name, *pv.sField)
+			}
 			return ygSchema, nil
 		}
 	} else {
@@ -91,7 +97,9 @@ func (pv *pathValidator) getYangSchema() (*yang.Entry, error) {
 		if ygSchema == nil {
 			return nil, fmt.Errorf("could not find schema for the field name %s", pv.sField.Name)
 		}
-		log.Infof("getYangSchema:ChildSchema - found schema: %v for the field: %v", ygSchema.Name, *pv.sField)
+		if log.V(5) {
+			log.Infof("getYangSchema:ChildSchema - found schema: %v for the field: %v", ygSchema.Name, *pv.sField)
+		}
 		return ygSchema, nil
 	}
 }
@@ -117,7 +125,9 @@ func (pv *pathValidator) getModuleName() string {
 }
 
 func (pv *pathValidator) validatePath() error {
-	log.Info("validatePath: path: ", pv.gPath.Elem)
+	if log.V(5) {
+		log.Info("validatePath: path: ", pv.gPath.Elem)
+	}
 	isApnndModPrefix := pv.hasAppendModulePrefixOption()
 	isAddWcKey := pv.hasAddWildcardKeyOption()
 	isIgnoreKey := pv.hasIgnoreKeyValidationOption()
@@ -147,7 +157,9 @@ func (pv *pathValidator) validatePath() error {
 			log.Errorf("Module name not found for the node %v in the given gnmi path %v: ", pathElem.Name, pv.gPath)
 			return fmt.Errorf("Module name not found for the node %v in the given gnmi path %v: ", pathElem.Name, pv.gPath)
 		} else {
-			log.Infof("validatePath: module name: %v found for the node %v: ", ygModName, pathElem.Name)
+			if log.V(5) {
+				log.Infof("validatePath: module name: %v found for the node %v: ", ygModName, pathElem.Name)
+			}
 		}
 
 		if len(modName) > 0 {
@@ -169,7 +181,6 @@ func (pv *pathValidator) validatePath() error {
 		if err != nil {
 			return fmt.Errorf("yang schema not found for the node %v in the given path; %v", pathElem.Name, pv.gPath)
 		}
-		pv.parentSchema = ygSchema
 
 		if !isIgnoreKey {
 			if ygSchema.IsList() {
@@ -196,7 +207,7 @@ func (pv *pathValidator) validatePath() error {
 						gpath := &gnmi.Path{}
 						gpath.Elem = append(gpath.Elem, pathElem)
 						log.Info("validatePath: validating the list key values for the path: ", gpath)
-						if err := pv.validateListKeyValues(ygSchema, gpath); err != nil {
+						if err := pv.validateListKeyValues(pv.parentSchema, gpath); err != nil {
 							log.Error("Error in validating the key values", err)
 							return err
 						}
@@ -213,6 +224,7 @@ func (pv *pathValidator) validatePath() error {
 			}
 		}
 		prevModName = ygModName
+		pv.parentSchema = ygSchema
 	}
 	return nil
 }
@@ -231,9 +243,9 @@ func (pv *pathValidator) validateListKeyNames(ygSchema *yang.Entry, keysMap map[
 }
 
 func (pv *pathValidator) validateListKeyValues(schema *yang.Entry, gPath *gnmi.Path) error {
-	sVal := reflect.ValueOf(pv.sValIntf)
+	sVal := reflect.ValueOf(pv.parentIntf)
 	log.Infof("validateListKeyValues: schema name: %v, and parent ygot type name: %v: ", schema.Name, sVal.Elem().Type().Name())
-	if objIntf, _, err := ytypes.GetOrCreateNode(schema, pv.sValIntf, gPath); err != nil {
+	if objIntf, _, err := ytypes.GetOrCreateNode(schema, pv.parentIntf, gPath); err != nil {
 		log.Error("Invalid key present in the path and the error is ", err)
 		return fmt.Errorf("Invalid key present in the node path: %v", gPath)
 	} else {
@@ -259,17 +271,15 @@ func (pv *pathValidator) validateListKeyValues(schema *yang.Entry, gPath *gnmi.P
 func (pv *pathValidator) updateStructFieldVal() {
 	log.Infof("updateStructFieldVal: struct field: %v; struct field type: %v", pv.sField, pv.sField.Type)
 	var sVal reflect.Value
-	if util.IsTypeMap(pv.sField.Type) {
-		if log.V(5) {
-			log.Info("updateStructFieldVal: field type is map")
-		}
+
+	if util.IsTypeMap(pv.sField.Type) || util.IsTypeSlice(pv.sField.Type) {
+		log.Info("updateStructFieldVal: field type is map or slice")
 		sVal = reflect.New(pv.sField.Type.Elem().Elem())
 	} else {
 		sVal = reflect.New(pv.sField.Type.Elem())
 	}
-	if log.V(5) {
-		log.Info("updateStructFieldVal: sVal", sVal)
-	}
+	log.Info("updateStructFieldVal: sVal", sVal)
+	pv.parentIntf = pv.sValIntf
 	pv.sValIntf = sVal.Interface()
 }
 
