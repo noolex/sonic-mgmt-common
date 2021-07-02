@@ -706,12 +706,13 @@ func (ne *notificationEvent) findModifiedFields(nInfo *notificationInfo, entryDi
 
 	// Treat entry delete as update when 'partial' flag is set
 	if entryDiff.EntryDeleted && nInfo.flags.Has(niPartial) {
+		log.Infof("[%s] Entry deleted; but treating it as update", ne.id)
 		delFields := ne.getFieldNames(entryDiff.oldValue)
 		yInfos.old = ne.createYangPathInfos(nInfo, delFields, "update")
-		if len(yInfos.old) != 0 {
-			log.Infof("[%s] Entry deleted; but treating it as update", ne.id)
-			return yInfos
+		if len(yInfos.old) == 0 {
+			yInfos.old = append(yInfos.old, &yangNodeInfo{})
 		}
+		return yInfos
 	}
 
 	// When entry is deleted, mark the whole target path as deleted
