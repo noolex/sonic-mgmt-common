@@ -16,6 +16,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+// +build app_test
+
 package translib
 
 import (
@@ -32,6 +34,9 @@ func init() {
 }
 
 func Test_LagIntfOperations(t *testing.T) {
+	// cleanup config_db before and after the tests
+	clearLagDataFromDb()
+	defer clearLagDataFromDb()
 
 	fmt.Println("+++++  Start PorChannel Testing  +++++")
 

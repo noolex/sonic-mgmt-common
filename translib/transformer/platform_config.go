@@ -224,6 +224,12 @@ func getValidSpeeds(port_i string) ([]string, error) {
 	if len(platConfigStr) < 1 {
 		parsePlatformJsonFile()
 	}
+	d, _ := db.NewDB(getDBOptions(db.ConfigDB))
+	dpbEntry, err := d.GetEntry(&db.TableSpec{Name: "BREAKOUT_CFG"}, db.Key{Comp: []string{port_i}})
+	if (err != nil) || (len(dpbEntry.Field["brkout_mode"]) < 1) ||
+		!strings.HasPrefix(dpbEntry.Field["brkout_mode"], "1x") {
+		return valid_speeds, tlerr.InvalidArgs("Unable to determine valid speeds")
+	}
 	if entry, ok := platConfigStr[port_i]; ok {
 		// Get the valid speed from default breakout mode.
 		mode := entry["default_brkout_mode"]

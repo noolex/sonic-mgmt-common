@@ -320,17 +320,15 @@ func getIntfPGCountersTblKey(d *db.DB, ifPGKey string) (string, error) {
 func getQosCounters(entry *db.Value, attr string, counter_val **uint64) error {
 
 	var ok bool = false
-	var err error
 	val, ok := entry.Field[attr]
 
 	if ok && len(val) > 0 {
 		v, _ := strconv.ParseUint(val, 10, 64)
 		*counter_val = &v
 		return nil
-	} else {
-		log.Info("getQosCounters: ", "Attr "+attr+"doesn't exist in table Map!")
 	}
-	return err
+
+	return tlerr.NotFoundError{Format: "Not found"}
 }
 
 func getQosOffsetCounters(entry *db.Value, entry_backup *db.Value, attr string, counter_val **uint64) error {
@@ -371,6 +369,8 @@ func getPersistentWatermark(d *db.DB, oid string, entry *db.Value) error {
 
 func resetPersistentWatermark(d *db.DB, oid string, count_type string, buff_type string) error {
 	var cerr error
+	var ok bool = false
+
 	ts := &db.TableSpec{Name: "PERSISTENT_WATERMARKS"}
 	value, verr := d.GetEntry(ts, db.Key{Comp: []string{oid}})
 	if verr == nil {
@@ -380,19 +380,34 @@ func resetPersistentWatermark(d *db.DB, oid string, count_type string, buff_type
 		if count_type == "priority-group" {
 			if buff_type == "headroom" {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				}
 			} else if buff_type == "shared" {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				}
 			} else {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES"] = "0"
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				}
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				}
 			}
 		} else if count_type == "queue" {
 			value.Field["SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES"] = "0"
-			value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK_BYTES"] = "0"
+			_, ok = value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK_BYTES"]
+			if ok {
+				value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK_BYTES"] = "0"
+			}
 		}
 		cerr = d.CreateEntry(ts, db.Key{Comp: []string{oid}}, value)
 	}
@@ -413,6 +428,7 @@ func getUserWatermark(d *db.DB, oid string, entry *db.Value) error {
 
 func resetUserWatermark(d *db.DB, oid string, count_type string, buff_type string) error {
 	var cerr error
+	var ok bool = false
 	ts := &db.TableSpec{Name: "USER_WATERMARKS"}
 	value, verr := d.GetEntry(ts, db.Key{Comp: []string{oid}})
 	if verr == nil {
@@ -422,20 +438,35 @@ func resetUserWatermark(d *db.DB, oid string, count_type string, buff_type strin
 		if count_type == "priority-group" {
 			if buff_type == "headroom" {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				}
 			} else if buff_type == "shared" {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				}
 			} else {
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_XOFF_ROOM_WATERMARK_BYTES"] = "0"
 				value.Field["SAI_INGRESS_PRIORITY_GROUP_STAT_SHARED_WATERMARK_BYTES"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
-				value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK"] = "0"
+				}
+				_, ok = value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"]
+				if ok {
+					value.Field["SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+				}
 			}
 
 		} else if count_type == "queue" {
 			value.Field["SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES"] = "0"
-			value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+			_, ok = value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK"]
+			if ok {
+				value.Field["SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK"] = "0"
+			}
 		}
 		cerr = d.CreateEntry(ts, db.Key{Comp: []string{oid}}, value)
 	}
@@ -531,17 +562,19 @@ func populateQCounters(inParams XfmrParams, targetUriPath string, oid string, co
 		err = getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
 		if err == nil {
 			getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.Watermark)
-			getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
-			counter_percent := uint8(*count)
-			counter.WatermarkPercent = &counter_percent
+			if getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count) == nil {
+				counter_percent := uint8(*count)
+				counter.WatermarkPercent = &counter_percent
+			}
 		}
 
 		err = getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
 		if err == nil {
 			getQosCounters(&entry, "SAI_QUEUE_STAT_SHARED_WATERMARK_BYTES", &counter.PersistentWatermark)
-			getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
-			counter_percent := uint8(*count)
-			counter.PersistentWatermarkPercent = &counter_percent
+			if getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count) == nil {
+				counter_percent := uint8(*count)
+				counter.PersistentWatermarkPercent = &counter_percent
+			}
 		}
 
 	case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark":
@@ -551,8 +584,10 @@ func populateQCounters(inParams XfmrParams, targetUriPath string, oid string, co
 	case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/watermark-percent":
 		getUserWatermark(inParams.dbs[inParams.curDb], oid, &entry)
 		err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.WatermarkPercent = &counter_percent
+		if err == nil {
+			counter_percent := uint8(*count)
+			counter.WatermarkPercent = &counter_percent
+		}
 	// persisten-watermark resides on separate DB table
 	case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark":
 		getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
@@ -562,8 +597,10 @@ func populateQCounters(inParams XfmrParams, targetUriPath string, oid string, co
 	case "/openconfig-qos:qos/interfaces/interface/output/queues/queue/state/persistent-watermark-percent":
 		getPersistentWatermark(inParams.dbs[inParams.curDb], oid, &entry)
 		err = getQosCounters(&entry, "SAI_QUEUE_PERCENT_STAT_SHARED_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.PersistentWatermarkPercent = &counter_percent
+		if err == nil {
+			counter_percent := uint8(*count)
+			counter.PersistentWatermarkPercent = &counter_percent
+		}
 
 	default:
 		log.Info("Entering default branch")
@@ -670,32 +707,40 @@ func getPriorityGroupSpecificCounterAttr(targetUriPath string, per_entry *db.Val
 		fallthrough
 	case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-watermark-percent":
 		e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.HeadroomWatermarkPercent = &counter_percent
+		if e == nil {
+			counter_percent := uint8(*count)
+			counter.HeadroomWatermarkPercent = &counter_percent
+		}
 		return true, e
 
 	case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/headroom-persistent-watermark-percent":
 		fallthrough
 	case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/headroom-persistent-watermark-percent":
 		e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_XOFF_ROOM_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.HeadroomPersistentWatermarkPercent = &counter_percent
+		if e == nil {
+			counter_percent := uint8(*count)
+			counter.HeadroomPersistentWatermarkPercent = &counter_percent
+		}
 		return true, e
 
 	case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-watermark-percent":
 		fallthrough
 	case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-watermark-percent":
 		e = getQosCounters(user_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.SharedWatermarkPercent = &counter_percent
+		if e == nil {
+			counter_percent := uint8(*count)
+			counter.SharedWatermarkPercent = &counter_percent
+		}
 		return true, e
 
 	case "/openconfig-qos:qos/interfaces/interface/input/openconfig-qos-ext:priority-groups/priority-group/state/shared-persistent-watermark-percent":
 		fallthrough
 	case "/openconfig-qos:qos/interfaces/interface/input/priority-groups/priority-group/state/shared-persistent-watermark-percent":
 		e = getQosCounters(per_entry, "SAI_INGRESS_PRIORITY_GROUP_PERCENT_STAT_SHARED_WATERMARK", &count)
-		counter_percent := uint8(*count)
-		counter.SharedPersistentWatermarkPercent = &counter_percent
+		if e == nil {
+			counter_percent := uint8(*count)
+			counter.SharedPersistentWatermarkPercent = &counter_percent
+		}
 		return true, e
 
 	default:
@@ -731,6 +776,7 @@ func populatePriorityGroupCounters(inParams XfmrParams, targetUriPath string, oi
 				log.Info("Get Counter URI failed :", uri)
 			}
 		}
+		err = nil
 
 	default:
 		_, err = getPriorityGroupSpecificCounterAttr(targetUriPath, &per_entry, &user_entry, counter)

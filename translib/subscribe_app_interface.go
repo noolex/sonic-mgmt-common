@@ -37,6 +37,7 @@ import (
 type translateSubRequest struct {
 	ctxID interface{}      // request id for logging
 	path  string           // subscribe path
+	mode  NotificationType // requested notification type
 	dbs   [db.MaxDB]*db.DB // DB objects for querying, if needed
 }
 
@@ -180,13 +181,15 @@ func (ni *notificationAppInfo) isLeafPath() bool {
 		return false
 	}
 	pmap := ni.dbFldYgPathInfoList[0]
-	if len(pmap.rltvPath) != 0 || len(pmap.dbFldYgPathMap) != 1 {
+	if len(pmap.rltvPath) != 0 {
 		return false
 	}
 	for _, yfield := range pmap.dbFldYgPathMap {
-		return len(yfield) == 0
+		if len(yfield) != 0 && yfield[0] != '{' {
+			return false
+		}
 	}
-	return false
+	return true
 }
 
 func (r processSubResponse) String() string {

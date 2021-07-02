@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	util "github.com/Azure/sonic-mgmt-common/cvl/internal/util"
+	"github.com/apparentlymart/go-cidr/cidr"
 	log "github.com/golang/glog"
 )
 
@@ -397,8 +398,41 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 
+	if_ip_prefix, if_ip_net, perr := net.ParseCIDR(if_ip)
+	if if_ip_prefix == nil || perr != nil {
+		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
+	}
+
+	ip_prefix := strings.Split(if_ip, "/")
+	if ip_prefix[1] != "31" && ip_prefix[1] != "127" {
+
+		if_first_ip, if_last_ip := cidr.AddressRange(if_ip_net)
+
+		if if_ip_prefix.Equal(if_first_ip) {
+			errStr := "Interface IP cannot be same as network address"
+			log.Error(errStr)
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        key,
+				CVLErrDetails:    errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+
+		if if_ip_prefix.Equal(if_last_ip) {
+			errStr := "Interface IP cannot be same as network broadcast address"
+			log.Error(errStr)
+			return CVLErrorInfo{
+				ErrCode:          CVL_SEMANTIC_ERROR,
+				TableName:        key,
+				CVLErrDetails:    errStr,
+				ConstraintErrMsg: errStr,
+			}
+		}
+	}
+
 	if vc.CurCfg.VOp != OP_DELETE {
-		if strings.Contains(if_name, "Vlan") {
+		if strings.Contains(if_name, "Vlan") || strings.Contains(if_name, ".") {
 			sag_tbl_name := "SAG" + "|" + if_name + "|" + "*"
 
 			sag_keys, err := vc.RClient.Keys(sag_tbl_name).Result()
@@ -434,11 +468,6 @@ func (t *CustomValidation) ValidateIntfIp(vc *CustValidationCtxt) CVLErrorInfo {
 	vrrp_keys, err := vc.RClient.Keys(tbl_name_ext).Result()
 
 	if (err != nil) || (vc.SessCache == nil) {
-		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
-	}
-
-	if_ip_prefix, if_ip_net, perr := net.ParseCIDR(if_ip)
-	if if_ip_prefix == nil || perr != nil {
 		return CVLErrorInfo{ErrCode: CVL_SUCCESS}
 	}
 

@@ -22,6 +22,7 @@ package translib
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	db "github.com/Azure/sonic-mgmt-common/translib/db"
@@ -50,15 +51,23 @@ func Test_UdldApp_Udld_Global_Enable_Disable(t *testing.T) {
 }
 
 func Test_UdldApp_Udld_Port_Level_Enable_Disable(t *testing.T) {
+	ports, err := getNPorts(1)
+	if err != nil {
+		t.Skip(err)
+	}
+
+	port1 := ports[0]
 	topUdldUrl := "/sonic-udld:sonic-udld"
 	portLevelUdldUrl := "/sonic-udld:sonic-udld/UDLD_PORT"
+	enableUdldPortReq := strings.ReplaceAll(enableUdldPortJsonRequest, "<port1>", port1)
+	udldPortEnabledResp := strings.ReplaceAll(udldPortEnabledJsonResponse, "<port1>", port1)
 
 	t.Run("Empty_Response_Port_Level", processGetRequest(portLevelUdldUrl, emptyJson, true))
 	t.Run("Enable_UDLD_Global_Level", processSetRequest(topUdldUrl+"/UDLD", enableUdldGlobalJsonRequest, "POST", false))
 
-	t.Run("Enable_UDLD_Port_Level", processSetRequest(portLevelUdldUrl, enableUdldPortJsonRequest, "POST", false))
-	t.Run("Verify_UDLD_Port_Level_Enabled", processGetRequest(portLevelUdldUrl, udldPortEnabledJsonResponse, false))
-	t.Run("Disable_UDLD_Port_Level", processDeleteRequest(portLevelUdldUrl+"/UDLD_PORT_LIST[ifname=Ethernet28]"))
+	t.Run("Enable_UDLD_Port_Level", processSetRequest(portLevelUdldUrl, enableUdldPortReq, "POST", false))
+	t.Run("Verify_UDLD_Port_Level_Enabled", processGetRequest(portLevelUdldUrl, udldPortEnabledResp, false))
+	t.Run("Disable_UDLD_Port_Level", processDeleteRequest(portLevelUdldUrl+"/UDLD_PORT_LIST[ifname="+port1+"]"))
 	t.Run("Verify_UDLD_Disabled_Port_Level", processGetRequest(portLevelUdldUrl, emptyJson, true))
 
 	t.Run("Disable_UDLD_Global_Level", processDeleteRequest(topUdldUrl))
@@ -97,6 +106,6 @@ var enableUdldGlobalJsonRequest string = "{\"sonic-udld:UDLD_LIST\": [{\"id\": \
 
 var udldGlobalEnabledJsonResponse string = "{\"sonic-udld:UDLD\":{\"UDLD_LIST\":[{\"admin_enable\":true,\"aggressive\":false,\"id\":\"GLOBAL\",\"msg_time\":1,\"multiplier\":3}]}}"
 
-var enableUdldPortJsonRequest string = "{\"sonic-udld:UDLD_PORT_LIST\": [{\"ifname\": \"Ethernet28\", \"admin_enable\": true, \"aggressive\": false}]}"
+var enableUdldPortJsonRequest string = "{\"sonic-udld:UDLD_PORT_LIST\": [{\"ifname\": \"<port1>\", \"admin_enable\": true, \"aggressive\": false}]}"
 
-var udldPortEnabledJsonResponse string = "{\"sonic-udld:UDLD_PORT\":{\"UDLD_PORT_LIST\":[{\"admin_enable\":true,\"aggressive\":false,\"ifname\":\"Ethernet28\"}]}}"
+var udldPortEnabledJsonResponse string = "{\"sonic-udld:UDLD_PORT\":{\"UDLD_PORT_LIST\":[{\"admin_enable\":true,\"aggressive\":false,\"ifname\":\"<port1>\"}]}}"

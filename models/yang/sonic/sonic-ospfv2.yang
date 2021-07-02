@@ -241,6 +241,14 @@ module sonic-ospfv2 {
             "Advertise all External LSA stub links with max-metric";
         }
 
+        leaf max-metric-external-lsa-connected {
+          type uint32 {
+            range "0..16777215";
+          }
+          description
+            "Advertise connected External LSA stub links with max-metric";
+        }
+
         leaf max-metric-summary-lsa-all {
           type uint32 {
             range "0..16777215";

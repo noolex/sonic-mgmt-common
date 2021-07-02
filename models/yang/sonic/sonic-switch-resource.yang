@@ -52,6 +52,10 @@ module sonic-switch-resource {
         description
           "Minimum flow scale configured.";
       }
+      enum "UNSUPPORTED" {
+        description
+          "flow scale not supported.";
+      }
     }
     description
       "Drop Monitor Flow scale limit ";
@@ -94,6 +98,7 @@ module sonic-switch-resource {
               error-message "Remove route-scale configuration before configuring drop-monitor flows";
               error-app-tag switch-resouce-invalid-config;
           }
+          sonic-ext:custom-validation IsDropMonitorSupported;
           description
             "Drop Monitor Flow scale options ";
         }
