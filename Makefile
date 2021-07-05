@@ -93,6 +93,9 @@ clean: models-clean translib-clean cvl-clean go-deps-clean
 	$(RM) -r debian/.debhelper
 	$(RM) -r $(BUILD_DIR)
 
-cleanall: clean
-	chmod -R u+w /tmp/go/pkg && $(RM) -r /tmp/go/pkg
+cleanall: clean go-clean
+
+go-clean:
+	test -d $(GOPATH)/pkg && chmod -R u+w $$_ && $(RM) -r $$_ || true
+	$(RM) -r $${HOME}/.cache/go-build $${HOME}/.cache/staticcheck $(GOPATH)/bin/staticcheck
 
