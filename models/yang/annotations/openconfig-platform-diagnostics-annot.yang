@@ -1,0 +1,16 @@
+module openconfig-platform-diagnostics-annot {
+
+    yang-version "1";
+    namespace "http://openconfig.net/yang/platform-diagnostics-annot";
+    prefix "oc-platform-diagnostics-annot";
+
+    import openconfig-platform-diagnostics { prefix oc-plat-diag; }
+    import sonic-extensions { prefix sonic-ext; }
+
+    deviation /oc-plat-diag:transceiver-dom/oc-plat-diag:transceiver-dom-info {
+      deviate add {
+        sonic-ext:subtree-transformer "platform_diag_xcvr_dom_xfmr";
+      }
+    }
+
+}
