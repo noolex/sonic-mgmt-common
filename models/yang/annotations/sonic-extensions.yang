@@ -151,6 +151,11 @@ module sonic-extensions {
 	                yang keys in the path using the db table key information";
   }
 
+  extension db-key-count {
+      argument "db-key-count";
+      description "To mention the database key component count for the table name annotated in the path";
+  }
+
   extension composite-field-names {
   	  argument "composite-db-table-field-names";
   	  description "To mention one or more mapped db field and its table name entry for the same oc yang leaf/leaf-list node;

@@ -129,6 +129,7 @@ func (pathXltr *subscribePathXlator) setTrgtYgXpathInfo() error {
 	log.Info("Entering into the setTrgtListYgXpathInfo: ygPath: ", pathXltr.subReq.ygPath)
 
 	ygXpathInfo := pathXltr.pathXlateInfo.ygXpathInfo
+	pathXltr.ygTrgtXpathInfo = ygXpathInfo
 	ygPathTmp := pathXltr.subReq.ygPath
 
 	for ygXpathInfo != nil && len(ygXpathInfo.xfmrKey) == 0 {
@@ -152,7 +153,7 @@ func (pathXltr *subscribePathXlator) setTrgtYgXpathInfo() error {
 			ygXpathInfo = ygXpathInfoTmp
 		}
 	}
-	if ygXpathInfo != nil {
+	if ygXpathInfo != nil && len(ygXpathInfo.xfmrKey) > 0 {
 		pathXltr.ygTrgtXpathInfo = ygXpathInfo
 	}
 	return nil
@@ -921,7 +922,7 @@ func (pathXltr *subscribePathXlator) handleNonSubtreeNodeXlate() error {
 		return err
 	} else if len(dBTblKey) > 0 {
 		log.Infof(pathXltr.subReq.reqLogId+"handleNonSubtreeNodeXlate: dBTblKey: %v for the path %v", dBTblKey, pathXltr.uriPath)
-		keyComp = strings.Split(dBTblKey, pathXltr.subReq.dbs[pathXltr.ygTrgtXpathInfo.dbIndex].Opts.KeySeparator)
+		keyComp = pathXltr.getKeyComp(dBTblKey, ygXpathInfo.dbKeyCompCnt, ygXpathInfo.dbIndex)
 	}
 
 	var dbKey *db.Key
@@ -937,7 +938,7 @@ func (pathXltr *subscribePathXlator) handleNonSubtreeNodeXlate() error {
 		if log.V(dbLgLvl) {
 			log.Info(pathXltr.subReq.reqLogId+"handleNonSubtreeNodeXlate: Adding tablename: ", tblName)
 		}
-		pathXltr.pathXlateInfo.addPathXlateInfo(&db.TableSpec{Name: tblName}, dbKey, ygXpathInfo.dbIndex)
+		pathXltr.pathXlateInfo.addPathXlateInfo(&db.TableSpec{Name: tblName, CompCt: ygXpathInfo.dbKeyCompCnt}, dbKey, ygXpathInfo.dbIndex)
 	}
 
 	if pathXltr.subReq.xlateNodeType == TARGET_NODE && (pathXltr.pathXlateInfo.ygXpathInfo.yangEntry.IsLeafList() ||

@@ -64,6 +64,7 @@ type yangXpathInfo struct {
 	virtualTbl         *bool
 	nameWithMod        *string
 	xfmrPre            string
+	dbKeyCompCnt       int
 }
 
 type dbInfo struct {
@@ -258,6 +259,9 @@ func yangToDbMapFill(keyLevel int, xYangSpecMap map[string]*yangXpathInfo, entry
 		if ok && xpathData.tableName == nil {
 			if xpathData.tableName == nil && parentXpathData.tableName != nil && xpathData.xfmrTbl == nil {
 				xpathData.tableName = parentXpathData.tableName
+				if xpathData.dbKeyCompCnt == 0 {
+					xpathData.dbKeyCompCnt = parentXpathData.dbKeyCompCnt
+				}
 			} else if xpathData.xfmrTbl == nil && parentXpathData.xfmrTbl != nil {
 				xpathData.xfmrTbl = parentXpathData.xfmrTbl
 			}
@@ -824,6 +828,12 @@ func annotEntryFill(xYangSpecMap map[string]*yangXpathInfo, xpath string, entry 
 				}
 				if strings.EqualFold(ext.NName(), "True") {
 					*xpathData.virtualTbl = true
+				}
+			case "db-key-count":
+				var err error
+				if xpathData.dbKeyCompCnt, err = strconv.Atoi(ext.NName()); err != nil {
+					log.Warningf("Invalid db-key-count value (%v) in the yang path %v.\r\n", ext.NName(), xpath)
+					return
 				}
 			}
 		}
