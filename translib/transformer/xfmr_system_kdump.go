@@ -419,7 +419,7 @@ var YangToDb_oc_kdump_config_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams
 	if kdumpObj.Config.MaxDumps != nil {
 		var num64 uint64
 		var num8 uint8
-		args[0] = "num_dumps"
+		args[0] = "num-dumps"
 		if inParams.oper == DELETE {
 			action = "reset"
 		} else {

@@ -319,6 +319,12 @@ module sonic-bgp-global {
                     type uint16;
                     description "Hold time";
                 }
+
+                leaf ebgp_requires_policy {
+                    type boolean;
+                    description "Require in and out policy for eBGP peers (RFC8212)";
+                    default false;
+                }
             }
         }
 
