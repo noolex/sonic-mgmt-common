@@ -88,6 +88,7 @@ var DbToYang_bgp_pgrp_afi_safi_name_fld_xfmr FieldXfmrDbtoYang = func(inParams X
 }
 
 var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
+
 	var err error
 	var vrfName string
 
@@ -141,7 +142,7 @@ var YangToDb_bgp_af_pgrp_tbl_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams
 		afName = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afName = "l2vpn_evpn"
-	} else {
+	} else if afName != "*" {
 		err = errors.New("Unsupported AFI SAFI")
 		log.Info("Unsupported AFI SAFI ", afName)
 		return afName, err
@@ -218,9 +219,9 @@ var YangToDb_bgp_pgrp_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams 
 		}
 	}
 	/* TEMP FIX:In PATCH case also infra can send default values when body contains the instance/s, curYgotNodeData
-	 * is not nil, So check if it not E_OpenconfigBgpExt_BgpExtCommunityType , then it would be string from infra.
+	 * is not nil, So check if it not E_OpenconfigBgp_CommunityType , then it would be string from infra.
 	* so convert it */
-	if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH) {
+	if reflect.TypeOf(inParams.param) != reflect.TypeOf(ocbinds.OpenconfigBgp_CommunityType_BOTH) {
 		community_type_str, _ := inParams.param.(*string)
 		if *community_type_str == "BOTH" {
 			res_map["send_community"] = "both"
@@ -228,20 +229,20 @@ var YangToDb_bgp_pgrp_community_type_fld_xfmr FieldXfmrYangToDb = func(inParams 
 		}
 	}
 
-	community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpExtCommunityType)
+	community_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_CommunityType)
 	log.Info("YangToDb_bgp_pgrp_community_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " community_type: ", community_type)
 
-	if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_STANDARD {
+	if community_type == ocbinds.OpenconfigBgp_CommunityType_STANDARD {
 		res_map["send_community"] = "standard"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_EXTENDED {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_EXTENDED {
 		res_map["send_community"] = "extended"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_BOTH {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_BOTH {
 		res_map["send_community"] = "both"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_NONE {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_NONE {
 		res_map["send_community"] = "none"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_LARGE {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_LARGE {
 		res_map["send_community"] = "large"
-	} else if community_type == ocbinds.OpenconfigBgpExt_BgpExtCommunityType_ALL {
+	} else if community_type == ocbinds.OpenconfigBgp_CommunityType_ALL {
 		res_map["send_community"] = "all"
 	} else {
 		err = errors.New("send_community  Missing")
@@ -301,14 +302,14 @@ var YangToDb_bgp_pgrp_orf_type_fld_xfmr FieldXfmrYangToDb = func(inParams XfmrPa
 		return res_map, nil
 	}
 
-	orf_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_BgpOrfType)
+	orf_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_BgpOrfType)
 	log.Info("YangToDb_bgp_pgrp_orf_type_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " orf_type: ", orf_type)
 
-	if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_SEND {
+	if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_SEND {
 		res_map["cap_orf"] = "send"
-	} else if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_RECEIVE {
+	} else if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_RECEIVE {
 		res_map["cap_orf"] = "receive"
-	} else if orf_type == ocbinds.OpenconfigBgpExt_BgpOrfType_BOTH {
+	} else if orf_type == ocbinds.OpenconfigBgp_BgpOrfType_BOTH {
 		res_map["cap_orf"] = "both"
 	} else {
 		err = errors.New("ORF type Missing")
@@ -361,12 +362,12 @@ var YangToDb_bgp_pgrp_tx_add_paths_fld_xfmr FieldXfmrYangToDb = func(inParams Xf
 		return res_map, nil
 	}
 
-	tx_add_paths_type, _ := inParams.param.(ocbinds.E_OpenconfigBgpExt_TxAddPathsType)
+	tx_add_paths_type, _ := inParams.param.(ocbinds.E_OpenconfigBgp_BgpTxAddPathsType)
 	log.Info("YangToDb_pgrp_tx_add_paths_fld_xfmr: ", inParams.ygRoot, " Xpath: ", inParams.uri, " add-paths-type: ", tx_add_paths_type)
 
-	if tx_add_paths_type == ocbinds.OpenconfigBgpExt_TxAddPathsType_TX_ALL_PATHS {
+	if tx_add_paths_type == ocbinds.OpenconfigBgp_BgpTxAddPathsType_TX_ALL_PATHS {
 		res_map["tx_add_paths"] = "tx_all_paths"
-	} else if tx_add_paths_type == ocbinds.OpenconfigBgpExt_TxAddPathsType_TX_BEST_PATH_PER_AS {
+	} else if tx_add_paths_type == ocbinds.OpenconfigBgp_BgpTxAddPathsType_TX_BEST_PATH_PER_AS {
 		res_map["tx_add_paths"] = "tx_best_path_per_as"
 	} else {
 		err = errors.New("Invalid add Paths type Missing")

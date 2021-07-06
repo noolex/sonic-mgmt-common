@@ -1315,7 +1315,7 @@ func fill_evpn_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 		}
 	}
 
-	ipv4LocRibRouteAttrSets := ipv4LocRibRoute_obj.AttrSets
+	ipv4LocRibRouteAttrSets := ipv4LocRibRoute_obj.AttrSets.State
 
 	if value, ok := pathData["localPref"]; ok {
 		_localPref := uint32(value.(float64))
@@ -1350,7 +1350,7 @@ func fill_evpn_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_LocRib_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_LocRib_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					ipv4LocRibRouteAttrSets.AsPath.AsSegment = append(ipv4LocRibRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -1363,7 +1363,7 @@ func fill_evpn_spec_pfx_path_loc_rib_data(ipv4LocRibRoutes_obj *ocbinds.Openconf
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_LocRib_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := ipv4LocRibRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_LocRib_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					ipv4LocRibRouteAttrSets.ExtCommunity = append(ipv4LocRibRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1576,7 +1576,7 @@ func fill_evpn_spec_pfx_nbr_in_pre_rib_data(evpnInPreRoute_obj *ocbinds.
 	}
 
 	/* Attr Sets */
-	routeAttrSets := evpnInPreRoute_obj.AttrSets
+	routeAttrSets := evpnInPreRoute_obj.AttrSets.State
 
 	if value, ok := pathData["atomicAggregate"].(bool); ok {
 		routeAttrSets.AtomicAggregate = &value
@@ -1619,7 +1619,7 @@ func fill_evpn_spec_pfx_nbr_in_pre_rib_data(evpnInPreRoute_obj *ocbinds.
 	if value, ok := pathData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					routeAttrSets.AsPath.AsSegment = append(routeAttrSets.AsPath.AsSegment, &_segment)
@@ -1644,7 +1644,7 @@ func fill_evpn_spec_pfx_nbr_in_pre_rib_data(evpnInPreRoute_obj *ocbinds.
 	if value, ok := pathData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					routeAttrSets.Community = append(routeAttrSets.Community, _community_union)
 				}
 			}
@@ -1655,7 +1655,7 @@ func fill_evpn_spec_pfx_nbr_in_pre_rib_data(evpnInPreRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := routeAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibInPre_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					routeAttrSets.ExtCommunity = append(routeAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}
@@ -1726,7 +1726,7 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data(evpnOutPostRoute_obj *ocbinds.
 		}
 	}
 
-	evpnOutPostRouteAttrSets := evpnOutPostRoute_obj.AttrSets
+	evpnOutPostRouteAttrSets := evpnOutPostRoute_obj.AttrSets.State
 
 	if value, ok := prefixData["atomicAggregate"].(bool); ok {
 		evpnOutPostRouteAttrSets.AtomicAggregate = &value
@@ -1768,7 +1768,7 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data(evpnOutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["aspath"].(map[string]interface{}); ok {
 		if asPathSegments, ok := value["segments"].([]interface{}); ok {
 			for _, asPathSegmentsData := range asPathSegments {
-				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_AsPath_AsSegment
+				var _segment ocbinds.OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_AsPath_AsSegment
 				ygot.BuildEmptyTree(&_segment)
 				if ok = parse_aspath_segment_data(asPathSegmentsData.(map[string]interface{}), &_segment.State.Type, &_segment.State.Member); ok {
 					evpnOutPostRouteAttrSets.AsPath.AsSegment = append(evpnOutPostRouteAttrSets.AsPath.AsSegment, &_segment)
@@ -1793,7 +1793,7 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data(evpnOutPostRoute_obj *ocbinds.
 	if value, ok := prefixData["community"].(map[string]interface{}); ok {
 		if _list, ok := value["list"].([]interface{}); ok {
 			for _, _listData := range _list {
-				if _community_union, err := evpnOutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_Community_Union(_listData.(string)); err == nil {
+				if _community_union, err := evpnOutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_Community_Union(_listData.(string)); err == nil {
 					evpnOutPostRouteAttrSets.Community = append(evpnOutPostRouteAttrSets.Community, _community_union)
 				}
 			}
@@ -1804,7 +1804,7 @@ func fill_evpn_spec_pfx_nbr_out_post_rib_data(evpnOutPostRoute_obj *ocbinds.
 		if _value, ok := value["string"]; ok {
 			_community_slice := strings.Split(_value.(string), " ")
 			for _, _data := range _community_slice {
-				if _ext_community_union, err := evpnOutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_ExtCommunity_Union(_data); err == nil {
+				if _ext_community_union, err := evpnOutPostRouteAttrSets.To_OpenconfigNetworkInstance_NetworkInstances_NetworkInstance_Protocols_Protocol_Bgp_Rib_AfiSafis_AfiSafi_L2VpnEvpn_Neighbors_Neighbor_AdjRibOutPost_Routes_Route_AttrSets_State_ExtCommunity_Union(_data); err == nil {
 					evpnOutPostRouteAttrSets.ExtCommunity = append(evpnOutPostRouteAttrSets.ExtCommunity, _ext_community_union)
 				}
 			}

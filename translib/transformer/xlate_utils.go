@@ -21,6 +21,7 @@ package transformer
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -217,6 +218,9 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 		}
 		if uriWithKeyCreate {
 			for k, v := range rmap {
+				if reflect.TypeOf(v).Kind() == reflect.String {
+					v = ecapeKeyValForSplitPath(v.(string))
+				}
 				uriWithKey += fmt.Sprintf("[%v=%v]", k, v)
 			}
 		}
@@ -250,6 +254,9 @@ func dbKeyToYangDataConvert(uri string, requestUri string, xpath string, tableNa
 		rmap[keyNameList[0]] = resVal
 	}
 	if uriWithKeyCreate {
+		if reflect.TypeOf(resVal).Kind() == reflect.String {
+			resVal = ecapeKeyValForSplitPath(resVal.(string))
+		}
 		uriWithKey += fmt.Sprintf("[%v=%v]", keyNameList[0], resVal)
 	}
 
@@ -455,7 +462,7 @@ func uriWithKeyCreate(uri string, xpathTmplt string, data interface{}) (string, 
 					// identity-ref/enum has module prefix
 					keyVal = strings.SplitN(keyVal, ":", 2)[1]
 				}
-				uri += fmt.Sprintf("[%v=%v]", k, keyVal)
+				uri += fmt.Sprintf("[%v=%v]", k, escapeKeyVal(keyVal))
 			}
 		} else {
 			err = fmt.Errorf("Yang Entry not available for xpath %v", xpathTmplt)
@@ -463,6 +470,7 @@ func uriWithKeyCreate(uri string, xpathTmplt string, data interface{}) (string, 
 	} else {
 		err = fmt.Errorf("No entry in xYangSpecMap for xpath %v", xpathTmplt)
 	}
+	xfmrLogInfoAll("returning uri - %v", uri)
 	return uri, err
 }
 
@@ -1483,6 +1491,23 @@ func getYangNodeTypeFromUri(uri string) (string, error) {
 	}
 	xfmrLogInfoAll("For uri %v , yangNodeType is %v", uri, yangNodeType)
 	return yangNodeType, err
+}
+
+// escapeKeyVal function escapes a path key's value as per  ygot/ytpes APIs
+// conventions -- prefixes '\' to ']' and '/'
+func escapeKeyVal(val string) string {
+	val = strings.Replace(val, "]", "\\]", -1)
+	val = strings.Replace(val, "/", "\\/", -1)
+
+	return val
+}
+
+// escapeKeyValForSplitPath function escapes a path key's value as per SplitPathApi() Api
+// which treats unescaped ] as the key. The ] character in key value should be escaped.
+// Used in GET code flow
+func ecapeKeyValForSplitPath(val string) string {
+	val = strings.Replace(val, "]", "\\]", -1)
+	return val
 }
 
 /* FUNCTIONS RESERVED FOR FUTURE USE. DO ONT DELETE */

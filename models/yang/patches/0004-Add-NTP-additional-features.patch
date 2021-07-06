@@ -1,0 +1,225 @@
+From 3956cd2cc67540aa7cdd5339580760f703b0fc7b Mon Sep 17 00:00:00 2001
+From: Bing Sun <Bing_Sun@dell.com>
+Date: Thu, 17 Jun 2021 16:40:14 -0700
+Subject: [PATCH] Add NTP additional features
+
+---
+ openconfig-system.yang | 160 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 159 insertions(+), 1 deletion(-)
+
+diff --git a/openconfig-system.yang b/openconfig-system.yang
+index 5653e75..ba4ecd9 100644
+--- a/openconfig-system.yang
++++ b/openconfig-system.yang
+@@ -20,6 +20,8 @@ module openconfig-system {
+   import openconfig-alarms { prefix oc-alarms; }
+   import openconfig-messages { prefix oc-messages; }
+   import openconfig-license { prefix oc-license; }
++  import openconfig-interfaces { prefix "oc-if"; }
++  import openconfig-network-instance { prefix oc-ni; }
+ 
+   // meta
+   organization "OpenConfig working group";
+@@ -46,7 +48,13 @@ module openconfig-system {
+     Section 4.c of the IETF Trust's Legal Provisions Relating
+     to IETF Documents (http://trustee.ietf.org/license-info).";
+ 
+-  oc-ext:openconfig-version "0.9.1";
++  oc-ext:openconfig-version "0.9.2";
++
++  revision "2021-06-16" {
++    description
++      "Add additional NTP server statistics and NTP authentication";
++    reference "0.9.2";
++  }
+ 
+   revision "2020-03-25" {
+     description
+@@ -139,6 +147,18 @@ module openconfig-system {
+       "MD5 encryption method";
+   }
+ 
++  identity NTP_AUTH_SHA1 {
++    base oc-sys:NTP_AUTH_TYPE;
++    description
++      "SHA1 encryption method";
++  }
++
++  identity NTP_AUTH_SHA2_256 {
++    base oc-sys:NTP_AUTH_TYPE;
++    description
++      "SHA2-256 encryption method";
++  }
++
+   // typedef statements
+ 
+   typedef timezone-name-type {
+@@ -544,6 +564,42 @@ module openconfig-system {
+         "Indicates whether this server should be preferred
+         or not.";
+     }
++
++    leaf key-id {
++      type uint16;
++      description
++        "Integer identifier used by the client and server to
++        designate a secret key. The client and server must use
++        the same key id.";
++    }
++
++    leaf minpoll {
++      type uint8 {
++        range "3..17";
++      }
++      default 6;
++
++      description
++        "The minimum poll interval used in this association.
++        Default is 6.";
++        reference
++        "RFC 5905: Network Time Protocol Version 4: Protocol and
++        Algorithms Specification";
++    }
++
++    leaf maxpoll {
++      type uint8 {
++        range "3..17";
++      }
++      default 10;
++
++      description
++        "The maximum poll interval used in this association.
++        Default is 10.";
++        reference
++        "RFC 5905: Network Time Protocol Version 4: Protocol and
++        Algorithms Specification";
++    }
+   }
+ 
+   grouping system-ntp-server-state {
+@@ -611,6 +667,79 @@ module openconfig-system {
+       description
+         "Polling interval of the peer";
+     }
++
++    leaf peer-delay {
++      type decimal64 {
++        fraction-digits 3;
++      }
++      description
++        "The round-trip delay to the server using type decimal64, in milliseconds";
++    }
++
++    leaf peer-offset {
++      type decimal64 {
++        fraction-digits 3;
++      }
++      description
++        "Estimate of the current time offset from the peer.  This is
++        the time difference between the local and reference clock.
++        Using type decimal64, in milliseconds.";
++    }
++
++    leaf peer-jitter {
++      type decimal64 {
++        fraction-digits 3;
++      }
++      description
++        "The mean deviation of multiple time samples from this peer.";
++    }
++
++    leaf sel-mode {
++      type string {
++        length "1";
++      }
++      description
++        "Character before the peer address or peer name:
++        * Synchronized to this peer
++        # Almost synchronized to this peer
++        + Peer selected for possible synchronization
++        - Peer is a candidate for selection
++        ~ Peer is statically configured.";
++    }
++
++    leaf refid {
++      type oc-inet:host;
++      description
++        "Reference clock type or address for the peer.";
++    }
++
++    leaf peer-type {
++      type string {
++        length "1";
++      }
++      description
++        "Type of the peer.
++        u: unicast or manycast client
++        b: broadcast or multicast client
++        l: local reference clock
++        s: symmetric peer
++        A: manycast server
++        B: boadcast server
++        M: multicast server.";
++    }
++
++    leaf now {
++      type uint32;
++      description
++        "Indicates the time sine the NTP packet was not received or
++        last synchronized, in seconds.";
++    }
++
++    leaf reach {
++      type string;
++      description
++        "An bitmap of size 8 bits in octal string indicates the status of the last eight NTP messages.";
++    }
+   }
+ 
+   grouping system-ntp-server-top {
+@@ -685,6 +814,13 @@ module openconfig-system {
+       description
+         "NTP authentication key value";
+     }
++
++    leaf encrypted {
++      type boolean;
++      default false;
++      description
++        "NTP authentication key-value is encrypted";
++    }
+   }
+ 
+   grouping system-ntp-auth-keys-state {
+@@ -761,6 +897,28 @@ module openconfig-system {
+         system will only use packets containing a trusted
+         authentication key to synchronize the time.";
+     }
++
++    leaf-list trusted-key {
++      type uint16;
++      description
++        "Integer identifier used by the client and server to
++        designate a secret key.  The client and server must use
++        the same key id.";
++    }
++
++    leaf-list source-interface {
++      type oc-if:base-interface-ref;
++      description
++        "NTP source interface name";
++    }
++
++    leaf network-instance {
++      type leafref {
++        path "/oc-ni:network-instances/oc-ni:network-instance/oc-ni:name";
++      } 
++      description
++        "The network instance NTP is enabled in.";
++    }
+   }
+ 
+   grouping system-ntp-state {
+-- 
+2.7.4
+

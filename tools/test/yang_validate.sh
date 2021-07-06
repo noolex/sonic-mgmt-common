@@ -72,6 +72,16 @@ function show_status() {
     fi
 }
 
+pushd $YANGDIR
+echo "" > file_list
+MODS=`git diff --name-only ORIG HEAD`
+for i in $MODS
+do
+    filename=`basename $i`
+    echo $filename >> file_list
+done
+popd
+
 # Execute tools
 # check for SONiC yang models
 echo "Starting SONiC YANG lint check ...."
@@ -100,7 +110,7 @@ echo "Starting OpenConfig YANG validation using OC Community Linter ...."
 $PYANG --openconfig --logfile $REPO/models/yang/oc_lint_issues.log \
 	--plugindir $PYANG_COMMUNITY_PLUGIN_DIR \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $OPENCONFIG_YANG_MOD_FILES \
-	--ignorefile $YANGDIR_BASE/lint_ignore.ocstyle --patchdir $YANGDIR_BASE/patches \
+	--ignorefile $YANGDIR_BASE/lint_ignore.ocstyle --patchlistfile $YANGDIR/file_list \
 	$OPENCONFIG_YANG_MOD_EXTENSION_FILES $OPENCONFIG_YANG_COMMON_FILES
 show_status "OpenConfig style validation using Community linter" $? ignore
 
@@ -109,14 +119,14 @@ echo "Starting YANG lint-strict check ...."
 $PYANG --strict --lint --extensiondir $YANGDIR_EXTENSIONS \
 	--plugindir $PYANG_PLUGIN_DIR -f strictlint \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS \
-	--ignorefile $YANGDIR_BASE/lint_ignore.strict --patchdir $YANGDIR_BASE/patches \
+	--ignorefile $YANGDIR_BASE/lint_ignore.strict --patchlistfile $YANGDIR/file_list \
 	$YANG_MOD_EXTENSION_FILES
 show_status "lint-strict check" $?
 
 # check for IETF issues
 echo "Starting YANG IETF check ...."
 $PYANG --ietf --plugindir $PYANG_PLUGIN_DIR -f strictlint \
-	--ignorefile $YANGDIR_BASE/lint_ignore.ietf --patchdir $YANGDIR_BASE/patches \
+	--ignorefile $YANGDIR_BASE/lint_ignore.ietf --patchlistfile $YANGDIR/file_list \
 	-p $YANGDIR_COMMON:$YANGDIR:$YANGDIR_EXTENSIONS $YANG_IETF_MOD_EXT_FILES
 show_status "IETF check" $?
 

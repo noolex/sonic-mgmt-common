@@ -6,7 +6,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	   http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@ import (
 func init() {
 	XlateFuncBind("YangToDb_intf_nat_zone_xfmr", YangToDb_intf_nat_zone_xfmr)
 	XlateFuncBind("DbToYang_intf_nat_zone_xfmr", DbToYang_intf_nat_zone_xfmr)
+	XlateFuncBind("Subscribe_intf_nat_zone_xfmr", Subscribe_intf_nat_zone_xfmr)
 }
 
 var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) (map[string]map[string]db.Value, error) {
@@ -139,6 +140,85 @@ var YangToDb_intf_nat_zone_xfmr SubTreeXfmrYangToDb = func(inParams XfmrParams) 
 	}
 	log.Info("NAT Zone map :", natZoneMap)
 	return natZoneMap, err
+}
+
+var Subscribe_intf_nat_zone_xfmr = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	if log.V(3) {
+		log.Info("Entering Subscribe_intf_nat_zone_xfmr")
+	}
+	var err error
+	var result XfmrSubscOutParams
+
+	pathInfo := NewPathInfo(inParams.uri)
+	origTargetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+		// to handle the TRANSLATE_SUBSCRIBE
+
+		if origTargetUriPath == "/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone" {
+			result.isVirtualTbl = true
+			log.Info("Subscribe_intf_ip_addr_xfmr:- uri:%v, subscProc:%v result.isVirtualTbl: ", inParams.uri, inParams.subscProc, result.isVirtualTbl)
+			return result, err
+		}
+
+		natConfigPath := "/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone/config"
+		natStatePath := "/openconfig-interfaces:interfaces/interface/openconfig-interfaces-ext:nat-zone/state"
+
+		result.onChange = OnchangeEnable
+		result.nOpts = &notificationOpts{}
+		result.nOpts.pType = OnChange
+		result.isVirtualTbl = false
+
+		uriIfName := pathInfo.Var("name")
+		tableName := ""
+		ifKey := ""
+
+		if uriIfName == "" || uriIfName == "*" {
+			ifKey = "*"
+		} else {
+			sonicIfName := utils.GetNativeNameFromUIName(&uriIfName)
+			ifKey = *sonicIfName
+		}
+
+		if ifKey != "*" {
+			intfType, _, _ := getIntfTypeByName(ifKey)
+			intTbl := IntfTypeTblMap[intfType]
+			if origTargetUriPath == natStatePath {
+				tableName = intTbl.appDb.intfTN
+			} else {
+				tableName = intTbl.cfgDb.intfTN
+			}
+		}
+
+		log.Infof("Subscribe_intf_nat_zone_xfmr: URI:%v ifKey:%v, tbl:[%v]", inParams.uri, ifKey, tableName)
+
+		if origTargetUriPath == natConfigPath {
+			if tableName != "" {
+				result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {tableName: {ifKey: {"nat_zone": "nat-zone"}}}}
+			} else {
+				result.dbDataMap = RedisDbSubscribeMap{db.ConfigDB: {"INTERFACE": {ifKey: {"nat_zone": "nat-zone"}},
+					"VLAN_INTERFACE":        {ifKey: {"nat_zone": "nat-zone"}},
+					"LOOPBACK_INTERFACE":    {ifKey: {"nat_zone": "nat-zone"}},
+					"PORTCHANNEL_INTERFACE": {ifKey: {"nat_zone": "nat-zone"}}}}
+			}
+		} else if origTargetUriPath == natStatePath {
+			if tableName != "" {
+				result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {tableName: {ifKey: {"nat_zone": "nat-zone"}}}}
+			} else {
+				result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {"INTF_TABLE": {ifKey: {"nat_zone": "nat-zone"}}}}
+			}
+		}
+
+		log.Info("Subscribe_intf_nat_zone_xfmr:- result dbDataMap: ", result.dbDataMap)
+		log.Info("Subscribe_intf_nat_zone_xfmr:- result secDbDataMap: ", result.secDbDataMap)
+
+		return result, err
+	}
+
+	result.isVirtualTbl = true
+	log.Info("Subscribe_intf_ip_addr_xfmr:- uri:%v, subscProc:%v result.isVirtualTbl: ", inParams.uri, inParams.subscProc, result.isVirtualTbl)
+
+	return result, err
 }
 
 var DbToYang_intf_nat_zone_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams) error {
