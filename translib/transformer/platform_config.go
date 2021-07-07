@@ -565,6 +565,14 @@ func getIfPortName(port_i string) string {
    if strings.HasPrefix(port_i, "Ethernet") {
        return port_i
    }
+
+   if strings.HasPrefix(port_i, "Eth") {
+       if utils.IsAliasModeEnabled() {
+           ifName = *(utils.GetNativeNameFromUIName(&port_i))
+        }
+        return ifName
+   }
+
    for _, entry := range platConfigStr {
        indeces := strings.Split(entry["index"], ",")
        if indeces[0] == "0" {

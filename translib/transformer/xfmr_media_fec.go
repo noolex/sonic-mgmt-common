@@ -65,7 +65,9 @@ var YangToDb_media_fec_mode_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParams)
 	pathInfo := NewPathInfo(inParams.uri)
 	portName := pathInfo.Var("name")
 	ifName := getIfPortName(portName)
-
+    if ifName == "" {
+        return ifName, tlerr.InvalidArgs("Invalid port")
+    }
 	return ifName, err
 }
 

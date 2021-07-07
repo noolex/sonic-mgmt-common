@@ -683,11 +683,9 @@ var Subscribe_pfm_components_xfmr SubTreeXfmrSubscribe = func (inParams XfmrSubs
         }
         result.dbDataMap = RedisDbSubscribeMap{db.StateDB: {TRANSCEIVER_TBL:{ifName:{}}}}
     } else {
-       ifName := getIfPortName(key)
-       log.Info("ifName (input): ", ifName)
-       if len(ifName) > 1 {
-           result.isVirtualTbl = true
-           return result, err
+        if strings.HasPrefix(key, "Eth") || strings.HasPrefix(key, "1/") {
+            result.isVirtualTbl = true
+            return result, err
         } else {
             log.Info("Invalid component name ", key)
             return result, errors.New("Invalid component name")

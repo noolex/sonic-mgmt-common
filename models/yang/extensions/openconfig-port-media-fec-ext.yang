@@ -22,7 +22,7 @@ module openconfig-port-media-fec-ext {
     revision 2021-07-05 {
         description
             "Initial revision.";
-        reference "0.12.2";
+        reference "0.0.1";
     }
 
     typedef media-fec-mode-type {
