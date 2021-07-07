@@ -11,6 +11,11 @@ module sonic-common {
     description
         "SONIC Common";
 
+    revision 2021-07-05 {
+        description
+            "Added media fec-mode type.";
+    }
+
     revision 2020-08-04 {
         description
             "Added fec-mode type.";
@@ -57,6 +62,13 @@ module sonic-common {
               enum none;
           }
       }
+
+     typedef media-fec-mode-type{
+          type enumeration {
+              enum ieee;
+              enum custom;
+          }
+     }
 
      typedef relay-policy-action {
           type enumeration {

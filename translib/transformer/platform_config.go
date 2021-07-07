@@ -559,6 +559,40 @@ func addPorts ( ports []portProp) (map[db.DBNum]map[string]map[string]db.Value) 
     return subOpMap;
 }
 
+func getIfPortName(port_i string) string {
+   offset := 0
+   var ifName string
+   if strings.HasPrefix(port_i, "Ethernet") {
+       return port_i
+   }
+
+   if strings.HasPrefix(port_i, "Eth") {
+       if utils.IsAliasModeEnabled() {
+           ifName = *(utils.GetNativeNameFromUIName(&port_i))
+        }
+        return ifName
+   }
+
+   for _, entry := range platConfigStr {
+       indeces := strings.Split(entry["index"], ",")
+       if indeces[0] == "0" {
+           offset = 1
+           log.Info("Zero based SFP index")
+       }
+   }
+   for key, entry := range platConfigStr {
+       indeces := strings.Split(entry["index"], ",")
+       index, _ := strconv.Atoi(indeces[0])
+       port := "1/" + strconv.Itoa(index+offset)
+       log.Info("port & port_i ", port, port_i, key)
+       if port == port_i {
+           ifName = key
+           log.Info(port, " ", key)
+       }
+   }
+   return ifName
+}
+
 func getIfName(port_i string) (string) {
     offset := 0
     var ifName string
