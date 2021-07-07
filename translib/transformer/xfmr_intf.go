@@ -4992,16 +4992,11 @@ var populateMGMTPortCounters PopulateIntfCounters = func(inParams XfmrParams, co
 }
 
 var YangToDb_intf_counters_key KeyXfmrYangToDb = func(inParams XfmrParams) (string, error) {
-	var entry_key string
-	var err error
 	pathInfo := NewPathInfo(inParams.uri)
 	intfName := pathInfo.Var("name")
 	oid, oiderr := getIntfCountersTblKey(inParams.dbs[inParams.curDb], intfName)
 
-	if oiderr == nil {
-		entry_key = oid
-	}
-	return entry_key, err
+	return oid, oiderr
 }
 
 var DbToYang_intf_counters_key KeyXfmrDbToYang = func(inParams XfmrParams) (map[string]interface{}, error) {
