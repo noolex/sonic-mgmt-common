@@ -397,14 +397,6 @@ module openconfig-bfd-ext {
     }
   }
 
-  deviation /oc-ni:network-instances/oc-ni:network-instance/oc-ni:protocols/oc-ni:protocol/oc-ni:bgp/oc-ni:neighbors/oc-ni:neighbor/oc-bfdd:enable-bfd/oc-bfdd:state/oc-bfdd:associated-session{
-	deviate not-supported;
-  }
-
-  deviation /oc-ni:network-instances/oc-ni:network-instance/oc-ni:protocols/oc-ni:protocol/oc-ni:bgp/oc-ni:peer-groups/oc-ni:peer-group/oc-bfdd:enable-bfd/oc-bfdd:state/oc-bfdd:associated-session{
-	deviate not-supported;
-  }
-
   deviation /oc-bfdd:bfd/oc-bfdd:interfaces{
 	deviate not-supported;
   }

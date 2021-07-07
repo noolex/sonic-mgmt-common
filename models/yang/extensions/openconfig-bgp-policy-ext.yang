@@ -7,9 +7,7 @@ module openconfig-bgp-policy-ext {
 
   prefix "oc-bgp-pol-ext";
 
-  import openconfig-inet-types { prefix oc-inet; }
   import openconfig-routing-policy {prefix oc-rpol; }
-  import openconfig-bgp-types { prefix oc-bgp-types; }
   import openconfig-bgp-policy { prefix oc-bgp-pol; }
   import openconfig-extensions { prefix oc-ext; }
   import openconfig-routing-policy-ext {prefix oc-rpol-ext;}
@@ -129,54 +127,6 @@ module openconfig-bgp-policy-ext {
       }
   }
 
-  typedef bgp-community-defined-regexp-type {
-      // Format REGEX:string 
-      type string;
-     // {
-          // regex 
-        //  pattern '^(REGEX:[0-9a-zA-Z]{1,10})$';
-     // }
-
-      description
-          "Type definition for communities specified as regular
-          expression patterns";
-    }
- 
-  grouping bgp-policy-ext-ipv6-next-hop-config {
-    description
-        "Configuration data for IPv6 nexthop under BGP policy actions";
-      leaf set-ipv6-next-hop-global {
-          type oc-inet:ipv6-address;
-          description "set the IPv6 global next-hop attribute in the route update";
-      }
-
-      leaf set-ipv6-next-hop-prefer-global {
-          type boolean;
-          description
-              "If we receive a ipv6 global and link-local address for the route, 
-              then prefer to use the global address as the nexthop.";
-      }
-  }
-
-  deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:community-sets/oc-bgp-pol:community-set/oc-bgp-pol:config/oc-bgp-pol:community-member {
-      deviate replace {
-          type union {
-              type oc-bgp-types:bgp-std-community-type;
-              type bgp-community-defined-regexp-type;
-              type oc-bgp-types:bgp-well-known-community-type;
-          }
-      }
-  }
-
-  deviation /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:ext-community-sets/oc-bgp-pol:ext-community-set/oc-bgp-pol:config/oc-bgp-pol:ext-community-member {
-      deviate replace {
-          type union {
-              type oc-bgp-types:bgp-ext-community-type;
-              type bgp-community-defined-regexp-type;
-          }
-      }
-  }
-
   augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:conditions/oc-bgp-pol:bgp-conditions/oc-bgp-pol:config {
     description
         "Policy definition extensions for BGP conditions";
@@ -187,18 +137,6 @@ module openconfig-bgp-policy-ext {
     description
         "Policy definition extensions for BGP conditions";
       uses bgp-policy-ext-action-next-hop-set-config;
-  }
-
-  augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:config {
-    description
-        "Policy definition extensions for BGP actions";
-        uses bgp-policy-ext-ipv6-next-hop-config;
-  }
-
-  augment /oc-rpol:routing-policy/oc-rpol:policy-definitions/oc-rpol:policy-definition/oc-rpol:statements/oc-rpol:statement/oc-rpol:actions/oc-bgp-pol:bgp-actions/oc-bgp-pol:state {
-    description
-        "Policy definition extensions for BGP actions";
-        uses bgp-policy-ext-ipv6-next-hop-config;
   }
 
   augment /oc-rpol:routing-policy/oc-rpol:defined-sets/oc-bgp-pol:bgp-defined-sets/oc-bgp-pol:as-path-sets/oc-bgp-pol:as-path-set/oc-bgp-pol:config {

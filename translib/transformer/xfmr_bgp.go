@@ -201,10 +201,55 @@ func utl_bgp_fetch_and_cache_frr_json(inParams *XfmrParams, niName string) {
 	inParams.txCache.Store(BGP_FRR_JSON_CACHE, bgpFrrJsonCache)
 }
 
+var DbToYangPath_bgp_glb_path_Xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+
+	oper_err := errors.New("wrong config DB table sent")
+	niRoot := "/openconfig-network-instance:network-instances/network-instance"
+	bgp_glb_dyn_neig := niRoot + "/protocols/protocol/bgp/global/dynamic-neighbor-prefixes/dynamic-neighbor-prefix"
+	bgp_glb_afi_safi := niRoot + "/protocols/protocol/bgp/global/afi-safis/afi-safi"
+	bgp_glb_aggr_addr := bgp_glb_afi_safi + "/aggregate-address-config/aggregate-address"
+	bgp_glb_af_network := bgp_glb_afi_safi + "/network-config/network"
+
+	log.Info("DbToYangPath_bgp_glb_path_Xfmr: params: ", params)
+	if params.tblName == "BGP_GLOBALS" || params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" ||
+		params.tblName == "BGP_GLOBALS_AF_NETWORK" || params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
+		params.ygPathKeys[niRoot+"/name"] = params.tblKeyComp[0]
+	} else {
+		log.Errorf("BGP global Path-xfmr: table name %s not in BGP global view", params.tblName)
+		return oper_err
+	}
+	params.ygPathKeys[niRoot+"/protocols/protocol/identifier"] = "BGP"
+	params.ygPathKeys[niRoot+"/protocols/protocol/name"] = "bgp"
+
+	if params.tblName == "BGP_GLOBALS_AF" || params.tblName == "BGP_GLOBALS_AF_NETWORK" ||
+		params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" {
+
+		afi := bgp_afi_convert_to_yang(params.tblKeyComp[1])
+		if afi == "" {
+			log.Errorf("Unknown address family key %s", params.tblKeyComp[1])
+			return oper_err
+		}
+		params.ygPathKeys[bgp_glb_afi_safi+"/afi-safi-name"] = afi
+	}
+
+	if params.tblName == "BGP_GLOBALS_AF_NETWORK" {
+		log.Errorf("BGP_GLOBALS_AF_NETWORK key %s", params.tblKeyComp[1])
+		params.ygPathKeys[bgp_glb_af_network+"/prefix"] = params.tblKeyComp[2]
+	} else if params.tblName == "BGP_GLOBALS_AF_AGGREGATE_ADDR" {
+		params.ygPathKeys[bgp_glb_aggr_addr+"/prefix"] = params.tblKeyComp[2]
+	} else if params.tblName == "BGP_GLOBALS_LISTEN_PREFIX" {
+		params.ygPathKeys[bgp_glb_dyn_neig+"/prefix"] = params.tblKeyComp[1]
+	}
+
+	log.Info("DbToYangPath_bgp_glb_path_Xfmr:- params.ygPathKeys: ", params.ygPathKeys)
+	return nil
+}
+
 func init() {
 	XlateFuncBind("bgp_gbl_tbl_xfmr", bgp_gbl_tbl_xfmr)
 	XlateFuncBind("YangToDb_bgp_gbl_tbl_key_xfmr", YangToDb_bgp_gbl_tbl_key_xfmr)
 	XlateFuncBind("DbToYang_bgp_gbl_tbl_key_xfmr", DbToYang_bgp_gbl_tbl_key_xfmr)
+	XlateFuncBind("DbToYangPath_bgp_glb_path_Xfmr", DbToYangPath_bgp_glb_path_Xfmr)
 	XlateFuncBind("YangToDb_bgp_local_asn_fld_xfmr", YangToDb_bgp_local_asn_fld_xfmr)
 	XlateFuncBind("DbToYang_bgp_local_asn_fld_xfmr", DbToYang_bgp_local_asn_fld_xfmr)
 	XlateFuncBind("DbToYang_bgp_gbl_state_xfmr", DbToYang_bgp_gbl_state_xfmr)
@@ -1029,6 +1074,8 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
+	} else if afName == "*" {
+		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)
 		return afi, errors.New("Unsupported AFI type " + afName)
@@ -1058,10 +1105,6 @@ var YangToDb_bgp_gbl_afi_safi_key_xfmr KeyXfmrYangToDb = func(inParams XfmrParam
 			log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName)
 			return afName, err
 		}
-	} else {
-		err = errors.New("Unsupported AFI SAFI")
-		log.Info("Unsupported AFI SAFI ", afName)
-		return afName, err
 	}
 
 	key := niName + "|" + afi
@@ -1151,6 +1194,8 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 		afi = "ipv6_unicast"
 	} else if strings.Contains(afName, "L2VPN_EVPN") {
 		afi = "l2vpn_evpn"
+	} else if afName == "*" {
+		afi = "*"
 	} else {
 		log.Info("Unsupported AFI type " + afName)
 		return afi, errors.New("Unsupported AFI type " + afName)
@@ -1180,10 +1225,6 @@ var YangToDb_bgp_gbl_afi_safi_addr_key_xfmr KeyXfmrYangToDb = func(inParams Xfmr
 			log.Info("L2VPN_EVPN supported only on l2vpn-evpn container: ", afName)
 			return afName, err
 		}
-	} else {
-		err = errors.New("Unsupported AFI SAFI")
-		log.Info("Unsupported AFI SAFI ", afName)
-		return afName, err
 	}
 
 	key := niName + "|" + afi + "|" + prefix

@@ -1,0 +1,8 @@
+#list of patches
+0001-Moved-static-dynamic-MAC-counts-openconfig-network-i.patch
+0001-Enhanced-PIM-models-for-additional-features.patch
+0002-Enhance-BGP-modules-for-additional-features.patch
+0002-Add-AFT-fields-for-additional-features.patch
+0003-Added-AFT-IPV4-Multicast.patch
+0004-Add-NTP-additional-features.patch
+0005-Added-mac-address-leaf-for-interface.patch

@@ -1,0 +1,49 @@
+module openconfig-interfaces-deviation {
+
+  yang-version "1";
+
+  // namespace
+  namespace "http://openconfig.net/yang/interfaces/deviation/extension";
+
+  prefix "oc-intf-dev";
+
+  // import some basic types
+  import openconfig-interfaces { prefix oc-intf; }
+  import openconfig-extensions { prefix oc-ext; }
+
+  organization
+    "SONiC";
+
+  contact
+    "SONiC";
+
+  description
+    "This module describes a YANG model for openconfig-interfaces deviations.";
+
+  oc-ext:openconfig-version "0.1.0";
+
+  revision "2021-06-15" {
+    description
+      "Add SONiC specific Interface deviations.";
+    reference "0.1.0";
+  }
+
+  deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:management {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:state/oc-intf:cpu {
+    deviate not-supported;
+  }
+
+  deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-intf:state/oc-intf:management {
+    deviate not-supported;
+  }
+
+
+  deviation /oc-intf:interfaces/oc-intf:interface/oc-intf:subinterfaces/oc-intf:subinterface/oc-intf:state/oc-intf:cpu {
+    deviate not-supported;
+  }
+
+}

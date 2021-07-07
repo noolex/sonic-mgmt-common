@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright 2019 Dell, Inc.                                                 //
 //                                                                            //
@@ -40,6 +39,8 @@ func init() {
 	XlateFuncBind("YangToDb_lag_fast_rate_xfmr", YangToDb_lag_fast_rate_xfmr)
 	XlateFuncBind("DbToYang_lag_fast_rate_xfmr", DbToYang_lag_fast_rate_xfmr)
 	XlateFuncBind("DbToYang_intf_lag_state_xfmr", DbToYang_intf_lag_state_xfmr)
+	XlateFuncBind("Subscribe_intf_lag_state_xfmr", Subscribe_intf_lag_state_xfmr)
+	XlateFuncBind("DbToYangPath_intf_lag_state_path_xfmr", DbToYangPath_intf_lag_state_path_xfmr)
 	XlateFuncBind("YangToDb_lag_type_xfmr", YangToDb_lag_type_xfmr)
 	XlateFuncBind("DbToYang_lag_type_xfmr", DbToYang_lag_type_xfmr)
 	XlateFuncBind("YangToDb_lag_graceful_shutdown_xfmr", YangToDb_lag_graceful_shutdown_xfmr)
@@ -464,8 +465,14 @@ func getLagStateAttr(attr *string, ifName *string, lagInfoMap map[string]db.Valu
 		fastRateVal, _ := strconv.ParseBool(lagEntries.Field["fast-rate"])
 		oc_val.FastRate = &fastRateVal
 	case "member":
-		lagMembers := strings.Split(lagEntries.Field["member@"], ",")
-		oc_val.Member = lagMembers
+		a := lagEntries.Field["member@"]
+		if a != "" {
+			lagMembers := strings.Split(lagEntries.Field["member@"], ",")
+
+			if len(lagMembers) > 0 {
+				oc_val.Member = lagMembers
+			}
+		}
 	}
 	return nil
 }
@@ -494,13 +501,18 @@ func getLagState(ifName *string, lagInfoMap map[string]db.Value,
 		}
 	}
 
-	lagMembers := strings.Split(lagEntries.Field["member@"], ",")
-	oc_val.Member = lagMembers
+	a := lagEntries.Field["member@"]
+	if a != "" {
+		lagMembers := strings.Split(lagEntries.Field["member@"], ",")
+		if len(lagMembers) > 0 {
+			oc_val.Member = lagMembers
+		}
+	}
 	return nil
 }
 
 /* Get PortChannel Info */
-func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMap map[string]db.Value) error {
+func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMap map[string]db.Value, targetUri *string) error {
 	var err error
 	var lagMemKeys []db.Key
 	intTbl := IntfTypeTblMap[IntfTypePortChannel]
@@ -520,7 +532,9 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
 		memberPortsStr.WriteString(ethName + ",")
 	}
 	lagInfoMap[*ifName] = db.Value{Field: make(map[string]string)}
-	lagInfoMap[*ifName].Field["member@"] = strings.Join(lagMembers, ",")
+	if len(lagMembers) > 0 {
+		lagInfoMap[*ifName].Field["member@"] = strings.Join(lagMembers, ",")
+	}
 	/* Get MinLinks value */
 	curr, err := d.GetEntry(&db.TableSpec{Name: intTbl.cfgDb.portTN}, db.Key{Comp: []string{*ifName}})
 	if err != nil {
@@ -541,24 +555,26 @@ func fillLagInfoForIntf(inParams XfmrParams, d *db.DB, ifName *string, lagInfoMa
 	}
 	lagInfoMap[*ifName].Field["min-links"] = strconv.Itoa(links)
 	/* Get fallback value */
+	if (*targetUri == "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state") ||
+		(*targetUri == "/openconfig-interfaces:interfaces/interface/openconfig-if-aggregate:aggregation/state/openconfig-interfaces-ext:fallback") {
+		lagTbl := &db.TableSpec{Name: "LAG_TABLE"}
+		appDb := inParams.dbs[db.ApplDB]
+		dbEntry, err := appDb.GetEntry(lagTbl, db.Key{Comp: []string{*ifName}})
+		if err != nil {
+			errStr := "Failed to get PortChannel APP_DB entry"
+			log.Info(errStr)
+			return errors.New(errStr)
+		}
 
-	lagTbl := &db.TableSpec{Name: "LAG_TABLE"}
-	appDb := inParams.dbs[db.ApplDB]
-	dbEntry, err := appDb.GetEntry(lagTbl, db.Key{Comp: []string{*ifName}})
-	if err != nil {
-		errStr := "Failed to get PortChannel APP_DB entry"
-		log.Info(errStr)
-		return errors.New(errStr)
+		var fallbackVal string
+		if val, ok := dbEntry.Field["fallback_operational"]; ok {
+			fallbackVal = val
+		} else {
+			log.V(3).Info("Fallback set to False, default value")
+			fallbackVal = "false"
+		}
+		lagInfoMap[*ifName].Field["fallback"] = fallbackVal
 	}
-
-	var fallbackVal string
-	if val, ok := dbEntry.Field["fallback_operational"]; ok {
-		fallbackVal = val
-	} else {
-		log.V(3).Info("Fallback set to False, default value")
-		fallbackVal = "false"
-	}
-	lagInfoMap[*ifName].Field["fallback"] = fallbackVal
 
 	/* Get fast rate value */
 	var fastRateVal string
@@ -625,7 +641,7 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 	log.Info("targetUriPath is ", targetUriPath)
 	lagInfoMap := make(map[string]db.Value)
 	ocAggregationStateVal := intfObj.Aggregation.State
-	err = fillLagInfoForIntf(inParams, inParams.d, &ifName, lagInfoMap)
+	err = fillLagInfoForIntf(inParams, inParams.d, &ifName, lagInfoMap, &targetUriPath)
 	if err != nil {
 		log.Errorf("Failed to get info: %s failed!", ifName)
 		return err
@@ -684,6 +700,75 @@ var DbToYang_intf_lag_state_xfmr SubTreeXfmrDbToYang = func(inParams XfmrParams)
 		log.Infof(targetUriPath + " - Not an supported Get attribute")
 	}
 	return err
+}
+
+var Subscribe_intf_lag_state_xfmr SubTreeXfmrSubscribe = func(inParams XfmrSubscInParams) (XfmrSubscOutParams, error) {
+	var err error
+	var result XfmrSubscOutParams
+
+	if inParams.subscProc == TRANSLATE_SUBSCRIBE {
+
+		log.Info("Subscribe_intf_lag_state_xfmr: inParams.subscProc: ", inParams.subscProc)
+
+		pathInfo := NewPathInfo(inParams.uri)
+		targetUriPath, _ := getYangPathFromUri(pathInfo.Path)
+
+		log.Infof("Subscribe_intf_lag_state_xfmr:- URI:%s pathinfo:%s ", inParams.uri, pathInfo.Path)
+		log.Infof("Subscribe_intf_lag_state_xfmr:- Target URI path:%s", targetUriPath)
+
+		result.nOpts = new(notificationOpts)
+		result.nOpts.pType = OnChange
+		result.nOpts.mInterval = 15
+		result.isVirtualTbl = false
+		result.needCache = true
+
+		ifName := pathInfo.Var("name")
+		log.Info("Subscribe_intf_lag_state_xfmr: ifName: ", ifName)
+
+		// for PORTCHANNEL_MEMBER table
+		po_mem_key := "*" + "|" + "*"
+
+		if ifName == "" {
+			ifName = "*"
+		} else if ifName != "*" {
+			ifName = *(utils.GetNativeNameFromUIName(&ifName))
+			po_mem_key = ifName + "|" + "*"
+		}
+
+		result.dbDataMap = RedisDbSubscribeMap{db.ApplDB: {"LAG_TABLE": {ifName: {"fallback_operational": "fallback"}}}}
+		result.secDbDataMap = RedisDbYgNodeMap{db.ConfigDB: {"PORTCHANNEL_MEMBER": {po_mem_key: "member"},
+			"PORTCHANNEL": {ifName: map[string]string{"min_links": "min-links", "fast_rate": "fast-rate", "static": "lag-type"}}}}
+		log.Info("Subscribe_intf_lag_state_xfmr: result ", result)
+	}
+
+	return result, err
+}
+
+var DbToYangPath_intf_lag_state_path_xfmr PathXfmrDbToYangFunc = func(params XfmrDbToYgPathParams) error {
+	intfRoot := "/openconfig-interfaces:interfaces/interface"
+
+	if (params.tblName != "PORTCHANNEL") &&
+		(params.tblName != "PORTCHANNEL_MEMBER") &&
+		(params.tblName != "LAG_TABLE") {
+		log.Info("DbToYangPath_intf_lag_state_path_xfmr: from wrong table ", params.tblName)
+		return nil
+	}
+
+	if (params.tblName == "PORTCHANNEL") && (len(params.tblKeyComp) > 0) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+	} else if (params.tblName == "PORTCHANNEL_MEMBER") && (len(params.tblKeyComp) > 1) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+		*params.keyGroup = append(*params.keyGroup, 0)
+	} else if (params.tblName == "LAG_TABLE") && (len(params.tblKeyComp) > 0) {
+		params.ygPathKeys[intfRoot+"/name"] = params.tblKeyComp[0]
+	} else {
+		log.Info("DbToYangPath_intf_lag_state_path_xfmr, wrong param: tbl ", params.tblName, " key ", params.tblKeyComp)
+		return nil
+	}
+
+	log.Info("DbToYangPath_intf_lag_state_path_xfmr: params.ygPathkeys: ", params.ygPathKeys)
+
+	return nil
 }
 
 /* Function to delete PortChannel and all its member ports */
