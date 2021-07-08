@@ -122,11 +122,15 @@ func fillIgmpGroupsXfmr(igmp_map map[string]interface{}, igmpGroups_obj *ocbinds
 	var mcastgrpAddr string
 	for key, value := range igmp_map {
 		interfaceId = key
-		group_map := value.(map[string]interface{})
-		for grp_addr, value := range group_map {
-			mcastgrpAddr = grp_addr
-			switch v := value.(type) {
-			case map[string]interface{}:
+
+		if strings.HasPrefix(interfaceId, "Ethernet") ||
+			strings.HasPrefix(interfaceId, "Po") ||
+			strings.HasPrefix(interfaceId, "Vlan") {
+			group_map := value.(map[string]interface{})
+			grps, _ := group_map["groups"].([]interface{})
+
+			for _, grp := range grps {
+				v := grp.(map[string]interface{})
 				if _grpaddr, ok := v["group"].(string); ok {
 					mcastgrpAddr = _grpaddr
 				}
