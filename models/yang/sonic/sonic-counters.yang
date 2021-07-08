@@ -258,4 +258,21 @@ module sonic-counters {
             }
         }
     }
+
+    rpc clear_rif_counters {
+        input {
+            leaf rif {
+                type string;
+                description
+                    "Parameter for clearing rif statistics";
+            }
+        }
+        output {
+            leaf status {
+                type string;
+                description
+                    " Success / Failure of clearing rif statistics";
+            }
+        }
+    }
 }

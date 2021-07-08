@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
@@ -34,6 +35,7 @@ func init() {
 	XlateFuncBind("rpc_get_interface_counters", rpc_get_interface_counters)
 	XlateFuncBind("rpc_clear_relay_counters", rpc_clear_relay_counters)
 	XlateFuncBind("rpc_get_rif_counters", rpc_get_rif_counters)
+	XlateFuncBind("rpc_clear_rif_counters", rpc_clear_rif_counters)
 }
 
 const (
@@ -468,5 +470,114 @@ var rpc_get_rif_counters = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, erro
 
 	result.Output.Status = 0
 	result.Output.Status_detail = "Success!"
+	return json.Marshal(&result)
+}
+
+/* Reset counter values in COUNTERS_BACKUP table for given OID */
+func resetRifCounters(d *db.DB, oid string) (error, error) {
+	var verr, cerr error
+	CountrTblTs := db.TableSpec{Name: "COUNTERS"}
+	CountrTblTsCp := db.TableSpec{Name: "COUNTERS_BACKUP"}
+	value, verr := d.GetEntry(&CountrTblTs, db.Key{Comp: []string{oid}})
+	log.V(3).Infof("Enter resetRifCounters oid: %s\n", string(oid))
+	if verr == nil {
+		secs := time.Now().Unix()
+		timeStamp := strconv.FormatInt(secs, 10)
+		value.Field["LAST_CLEAR_TIMESTAMP"] = timeStamp
+		cerr = d.CreateEntry(&CountrTblTsCp, db.Key{Comp: []string{oid}}, value)
+	}
+	return verr, cerr
+}
+
+func util_rpc_clear_rif_counters(dbs [db.MaxDB]*db.DB, input string) (bool, string) {
+	portOidmapTs := &db.TableSpec{Name: "COUNTERS_RIF_NAME_MAP"}
+	ifCountInfo, err := dbs[db.CountersDB].GetMapAll(portOidmapTs)
+	if err != nil {
+		return false, "Error: RIF-OID (Counters) get for all the interfaces failed!"
+	}
+
+	if input == "all" {
+		log.Info("util_rpc_clear_rif_counters : Clear Counters for all interfaces")
+		for intf, oid := range ifCountInfo.Field {
+			verr, cerr := resetRifCounters(dbs[db.CountersDB], oid)
+			if verr != nil || cerr != nil {
+				log.Info("Failed to reset counters for ", intf)
+			} else {
+				log.Info("Counters reset for " + intf)
+			}
+		}
+	} else {
+		log.Info("util_rpc_clear_rif_counters: Clear counters for given interface name")
+		ok, id := getIdFromIntfName(&input)
+		if !ok {
+			log.Info("Invalid Interface format")
+			return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+		}
+		if strings.HasPrefix(input, "Ethernet") {
+			input = "Ethernet" + id
+		} else if strings.HasPrefix(input, "PortChannel") {
+			input = "PortChannel" + id
+		} else {
+			// TODO vlan interface and subintf needs to be handled
+			log.Info("Invalid Interface")
+			return false, fmt.Sprintf("Error: Clear Counters not supported for %s", input)
+		}
+		oid, ok := ifCountInfo.Field[input]
+		if !ok {
+			return false, fmt.Sprintf("Error: OID info not found in COUNTERS_PORT_NAME_MAP for %s", input)
+		}
+		verr, cerr := resetRifCounters(dbs[db.CountersDB], oid)
+		if verr != nil {
+			return false, fmt.Sprintf("Error: Failed to get counter values from COUNTERS table for %s", input)
+		}
+		if cerr != nil {
+			log.Info("Failed to reset counters values")
+			return false, fmt.Sprintf("Error: Failed to reset counters values for %s.", input)
+		}
+		log.Info("Counters reset for " + input)
+	}
+
+	return true, "Success: Cleared Counters"
+}
+
+/* RPC for clear rif counters through Sonic-RPC */
+var rpc_clear_rif_counters RpcCallpoint = func(body []byte, dbs [db.MaxDB]*db.DB) ([]byte, error) {
+	var err error
+	var result struct {
+		Output struct {
+			Status        int32  `json:"status"`
+			Status_detail string `json:"status-detail"`
+		} `json:"sonic-counters:output"`
+	}
+	log.Infof("Enter rpc_clear_rif_counters Input: %s\n", string(body))
+	result.Output.Status = 1
+	/* Get input data */
+	var mapData map[string]interface{}
+	err = json.Unmarshal(body, &mapData)
+	if err != nil {
+		log.Info("Failed to unmarshall given input data")
+		result.Output.Status_detail = "Error: Failed to unmarshall given input data"
+		return json.Marshal(&result)
+	}
+
+	i := mapData["sonic-counters:rif_count:input"].(map[string]interface{})
+	input, ok := i["rif"].(string)
+	if !ok {
+		err_str := "Error: Mandatory info missing! interface-param attribute not present!"
+		log.Info(err_str)
+		result.Output.Status_detail = err_str
+		return json.Marshal(&result)
+	}
+	input_str := fmt.Sprintf("%v", input)
+	if input != "all" {
+		sonicName := utils.GetNativeNameFromUIName(&input_str)
+		log.Infof("Interface filter rpc_clear_rif_counters %s\n", sonicName)
+		input_str = *sonicName
+	}
+	log.V(3).Infof("Clear trigger for input_str %s\n", input_str)
+	ok, result.Output.Status_detail = util_rpc_clear_rif_counters(dbs, input_str)
+	if ok {
+		result.Output.Status = 0
+	}
 	return json.Marshal(&result)
 }
