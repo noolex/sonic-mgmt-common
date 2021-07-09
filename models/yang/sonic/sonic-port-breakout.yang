@@ -55,6 +55,9 @@ module sonic-port-breakout {
                         enum 2x200G { value 8; }
                         enum 4x100G { value 9; }
                         enum 4x50G { value 10; }
+                        enum 8x50G { value 11; }
+                        enum 8x25G { value 12; }
+                        enum 8x10G { value 13; }
                     }
                 }
                 leaf lanes {
