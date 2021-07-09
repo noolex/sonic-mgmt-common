@@ -10,6 +10,7 @@ module openconfig-platform-annot {
     import sonic-extensions { prefix sonic-ext; }
     import openconfig-platform-transceiver { prefix oc-transceiver; }
     import openconfig-platform-transceiver-ext { prefix oc-transceiver-ext; }
+    import openconfig-port-media-fec-ext { prefix oc-port-media-fec; }
 
     deviation /oc-platform:components/oc-platform:component {
       deviate add {
@@ -28,6 +29,24 @@ module openconfig-platform-annot {
         sonic-ext:subtree-transformer "pfm_components_fan_xfmr";
       }
     }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-platform:config/oc-port-media-fec:media-fec-mode{
+      deviate add {
+        sonic-ext:table-name "PORT";
+        sonic-ext:field-transformer "media_fec_mode_xfmr";
+        sonic-ext:key-transformer "media_fec_mode_key_xfmr";
+      }
+    }
+
+    deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-platform:state/oc-port-media-fec:media-fec-mode{
+      deviate add {
+        sonic-ext:db-name "APPL_DB";
+        sonic-ext:table-name "PORT_TABLE";
+        sonic-ext:field-transformer "media_fec_mode_state_xfmr";
+        sonic-ext:key-transformer "media_fec_mode_key_xfmr";
+      }
+    }
+
 
     deviation /oc-platform:components/oc-platform:component/oc-platform:port/oc-port:breakout-mode/oc-port:config {
       deviate add {
