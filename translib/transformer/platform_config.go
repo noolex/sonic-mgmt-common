@@ -113,7 +113,8 @@ func decodePortParams(port_i string, mode string, subport int, entry map[string]
 
     lane_speed_map := map[string][]int{"1x100G":{4, 100000}, "1x40G":{4, 40000},"1x400G":{8, 400000},
                         "2x50G":{2, 50000}, "4x25G":{1, 25000}, "4x10G":{1, 10000}, "2x200G":{4, 200000},
-                        "2x100G":{4, 100000}, "4x100G":{2, 100000}, "4x50G":{2, 50000}}
+                        "2x100G":{4, 100000}, "4x100G":{2, 100000}, "4x50G":{2, 50000}, "8x50G":{1, 50000},
+                        "8x25G":{1, 25000}, "8x10G":{1, 10000}}
     indeces := strings.Split(entry["index"], ",")
     lanes := strings.Split(entry["lanes"], ",")
     lane_speed, ok := lane_speed_map[mode]
