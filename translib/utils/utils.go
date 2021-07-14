@@ -485,7 +485,7 @@ func devMetaNotifSubscribe() {
     tsa := db.TableSpec { Name: "DEVICE_METADATA" }
 
     ca := make([]string, 1)
-    ca[0] = "*"
+    ca[0] = "localhost"
     akey = db.Key { Comp: ca}
 
     e := dbNotifSubscribe(tsa, akey, devMetaNotifHandler)
