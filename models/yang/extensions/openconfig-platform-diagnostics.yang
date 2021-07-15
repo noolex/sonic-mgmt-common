@@ -83,6 +83,12 @@ module openconfig-platform-diagnostics {
                             right with ASCII spaces (20h). If part number is undefined,
                             all 16 octets = 0h";
                     }
+                    leaf memory-type {
+                        type string;
+                        description
+                           "Type of the upper memory. It's 'Flat' if only page 00h is available,
+                            or 'Paged' if the optional pages are available";
+                    }
                     leaf temperature {
                         type string;
                         description "Internally measured transceiver temperature in degrees Celsius";

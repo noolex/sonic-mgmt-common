@@ -169,6 +169,8 @@ var DbToYang_platform_diag_xcvr_dom_xfmr SubTreeXfmrDbToYang = func (inParams Xf
         info.State.Vendor = s
         s, _ = getDbString(v, "modelname")
         info.State.VendorPart = s
+        s, _ = getDbString(v, "memory_type")
+        info.State.MemoryType = s
 
         if info.State.Type == nil {
             log.Infof("ERR: 'type' info is missing")
