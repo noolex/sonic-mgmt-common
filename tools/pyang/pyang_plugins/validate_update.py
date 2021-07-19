@@ -13,6 +13,13 @@ from pyang import error
 from pyang import util
 from pyang import types
 
+if pyang.__version__ > '2.4':
+    from pyang.repository import FileRepository
+    from pyang.context import Context
+else:
+    from pyang import FileRepository
+    from pyang import Context
+
 # Globals
 global_ctx = None
 current_data_node = None
@@ -195,8 +202,8 @@ def mark_deviations(module):
 def check_update(ctx, oldfilename, newmod):
     oldpath = ctx.opts.yang_dir
     oldpath += os.pathsep + ctx.opts.path[0].split(':')[0] + os.pathsep
-    oldrepo = pyang.FileRepository(oldpath, use_env=False)
-    oldctx = pyang.Context(oldrepo)
+    oldrepo = FileRepository(oldpath, use_env=False)
+    oldctx = Context(oldrepo)
     oldctx.opts = ctx.opts
     oldctx.lax_xpath_checks = ctx.lax_xpath_checks
     oldctx.lax_quote_checks = ctx.lax_quote_checks

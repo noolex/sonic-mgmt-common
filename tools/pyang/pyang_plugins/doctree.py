@@ -26,6 +26,12 @@ import sys
 
 import pyang
 from pyang import plugin, statements, syntax, util
+if pyang.__version__ > '2.4':
+    from pyang.repository import FileRepository
+    from pyang.context import Context
+else:
+    from pyang import FileRepository
+    from pyang import Context
 
 # globals
 extensionModulesList = list()
@@ -48,8 +54,8 @@ def build_mods_dict(ctx):
 
     basepath = ctx.opts.basepaths
     if basepath is not None:
-        repo = pyang.FileRepository(basepath, use_env=False)
-        newctx = pyang.Context(repo)
+        repo = FileRepository(basepath, use_env=False)
+        newctx = Context(repo)
         newctx.opts = ctx.opts
         newctx.lax_xpath_checks = ctx.lax_xpath_checks
         newctx.lax_quote_checks = ctx.lax_quote_checks
@@ -68,8 +74,8 @@ def build_mods_dict(ctx):
         newctx.validate()
 
     basepath = ctx.opts.path[0]
-    repo = pyang.FileRepository(basepath, use_env=False)
-    newctx = pyang.Context(repo)
+    repo = FileRepository(basepath, use_env=False)
+    newctx = Context(repo)
     newctx.opts = ctx.opts
     newctx.lax_xpath_checks = ctx.lax_xpath_checks
     newctx.lax_quote_checks = ctx.lax_quote_checks
